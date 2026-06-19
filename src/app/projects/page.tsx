@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -11,7 +10,8 @@ import {
   Loader2, 
   Trash2, 
   ShieldAlert,
-  Home
+  Home,
+  Plus
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,12 +20,10 @@ import { Badge } from "@/components/ui/badge";
 import { collection, query, orderBy, serverTimestamp, deleteDoc, doc, addDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL, getStorage } from "firebase/storage";
 import { useToast } from "@/hooks/use-toast";
-import { useTranslation } from "@/components/language-provider";
 import { useFirestore, useCollection, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { useRouter } from "next/navigation";
 
 export default function ProjectsPage() {
-  const { t } = useTranslation();
   const { toast } = useToast();
   const db = useFirestore();
   const router = useRouter();
@@ -50,9 +48,9 @@ export default function ProjectsPage() {
       const downloadURL = await getDownloadURL(storageRef);
 
       const projectData = {
-        name: "مشروع جديد " + (projects.length + 1),
-        client: "عميل جديد",
-        type: "تطبيق أندرويد",
+        name: "مشروع جديد " + (projects?.length || 0 + 1),
+        client: "عميل تجريبي",
+        type: "تطبيق ويب",
         progress: 10,
         status: "قيد البدء",
         imageUrl: downloadURL,
@@ -67,7 +65,7 @@ export default function ProjectsPage() {
         }));
       });
 
-      toast({ title: "تم الرفع", description: "تمت إضافة المشروع والصورة بنجاح." });
+      toast({ title: "تم الرفع", description: "تمت إضافة المشروع بنجاح." });
     } catch (err: any) {
       toast({ title: "خطأ", description: "فشل في رفع الملف.", variant: "destructive" });
     } finally {
@@ -91,21 +89,23 @@ export default function ProjectsPage() {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
         <ShieldAlert className="h-12 w-12 text-rose-500 opacity-50" />
-        <h3 className="text-xl font-bold font-headline">خطأ في الصلاحيات</h3>
-        <p className="text-muted-foreground">لا تملك صلاحية الوصول لعرض قائمة المشاريع.</p>
-        <Button onClick={() => window.location.reload()}>إعادة المحاولة</Button>
+        <h3 className="text-xl font-bold">مشكلة في الصلاحيات</h3>
+        <p className="text-muted-foreground">يرجى التأكد من تسجيل الدخول بشكل صحيح.</p>
+        <Button onClick={() => router.push("/login")}>العودة للدخول</Button>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8" dir="rtl">
+    <div className="max-w-6xl mx-auto p-6 space-y-8" dir="rtl">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-4">
-          <Button variant="outline" size="icon" onClick={() => router.push("/")}><Home className="h-4 w-4" /></Button>
+          <Button variant="outline" size="icon" onClick={() => router.push("/")} className="rounded-xl">
+            <Home className="h-4 w-4" />
+          </Button>
           <div>
-            <h2 className="text-2xl font-headline font-bold">مكتبة المشاريع</h2>
-            <p className="text-muted-foreground text-sm">إدارة دورة حياة المشروع وأصوله الحقيقية.</p>
+            <h2 className="text-3xl font-headline font-bold">إدارة المشاريع</h2>
+            <p className="text-muted-foreground text-sm">مكتبة الأعمال وتقدم التنفيذ.</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -117,10 +117,10 @@ export default function ProjectsPage() {
             onChange={handleFileUpload}
             disabled={uploading}
           />
-          <Button asChild disabled={uploading}>
+          <Button asChild disabled={uploading} className="rounded-xl font-bold">
             <label htmlFor="file-upload" className="cursor-pointer">
-              {uploading ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <Upload className="ml-2 h-4 w-4" />}
-              {uploading ? "جاري الرفع..." : "مشروع وصورة جديدة"}
+              {uploading ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <Plus className="ml-2 h-4 w-4" />}
+              {uploading ? "جاري الرفع..." : "إضافة مشروع"}
             </label>
           </Button>
         </div>
@@ -132,8 +132,8 @@ export default function ProjectsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {projects.map((project: any) => (
-            <Card key={project.id} className="overflow-hidden border-none shadow-sm group hover:shadow-md transition-all">
+          {projects?.map((project: any) => (
+            <Card key={project.id} className="overflow-hidden border-none shadow-md group hover:shadow-lg transition-all rounded-2xl bg-white">
               <div className="relative aspect-video bg-muted overflow-hidden">
                 {project.imageUrl ? (
                   <Image 
@@ -143,48 +143,40 @@ export default function ProjectsPage() {
                     className="object-cover group-hover:scale-105 transition-transform duration-500"
                   />
                 ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground p-8 text-center">
+                  <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground">
                     <ImagePlus className="h-10 w-10 mb-2 opacity-20" />
-                    <p className="text-xs">لا توجد صور لهذا المشروع.</p>
                   </div>
                 )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-between p-4">
-                  <Button variant="secondary" size="sm" className="bg-white/90 backdrop-blur">
-                    <ExternalLink className="h-4 w-4 ml-2" /> عرض المعرض
-                  </Button>
-                  <Button variant="destructive" size="icon" className="h-8 w-8" onClick={() => handleDeleteProject(project.id)}>
-                    <Trash2 className="h-4 w-4" />
+                <div className="absolute top-3 right-3 flex gap-2">
+                  <Badge className="bg-primary/90 border-none shadow-sm">{project.status}</Badge>
+                </div>
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                   <Button variant="destructive" size="icon" className="h-10 w-10 rounded-xl" onClick={() => handleDeleteProject(project.id)}>
+                    <Trash2 className="h-5 w-5" />
                   </Button>
                 </div>
-                <Badge 
-                  className={`absolute top-3 right-3 border-none ${
-                    project.status === "Completed" || project.progress === 100 ? "bg-emerald-500" : "bg-primary"
-                  }`}
-                >
-                  {project.status}
-                </Badge>
               </div>
               
-              <CardHeader className="p-4 pb-0">
-                <CardTitle className="text-lg font-headline">{project.name}</CardTitle>
-                <p className="text-xs text-muted-foreground">{project.type} لـ {project.client}</p>
+              <CardHeader className="p-5 pb-2">
+                <CardTitle className="text-xl font-headline">{project.name}</CardTitle>
+                <p className="text-xs text-muted-foreground">{project.type} • {project.client}</p>
               </CardHeader>
 
-              <CardContent className="p-4 space-y-4">
+              <CardContent className="p-5 space-y-4">
                 <div className="space-y-2">
-                  <div className="flex justify-between text-xs">
-                    <span className="font-bold">نسبة الإنجاز</span>
-                    <span className="text-muted-foreground">{project.progress}%</span>
+                  <div className="flex justify-between text-xs font-bold">
+                    <span>نسبة الإنجاز</span>
+                    <span>{project.progress}%</span>
                   </div>
-                  <Progress value={project.progress} className="h-1.5" />
+                  <Progress value={project.progress} className="h-2 rounded-full" />
                 </div>
               </CardContent>
             </Card>
           ))}
           
-          {projects.length === 0 && (
-            <div className="col-span-full py-20 text-center border-2 border-dashed rounded-xl">
-              <p className="text-muted-foreground">لا توجد مشاريع حالياً. ابدأ برفع أول صورة لمشروعك!</p>
+          {(!projects || projects.length === 0) && (
+            <div className="col-span-full py-24 text-center border-2 border-dashed rounded-3xl bg-muted/20">
+              <p className="text-muted-foreground font-medium">لا توجد مشاريع حالياً. ابدأ بإضافة أول مشروع!</p>
             </div>
           )}
         </div>

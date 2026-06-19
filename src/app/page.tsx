@@ -9,10 +9,8 @@ import {
   Briefcase, 
   LayoutDashboard,
   ArrowLeft,
-  ShieldCheck,
-  UserCheck,
-  Calculator,
-  FileText
+  Settings,
+  ShieldCheck
 } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { useAuth as useFirebaseAuth } from "@/firebase";
@@ -35,10 +33,10 @@ export default function HomePage() {
   };
 
   const menuItems = [
-    { title: "إدارة المشاريع", icon: Briefcase, color: "text-blue-500", path: "/projects", desc: "رفع صور ومتابعة تقدم المشاريع" },
-    { title: "إدارة المستخدمين", icon: Users, color: "text-emerald-500", path: "/users", desc: "تعديل الصلاحيات والأدوار" },
-    { title: "عروض الأسعار الذكية", icon: Calculator, color: "text-amber-500", path: "/quotations", desc: "إنشاء عروض أسعار باستخدام AI" },
-    { title: "المختبرين", icon: UserCheck, color: "text-indigo-500", path: "/testers", desc: "إدارة فرق فحص التطبيقات" },
+    { title: "إدارة المشاريع", icon: Briefcase, color: "text-blue-600", path: "/projects", desc: "متابعة تقدم المشاريع والصور" },
+    { title: "إدارة المستخدمين", icon: Users, color: "text-emerald-600", path: "/users", desc: "الصلاحيات والأدوار" },
+    { title: "حالات الاختبار", icon: ShieldCheck, color: "text-indigo-600", path: "/test-cases", desc: "فحص جودة التطبيقات" },
+    { title: "الإعدادات", icon: Settings, color: "text-slate-600", path: "/settings", desc: "ضبط النظام العام" },
   ];
 
   return (
@@ -49,11 +47,11 @@ export default function HomePage() {
             <LayoutDashboard className="h-8 w-8" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold font-headline">أهلاً بك، {profile.name}</h1>
-            <p className="text-muted-foreground text-sm">أنت الآن في لوحة تحكم APP STORE</p>
+            <h1 className="text-2xl font-bold font-headline">أهلاً، {profile.name}</h1>
+            <p className="text-muted-foreground text-sm">أنت مسجل كـ {profile.role === 'admin' ? 'مدير عام' : 'مختبر'}</p>
           </div>
         </div>
-        <Button variant="ghost" onClick={handleLogout} className="text-rose-500 font-bold">
+        <Button variant="ghost" onClick={handleLogout} className="text-rose-500 font-bold hover:bg-rose-50">
           <LogOut className="ml-2 h-4 w-4" /> خروج
         </Button>
       </header>
@@ -62,7 +60,7 @@ export default function HomePage() {
         {menuItems.map((item) => (
           <Card 
             key={item.path} 
-            className="hover:shadow-lg transition-all cursor-pointer group border-none shadow-md bg-white overflow-hidden"
+            className="hover:shadow-lg transition-all cursor-pointer group border-none shadow-md bg-white"
             onClick={() => router.push(item.path)}
           >
             <CardContent className="p-8 flex items-center gap-6">
@@ -79,10 +77,10 @@ export default function HomePage() {
         ))}
       </div>
       
-      <Card className="bg-emerald-50 border-none shadow-sm">
+      <Card className="bg-blue-50 border-none shadow-sm">
         <CardContent className="p-6 text-center">
-          <p className="text-emerald-700 font-bold text-sm">
-            تم حل مشكلة "Parallel Pages" وتفعيل قواعد الحماية التي طلبتها بنجاح.
+          <p className="text-blue-700 font-bold text-sm">
+            تم حل مشكلة المسارات وفتح الصلاحيات. نحن الآن نعمل على نسخة الويب المستقرة.
           </p>
         </CardContent>
       </Card>
