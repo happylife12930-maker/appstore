@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
@@ -12,6 +13,7 @@ interface UserProfile {
   permissions: string[];
   name: string;
   email: string;
+  clientId?: string; // مضاف لربط العميل بمشاريعه
 }
 
 interface AuthContextType {
@@ -36,7 +38,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(firebaseUser);
       
       if (firebaseUser) {
-        // استخدام onSnapshot لجلب البيانات لحظياً وبدون مشاكل صلاحيات إذا كانت مفتوحة
         const docRef = doc(db, 'users', firebaseUser.uid);
         const unsubProfile = onSnapshot(docRef, (docSnap) => {
           if (docSnap.exists()) {

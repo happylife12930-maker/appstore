@@ -1,49 +1,34 @@
 
-'use client';
+"use client";
 
-import * as React from 'react';
-import { useState, useEffect } from 'react';
+import * as React from "react";
+import { useState, useEffect } from "react";
 import { 
-  ShieldAlert, 
+  Users, 
   Search, 
-  UserCheck, 
-  Key, 
   ShieldCheck, 
-  Loader2, 
+  Key, 
+  UserPlus, 
   Trash2, 
-  UserPlus,
-  Eye,
+  Loader2, 
+  Eye, 
   EyeOff,
-  User,
-  Phone
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { db } from '@/lib/firebase';
-import { 
-  collection, 
-  onSnapshot, 
-  query, 
-  where, 
-  getDocs, 
-  setDoc, 
-  doc, 
-  deleteDoc, 
-  serverTimestamp,
-  orderBy
-} from 'firebase/firestore';
-import { useToast } from '@/hooks/use-toast';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
+  Phone,
+  Mail,
+  ShieldAlert
+} from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
   DialogDescription,
-  DialogFooter
-} from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -51,264 +36,289 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { db } from "@/lib/firebase";
+import { 
+  collection, 
+  query, 
+  onSnapshot, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+  doc, 
+  getDocs, 
+  where,
+  setDoc,
+  serverTimestamp
+} from "firebase/firestore";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/components/auth-provider";
 
-export default function UsersManagementPage() {
+export default function UserManagementPage() {
   const [users, setUsers] = useState<any[]>([]);
-  const [clients, setClients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [searching, setSearching] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedClient, setSelectedClient] = useState<any>(null);
-  const [showPassword, setShowPassword] = useState<Record<string, boolean>>({});
+  const [isSaving, setIsSaving] = useState(false);
+  const [showPassword, setShowPassword] = useState<{[key: string]: boolean}>({});
   const { toast } = useToast();
+  const { profile } = useAuth();
 
   const [formData, setFormData] = useState({
-    role: 'client',
-    password: '',
-    permissions: ['p_dashboard', 'p_projects']
+    name: "",
+    email: "",
+    phone: "",
+    role: "client" as "admin" | "tester" | "client",
+    tempPassword: "",
+    clientId: ""
   });
 
+  const [clientSearch, setClientSearch] = useState("");
+  const [foundClients, setFoundClients] = useState<any[]>([]);
+  const [searchingClient, setSearchingClient] = useState(false);
+
   useEffect(() => {
-    if (!db) return;
-    const q = query(collection(db, 'users'), orderBy('name', 'asc'));
+    if (!db || profile?.role !== 'admin') return;
+    const q = query(collection(db, "users"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      setUsers(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })));
+      setUsers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       setLoading(false);
     });
     return () => unsubscribe();
-  }, []);
+  }, [profile]);
 
   const handleSearchClients = async () => {
-    if (!searchQuery.trim() || !db) return;
-    setSearching(true);
+    if (!clientSearch || !db) return;
+    setSearchingClient(true);
     try {
-      // البحث في العملاء بالاسم أو الهاتف
-      const clientsRef = collection(db, 'clients');
-      const q = query(clientsRef);
+      const q = query(
+        collection(db, "clients"), 
+        where("name", ">=", clientSearch),
+        where("name", "<=", clientSearch + "\uf8ff")
+      );
       const snap = await getDocs(q);
-      const results = snap.docs
-        .map(d => ({ id: d.id, ...d.data() }))
-        .filter((c: any) => 
-          c.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-          c.phone?.includes(searchQuery)
-        );
-      setSearchResults(results);
+      const results = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setFoundClients(results);
+      if (results.length === 0) {
+        toast({ title: "عذراً", description: "لم يتم العثور على عميل بهذا الاسم.", variant: "destructive" });
+      }
     } catch (err) {
       console.error(err);
     } finally {
-      setSearching(false);
+      setSearchingClient(false);
     }
   };
 
-  const handleOpenProvision = (client: any) => {
-    setSelectedClient(client);
-    setFormData({
-      role: 'client',
-      password: '',
-      permissions: ['p_dashboard', 'p_projects']
-    });
-    setIsModalOpen(true);
+  const selectClient = (client: any) => {
+    setFormData(prev => ({
+      ...prev,
+      name: client.name,
+      email: client.email || "",
+      phone: client.phone || "",
+      clientId: client.id
+    }));
+    setFoundClients([]);
+    setClientSearch("");
   };
 
-  const handleProvisionUser = async () => {
-    if (!formData.password || !db || !selectedClient) return;
+  const handleSaveUser = async () => {
+    if (!formData.email || !formData.tempPassword) {
+      toast({ title: "بيانات ناقصة", description: "يرجى إدخال البريد الإلكتروني وكلمة المرور.", variant: "destructive" });
+      return;
+    }
 
+    setIsSaving(true);
     try {
-      // نجهز طلب إنشاء الحساب في مجموعة خاصة "users_provision"
-      // ليقوم النظام بإنشاء الحساب رسمياً عند أول محاولة دخول للعميل
-      await setDoc(doc(db, 'users_provision', selectedClient.email), {
-        uid: '', // سيتم ملؤه عند الدخول الأول
-        email: selectedClient.email,
-        name: selectedClient.name,
-        role: formData.role,
-        permissions: formData.permissions,
-        tempPassword: formData.password,
-        clientId: selectedClient.id,
-        createdAt: serverTimestamp()
+      const userData = {
+        ...formData,
+        status: "active",
+        permissions: formData.role === 'admin' ? ['p_all'] : (formData.role === 'client' ? ['p_dashboard', 'p_projects'] : ['p_testers']),
+        updatedAt: serverTimestamp()
+      };
+
+      await setDoc(doc(db, "users_provision", formData.email), userData);
+      
+      toast({ 
+        title: "تم تجهيز الحساب", 
+        description: `تم إنشاء حساب لـ ${formData.name}. يمكنه الدخول الآن باستخدام الباسورد المحدد.` 
       });
-
-      toast({ title: 'تم تجهيز الحساب', description: `يمكن للعميل الآن الدخول باستخدام البريد وكلمة المرور التي حددتها.` });
       setIsModalOpen(false);
+      setFormData({ name: "", email: "", phone: "", role: "client", tempPassword: "", clientId: "" });
     } catch (err) {
-      toast({ title: 'خطأ', description: 'فشل في تجهيز صلاحيات المستخدم.', variant: 'destructive' });
+      toast({ title: "خطأ", description: "فشل في حفظ بيانات المستخدم.", variant: "destructive" });
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const handleDeleteUser = async (id: string, email: string) => {
-    if (!confirm('هل أنت متأكد من سحب الصلاحيات وحذف حساب هذا المستخدم؟')) return;
-    try {
-      await deleteDoc(doc(db, 'users', id));
-      // أيضاً حذف أي طلب تجهيز معلق
-      await deleteDoc(doc(db, 'users_provision', email));
-      toast({ title: 'تم الحذف', description: 'تم سحب الصلاحيات بنجاح.' });
-    } catch (err) {
-      toast({ title: 'خطأ', description: 'فشل في حذف المستخدم.', variant: 'destructive' });
-    }
+  const togglePasswordVisibility = (id: string) => {
+    setShowPassword(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const togglePasswordVisibility = (uid: string) => {
-    setShowPassword(prev => ({ ...prev, [uid]: !prev[uid] }));
-  };
+  if (profile?.role !== 'admin') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+        <ShieldAlert className="h-20 w-20 text-rose-500 animate-pulse" />
+        <h1 className="text-3xl font-black text-slate-800">صلاحية وصول محدودة</h1>
+        <p className="text-slate-500 font-bold">هذه الشاشة مخصصة لإدارة الوكالة فقط.</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 pb-20" dir="rtl" style={{ fontFamily: "'Cairo', sans-serif" }}>
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-8 rounded-[2.5rem] shadow-sm border">
+    <div className="max-w-7xl mx-auto space-y-8" dir="rtl" style={{ fontFamily: "'Cairo', sans-serif" }}>
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-8 rounded-[3rem] shadow-sm border border-slate-100 gap-6">
         <div>
-          <h1 className="text-3xl font-black text-slate-800 flex items-center gap-3">
-            <ShieldAlert className="h-8 w-8 text-rose-500" /> إدارة الصلاحيات والمستخدمين
+          <h1 className="text-4xl font-black text-slate-900 flex items-center gap-4">
+            <ShieldCheck className="h-10 w-10 text-primary" /> إدارة الصلاحيات
           </h1>
-          <p className="text-muted-foreground font-bold">منح العملاء والموظفين صلاحية الدخول للنظام</p>
+          <p className="text-muted-foreground font-bold text-lg mt-2">منح العملاء والموظفين صلاحية الدخول للنظام</p>
         </div>
+        <Button onClick={() => setIsModalOpen(true)} className="rounded-2xl font-black h-16 px-10 text-xl shadow-xl transition-all active:scale-95">
+          <UserPlus className="ml-3 h-7 w-7" /> إضافة مستخدم جديد
+        </Button>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* قسم البحث والإضافة */}
-        <div className="lg:col-span-1 space-y-6">
-          <Card className="rounded-[2.5rem] border-none shadow-xl bg-white overflow-hidden">
-            <CardHeader className="bg-slate-50 border-b p-6">
-              <CardTitle className="text-lg font-black flex items-center gap-2">
-                <UserPlus className="h-5 w-5 text-primary" /> تجهيز مستخدم جديد
-              </CardTitle>
-              <CardDescription className="font-bold">ابحث عن عميل موجود لمنحه صلاحية الدخول</CardDescription>
-            </CardHeader>
-            <CardContent className="p-6 space-y-4">
-              <div className="flex gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {loading ? (
+          <div className="col-span-full flex justify-center py-20"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>
+        ) : (
+          users.map((user) => (
+            <Card key={user.id} className="rounded-[2.5rem] border-none shadow-xl bg-white overflow-hidden group hover:shadow-2xl transition-all">
+              <div className="p-8 bg-slate-50 border-b flex justify-between items-center">
+                <div className="flex items-center gap-4">
+                  <div className={`h-14 w-14 rounded-2xl flex items-center justify-center text-white shadow-lg ${user.role === 'admin' ? 'bg-primary' : (user.role === 'client' ? 'bg-blue-500' : 'bg-orange-500')}`}>
+                    <Users className="h-8 w-8" />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-xl text-slate-800">{user.name}</h3>
+                    <Badge variant="outline" className="mt-1 font-black bg-white">{user.role === 'admin' ? 'مدير عام' : (user.role === 'client' ? 'عميل' : 'مختبر جودة')}</Badge>
+                  </div>
+                </div>
+              </div>
+
+              <CardContent className="p-8 space-y-6">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 text-slate-600 font-bold">
+                    <Mail className="h-5 w-5 text-primary" /> {user.email}
+                  </div>
+                  <div className="flex items-center gap-3 text-slate-600 font-bold">
+                    <Phone className="h-5 w-5 text-primary" /> <span dir="ltr">{user.phone || 'غير مسجل'}</span>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-dashed flex justify-between items-center group/pass">
+                    <div className="flex items-center gap-3">
+                      <Key className="h-5 w-5 text-amber-500" />
+                      <span className="font-black text-slate-700">كلمة المرور:</span>
+                      <span className="font-black text-primary text-lg">
+                        {showPassword[user.id] ? (user.tempPassword || '••••••••') : '••••••••'}
+                      </span>
+                    </div>
+                    <Button variant="ghost" size="icon" onClick={() => togglePasswordVisibility(user.id)} className="rounded-full">
+                      {showPassword[user.id] ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="pt-6 border-t flex justify-between items-center">
+                  <span className={`h-3 w-3 rounded-full animate-pulse ${user.status === 'active' ? 'bg-green-500' : 'bg-slate-300'}`}></span>
+                  <span className="text-xs font-black text-slate-400 uppercase tracking-widest">{user.status === 'active' ? 'نشط الآن' : 'غير نشط'}</span>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
+
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="sm:max-w-[650px] rounded-[3rem] p-0 overflow-hidden border-none shadow-2xl bg-white" dir="rtl">
+          <DialogHeader className="bg-primary p-10 text-primary-foreground">
+            <DialogTitle className="text-3xl font-black">تجهيز حساب مستخدم</DialogTitle>
+            <DialogDescription className="text-primary-foreground/80 font-bold text-lg mt-2">ابحث عن العميل بالاسم واربطه بحساب دخول.</DialogDescription>
+          </DialogHeader>
+
+          <div className="p-10 space-y-8">
+            <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-200 space-y-4">
+              <label className="font-black text-slate-800 pr-2">البحث عن عميل مسجل</label>
+              <div className="flex gap-3">
                 <Input 
-                  placeholder="اسم العميل أو هاتفه..." 
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSearchClients()}
-                  className="rounded-xl h-12 font-bold"
+                  placeholder="اسم العميل..." 
+                  className="rounded-2xl h-14 border-slate-200 font-bold" 
+                  value={clientSearch}
+                  onChange={(e) => setClientSearch(e.target.value)}
                 />
-                <Button onClick={handleSearchClients} disabled={searching} className="rounded-xl h-12 px-4">
-                  {searching ? <Loader2 className="animate-spin" /> : <Search className="h-5 w-5" />}
+                <Button onClick={handleSearchClients} disabled={searchingClient} className="rounded-2xl h-14 px-8 font-black">
+                  {searchingClient ? <Loader2 className="animate-spin" /> : "بحث"}
                 </Button>
               </div>
 
-              <div className="space-y-2 mt-4">
-                {searchResults.map((client) => (
-                  <div key={client.id} className="p-4 border rounded-2xl flex justify-between items-center hover:bg-slate-50 transition-colors">
-                    <div>
-                      <p className="font-black text-slate-800">{client.name}</p>
-                      <p className="text-xs text-slate-400 font-bold" dir="ltr">{client.phone}</p>
-                    </div>
-                    <Button size="sm" onClick={() => handleOpenProvision(client)} className="rounded-xl font-black h-10 px-4">منح صلاحية</Button>
-                  </div>
-                ))}
-                {searchQuery && searchResults.length === 0 && !searching && (
-                  <p className="text-center text-sm font-bold text-slate-400 py-4 italic">لا توجد نتائج بحث</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* قائمة المستخدمين الحاليين */}
-        <div className="lg:col-span-2">
-          <Card className="rounded-[2.5rem] border-none shadow-xl bg-white overflow-hidden min-h-[600px]">
-            <CardHeader className="p-8 border-b">
-              <CardTitle className="text-2xl font-black">المستخدمون النشطون</CardTitle>
-              <CardDescription className="font-bold">قائمة بكافة الأشخاص الذين لديهم صلاحية الدخول</CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              {loading ? (
-                <div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>
-              ) : (
-                <div className="divide-y">
-                  {users.map((user) => (
-                    <div key={user.id} className="p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:bg-slate-50/50 transition-colors">
-                      <div className="flex items-center gap-4">
-                        <div className={`h-14 w-14 rounded-2xl flex items-center justify-center ${user.role === 'admin' ? 'bg-rose-100 text-rose-600' : 'bg-blue-100 text-blue-600'}`}>
-                          {user.role === 'admin' ? <ShieldCheck className="h-7 w-7" /> : <UserCheck className="h-7 w-7" />}
-                        </div>
-                        <div>
-                          <h4 className="font-black text-xl text-slate-800">{user.name}</h4>
-                          <p className="text-sm font-bold text-slate-400">{user.email}</p>
-                        </div>
-                      </div>
-                      
-                      <div className="flex flex-wrap items-center gap-3">
-                        <Badge variant="outline" className="px-4 py-1.5 rounded-lg font-black text-sm uppercase">
-                          {user.role}
-                        </Badge>
-                        
-                        <div className="flex items-center gap-2 bg-slate-100 px-4 py-2 rounded-xl">
-                          <Key className="h-4 w-4 text-slate-400" />
-                          <span className="font-black text-sm font-mono">
-                            {showPassword[user.id] ? user.tempPassword || '******' : '••••••••'}
-                          </span>
-                          <button onClick={() => togglePasswordVisibility(user.id)} className="text-slate-400 hover:text-primary p-1">
-                            {showPassword[user.id] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                          </button>
-                        </div>
-
-                        <Button variant="ghost" size="icon" onClick={() => handleDeleteUser(user.id, user.email)} className="text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl">
-                          <Trash2 className="h-5 w-5" />
-                        </Button>
-                      </div>
+              {foundClients.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  {foundClients.map((client) => (
+                    <div 
+                      key={client.id} 
+                      onClick={() => selectClient(client)}
+                      className="p-4 bg-white border rounded-xl cursor-pointer hover:bg-slate-100 transition-colors flex justify-between items-center"
+                    >
+                      <span className="font-black">{client.name}</span>
+                      <span className="text-xs text-slate-400" dir="ltr">{client.phone}</span>
                     </div>
                   ))}
-                  {users.length === 0 && (
-                    <div className="py-20 text-center">
-                      <ShieldCheck className="h-16 w-16 mx-auto text-slate-100 mb-4" />
-                      <p className="text-slate-400 font-bold">لا يوجد مستخدمون مسجلون حالياً</p>
-                    </div>
-                  )}
                 </div>
               )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      {/* مودال منح الصلاحية */}
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="sm:max-w-[500px] rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl" dir="rtl">
-          <DialogHeader className="bg-primary p-10 text-primary-foreground">
-            <DialogTitle className="text-2xl font-black">منح صلاحية دخول</DialogTitle>
-            <DialogDescription className="text-primary-foreground/80 font-bold mt-2">
-              أنت بصدد منح العميل <span className="text-white underline">{selectedClient?.name}</span> صلاحية الدخول للنظام.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="p-10 space-y-6">
-            <div className="space-y-2">
-              <Label className="font-black flex items-center gap-2"><User className="h-4 w-4" /> الدور الوظيفي</Label>
-              <Select value={formData.role} onValueChange={(v) => setFormData(p => ({ ...p, role: v }))}>
-                <SelectTrigger className="h-14 rounded-2xl border-slate-200 font-bold text-lg">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent dir="rtl" className="font-bold">
-                  <SelectItem value="client">عميل (مشاهدة مشروعه فقط)</SelectItem>
-                  <SelectItem value="tester">مختبر (إدارة حالات الاختبار)</SelectItem>
-                  <SelectItem value="admin">مدير (صلاحية كاملة)</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label className="font-black flex items-center gap-2"><Key className="h-4 w-4" /> كلمة المرور المبدئية</Label>
-              <Input 
-                placeholder="أدخل كلمة مرور قوية..." 
-                className="h-14 rounded-2xl border-slate-200 font-black text-xl" 
-                value={formData.password}
-                onChange={(e) => setFormData(p => ({ ...p, password: e.target.value }))}
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="font-black text-slate-700 pr-2">الاسم بالكامل</label>
+                <Input 
+                  value={formData.name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  className="rounded-2xl h-14 border-slate-200 font-bold" 
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="font-black text-slate-700 pr-2">الرتبة / الدور</label>
+                <Select value={formData.role} onValueChange={(val: any) => setFormData(prev => ({ ...prev, role: val }))}>
+                  <SelectTrigger className="rounded-2xl h-14 border-slate-200 font-black">
+                    <SelectValue placeholder="اختر الرتبة" />
+                  </SelectTrigger>
+                  <SelectContent className="font-black">
+                    <SelectItem value="admin">مدير (Admin)</SelectItem>
+                    <SelectItem value="client">عميل (Client)</SelectItem>
+                    <SelectItem value="tester">مختبر (Tester)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
-            <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 flex gap-3">
-              <ShieldCheck className="h-6 w-6 text-amber-600 shrink-0" />
-              <p className="text-xs font-bold text-amber-700">
-                سيتم تفعيل الحساب فور محاولة العميل الدخول ببريده المسجل ({selectedClient?.email}) وكلمة المرور هذه.
-              </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="font-black text-slate-700 pr-2">البريد الإلكتروني (للدخول)</label>
+                <Input 
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                  className="rounded-2xl h-14 border-slate-200 font-bold" 
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="font-black text-slate-700 pr-2">كلمة المرور المحددة</label>
+                <Input 
+                  type="text"
+                  value={formData.tempPassword}
+                  onChange={(e) => setFormData(prev => ({ ...prev, tempPassword: e.target.value }))}
+                  className="rounded-2xl h-14 border-slate-200 font-black text-amber-600" 
+                  placeholder="كلمة مرور الدخول"
+                />
+              </div>
             </div>
           </div>
 
-          <DialogFooter className="p-10 bg-slate-50 border-t gap-3">
-            <Button onClick={handleProvisionUser} disabled={!formData.password} className="w-full h-16 rounded-2xl font-black text-xl shadow-xl">
-              تجهيز الحساب وإرساله
+          <DialogFooter className="p-10 bg-slate-50 border-t gap-4">
+            <Button onClick={handleSaveUser} disabled={isSaving || !formData.email} className="rounded-2xl font-black h-16 px-16 text-xl shadow-2xl w-full">
+              {isSaving ? <Loader2 className="animate-spin" /> : "تأكيد وتجهيز الحساب"}
+            </Button>
+            <Button variant="outline" onClick={() => setIsModalOpen(false)} className="rounded-2xl font-black h-16 px-10 text-xl w-full">
+              إلغاء
             </Button>
           </DialogFooter>
         </DialogContent>

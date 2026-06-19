@@ -1,8 +1,8 @@
 
 /**
- * تم نقل الكود الوظيفي إلى src/app/users/page.tsx
- * هذا الملف تم تعطيله لحل مشكلة تعارض المسارات في Next.js
+ * هذا الملف معطل لتجنب تعارض المسارات مع src/app/users/page.tsx.
+ * تم نقل كافة الصلاحيات والوظائف إلى المسار الرئيسي.
  */
-export default function ObsoleteUsersPage() {
+export default function ConflictResolution() {
   return null;
 }

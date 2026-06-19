@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { useState, useEffect, useCallback, Suspense, useMemo } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import Image from "next/image";
 import { 
   ImagePlus, 
@@ -12,11 +12,9 @@ import {
   Plus,
   Search,
   User,
-  Calendar,
   FileText,
   CheckCircle2,
   MoreVertical,
-  ExternalLink,
   Edit,
   Clock,
   Check,
@@ -31,7 +29,6 @@ import { Badge } from "@/components/ui/badge";
 import { 
   collection, 
   query, 
-  orderBy, 
   onSnapshot, 
   serverTimestamp, 
   deleteDoc, 
@@ -62,9 +59,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import {
   Carousel,
@@ -119,19 +115,28 @@ function ProjectsContent() {
   useEffect(() => {
     if (!db || !profile) return;
     
+    // تم إزالة orderBy من الاستعلام لتجنب خطأ Index
+    // سيتم الترتيب برمجياً (Client-side) لضمان السرعة والتوافق
     let projectsQuery;
     if (profile.role === 'admin') {
-      projectsQuery = query(collection(db, "projects"), orderBy("createdAt", "desc"));
+      projectsQuery = query(collection(db, "projects"));
     } else {
       projectsQuery = query(
         collection(db, "projects"), 
-        where("clientId", "==", profile.clientId || ""),
-        orderBy("createdAt", "desc")
+        where("clientId", "==", profile.clientId || "")
       );
     }
 
     const unsubscribe = onSnapshot(projectsQuery, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+      let data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+      
+      // الترتيب البرمجي حسب تاريخ الإنشاء (الأحدث أولاً)
+      data.sort((a: any, b: any) => {
+        const dateA = a.createdAt?.toDate?.() || new Date(0);
+        const dateB = b.createdAt?.toDate?.() || new Date(0);
+        return dateB - dateA;
+      });
+
       setProjects(data);
       setLoading(false);
 
@@ -322,6 +327,7 @@ function ProjectsContent() {
     const completedSteps = newSteps.filter((s: any) => s.completed).length;
     const progress = Math.round((completedSteps / newSteps.length) * 100);
 
+    // تحديث لحظي (Optimistic UI)
     setPreviewProject((prev: any) => ({
       ...prev,
       steps: newSteps,
@@ -407,14 +413,14 @@ function ProjectsContent() {
                           <Eye className="h-5 w-5 text-primary" /> عرض التفاصيل
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => router.push(`/clients/${project.clientId}/statement`)} className="gap-3 cursor-pointer py-4 rounded-xl hover:bg-slate-50">
-                          <User className="h-5 w-5 text-slate-500" /> فتح بروفايل العميل
+                          <User className="h-5 w-5 text-slate-500" /> بروفايل العميل
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleEditProject(project)} className="gap-3 cursor-pointer py-4 rounded-xl hover:bg-blue-50">
-                          <Edit className="h-5 w-5 text-blue-500" /> تعديل تفاصيل المشروع
+                          <Edit className="h-5 w-5 text-blue-500" /> تعديل المشروع
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => handleDeleteProject(project.id)} className="gap-3 text-red-600 cursor-pointer py-4 rounded-xl focus:bg-red-50 focus:text-red-600">
-                          <Trash2 className="h-5 w-5" /> حذف المشروع نهائياً
+                          <Trash2 className="h-5 w-5" /> حذف المشروع
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -423,31 +429,19 @@ function ProjectsContent() {
               </div>
 
               <CardHeader className="p-8 pb-2">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="text-2xl font-black text-slate-800">{project.name}</CardTitle>
-                    <div className="flex items-center gap-2 text-primary font-black text-base mt-2">
-                      <User className="h-5 w-5" /> {project.clientName}
-                    </div>
-                  </div>
-                  {profile?.role === 'admin' && (
-                    <div className="text-left">
-                      <div className="text-xl font-black text-green-600">{(project.cost || 0).toLocaleString('ar-EG')} ج.م</div>
-                    </div>
-                  )}
+                <CardTitle className="text-2xl font-black text-slate-800">{project.name}</CardTitle>
+                <div className="flex items-center gap-2 text-primary font-black text-base mt-2">
+                  <User className="h-5 w-5" /> {project.clientName}
                 </div>
               </CardHeader>
 
               <CardContent className="p-8 space-y-4">
                 <div className="space-y-3">
                   <div className="flex justify-between text-xs font-black text-slate-400 uppercase tracking-widest">
-                    <span>نسبة الإنجاز</span>
+                    <span>الإنجاز</span>
                     <span>{project.progress}%</span>
                   </div>
                   <Progress value={project.progress} className="h-3 rounded-full" />
-                </div>
-                <div className="flex items-center gap-2 text-sm font-bold text-slate-500">
-                  <Clock className="h-4 w-4" /> التسليم: {project.deadline || "غير محدد"}
                 </div>
               </CardContent>
             </Card>
@@ -459,17 +453,15 @@ function ProjectsContent() {
       <Dialog open={isModalOpen} onOpenChange={(open) => !open && closeModal()}>
         <DialogContent className="sm:max-w-[750px] rounded-[3rem] p-0 overflow-hidden border-none shadow-2xl bg-white" dir="rtl">
           <DialogHeader className="bg-primary p-10 text-primary-foreground">
-            <DialogTitle className="text-3xl font-black">{selectedProject ? 'تعديل بيانات المشروع' : 'إضافة مشروع جديد'}</DialogTitle>
-            <DialogDescription className="text-primary-foreground/80 font-bold text-lg mt-2">قم بتحديث بيانات المشروع والصور والخطوات.</DialogDescription>
+            <DialogTitle className="text-3xl font-black">{selectedProject ? 'تعديل المشروع' : 'إضافة مشروع جديد'}</DialogTitle>
+            <DialogDescription className="text-primary-foreground/80 font-bold text-lg mt-2">تحديث بيانات المشروع والصور والخطوات.</DialogDescription>
           </DialogHeader>
 
           <ScrollArea className="max-h-[70vh] p-10">
             <div className="space-y-8">
               {!selectedProject && (
                 <div className="p-8 bg-slate-50 rounded-[2.5rem] space-y-4 border border-slate-100">
-                  <Label className="font-black text-slate-800 text-lg flex items-center gap-2">
-                    <Search className="h-6 w-6 text-primary" /> البحث عن العميل
-                  </Label>
+                  <Label className="font-black text-slate-800 text-lg">البحث عن العميل</Label>
                   <div className="flex gap-3">
                     <Input 
                       placeholder="رقم هاتف العميل..." 
@@ -477,8 +469,8 @@ function ProjectsContent() {
                       value={formData.clientPhone}
                       onChange={(e) => setFormData(prev => ({ ...prev, clientPhone: e.target.value }))}
                     />
-                    <Button onClick={handleClientSearch} disabled={searchingClient} className="rounded-2xl h-14 px-8 font-black text-lg">
-                      {searchingClient ? <Loader2 className="animate-spin" /> : "بحث"}
+                    <Button onClick={handleClientSearch} disabled={searchingClient} className="rounded-2xl h-14 px-8 font-black">
+                      بحث
                     </Button>
                   </div>
 
@@ -488,7 +480,7 @@ function ProjectsContent() {
                         <div 
                           key={client.id} 
                           onClick={() => setSelectedClient(client)}
-                          className={`flex items-center justify-between p-5 rounded-2xl border cursor-pointer transition-all ${selectedClient?.id === client.id ? 'bg-primary text-white border-primary shadow-xl scale-[1.02]' : 'bg-white border-slate-100 hover:bg-slate-100'}`}
+                          className={`flex items-center justify-between p-5 rounded-2xl border cursor-pointer ${selectedClient?.id === client.id ? 'bg-primary text-white border-primary shadow-xl' : 'bg-white border-slate-100'}`}
                         >
                           <div>
                             <p className="font-black text-base">{client.name}</p>
@@ -502,87 +494,58 @@ function ProjectsContent() {
                 </div>
               )}
               
-              {selectedClient && (
-                <div className="flex items-center gap-4 p-5 bg-green-50 rounded-[2rem] border border-green-100">
-                  <div className="p-3 bg-green-600 text-white rounded-2xl"><CheckCircle2 className="h-6 w-6" /></div>
-                  <div>
-                    <p className="text-xs font-black text-green-600 uppercase">العميل المرتبط بالعمل:</p>
-                    <p className="font-black text-xl text-green-800">{selectedClient.name}</p>
-                  </div>
-                </div>
-              )}
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-3">
                   <Label className="font-black text-base pr-2">اسم المشروع</Label>
                   <Input 
                     value={formData.name}
                     onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                    className="rounded-2xl h-14 border-slate-200 font-bold text-lg" 
+                    className="rounded-2xl h-14 border-slate-200 font-bold" 
                   />
                 </div>
                 <div className="space-y-3">
-                  <Label className="font-black text-base pr-2">التكلفة المتفق عليها (ج.م)</Label>
+                  <Label className="font-black text-base pr-2">التكلفة (ج.م)</Label>
                   <Input 
                     type="number"
                     value={formData.cost}
                     onChange={(e) => setFormData(prev => ({ ...prev, cost: Number(e.target.value) }))}
-                    className="rounded-2xl h-14 border-slate-200 font-black text-xl" 
+                    className="rounded-2xl h-14 border-slate-200 font-black" 
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-3">
-                  <Label className="font-black text-base pr-2">موعد التسليم النهائي</Label>
+                  <Label className="font-black text-base pr-2">تاريخ التسليم</Label>
                   <Input 
                     type="date"
                     value={formData.deadline}
                     onChange={(e) => setFormData(prev => ({ ...prev, deadline: e.target.value }))}
-                    className="rounded-2xl h-14 border-slate-200 font-bold text-lg" 
+                    className="rounded-2xl h-14 border-slate-200 font-bold" 
                   />
                 </div>
                 <div className="space-y-3">
-                  <Label className="font-black text-base pr-2">ألبوم صور المشروع</Label>
-                  <Input type="file" multiple accept="image/*" onChange={handleFileUpload} className="rounded-2xl h-14 border-slate-200 p-2 text-sm" />
+                  <Label className="font-black text-base pr-2">صور المشروع</Label>
+                  <Input type="file" multiple accept="image/*" onChange={handleFileUpload} className="rounded-2xl h-14 border-slate-200 p-2" />
                 </div>
               </div>
 
               <div className="space-y-3">
-                <Label className="font-black text-base pr-2">متطلبات العميل وتفاصيل العمل</Label>
+                <Label className="font-black text-base pr-2">المتطلبات</Label>
                 <Textarea 
                   value={formData.requirements}
                   onChange={(e) => setFormData(prev => ({ ...prev, requirements: e.target.value }))}
-                  className="rounded-[2rem] min-h-[150px] border-slate-200 font-bold text-lg p-5" 
+                  className="rounded-[2rem] min-h-[150px] border-slate-200 font-bold p-5" 
                 />
               </div>
-
-              {formData.images.length > 0 && (
-                <div className="space-y-4">
-                  <Label className="font-black text-base pr-2">الصور المرفوعة ({formData.images.length})</Label>
-                  <div className="grid grid-cols-3 md:grid-cols-5 gap-4">
-                    {formData.images.map((img, idx) => (
-                      <div key={idx} className="relative aspect-square rounded-2xl overflow-hidden group border shadow-md">
-                        <Image src={img} alt="project" fill className="object-cover" />
-                        <button 
-                          onClick={() => setFormData(prev => ({ ...prev, images: prev.images.filter((_, i) => i !== idx) }))}
-                          className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           </ScrollArea>
 
           <DialogFooter className="p-10 bg-slate-50 border-t gap-4">
-            <Button onClick={handleSaveProject} disabled={isSaving || !selectedClient} className="rounded-2xl font-black h-16 px-16 text-xl shadow-2xl w-full md:w-auto transition-transform active:scale-95">
-              {isSaving ? <Loader2 className="animate-spin" /> : (selectedProject ? "حفظ التغييرات" : "إضافة المشروع للنظام")}
+            <Button onClick={handleSaveProject} disabled={isSaving || !selectedClient} className="rounded-2xl font-black h-16 px-16 text-xl shadow-2xl w-full">
+              {isSaving ? <Loader2 className="animate-spin" /> : "حفظ المشروع"}
             </Button>
-            <Button variant="outline" onClick={closeModal} className="rounded-2xl font-black h-16 px-10 text-xl w-full md:w-auto">
+            <Button variant="outline" onClick={closeModal} className="rounded-2xl font-black h-16 px-10 text-xl w-full">
               إلغاء
             </Button>
           </DialogFooter>
@@ -594,11 +557,12 @@ function ProjectsContent() {
         <DialogContent className="sm:max-w-[1000px] rounded-[3.5rem] p-0 overflow-hidden border-none shadow-2xl bg-white" dir="rtl">
           {previewProject && (
             <>
-             <DialogHeader className="sr-only">
+              <DialogHeader className="sr-only">
                 <DialogTitle>{previewProject.name}</DialogTitle>
                 <DialogDescription>تفاصيل المشروع للعميل {previewProject.clientName}</DialogDescription>
               </DialogHeader>
-              <div className="relative w-full aspect-video bg-slate-50 flex items-center justify-center overflow-hidden border-b">
+              
+              <div className="relative w-full aspect-video bg-slate-50 flex items-center justify-center overflow-hidden">
                 {previewProject.images && previewProject.images.length > 0 ? (
                   <Carousel className="w-full h-full" opts={{ direction: 'rtl' }}>
                     <CarouselContent className="h-full">
@@ -616,99 +580,70 @@ function ProjectsContent() {
                       ))}
                     </CarouselContent>
                     <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-between px-10 z-50">
-                      <CarouselPrevious className="relative h-16 w-16 bg-white/90 text-slate-900 border-none shadow-2xl hover:bg-white active:scale-90 transition-transform" />
-                      <CarouselNext className="relative h-16 w-16 bg-white/90 text-slate-900 border-none shadow-2xl hover:bg-white active:scale-90 transition-transform" />
+                      <CarouselPrevious className="relative h-16 w-16 bg-white/90 text-slate-900 border-none shadow-2xl hover:bg-white" />
+                      <CarouselNext className="relative h-16 w-16 bg-white/90 text-slate-900 border-none shadow-2xl hover:bg-white" />
                     </div>
                   </Carousel>
                 ) : (
                   <div className="flex items-center justify-center h-full text-slate-300 flex-col gap-4">
                     <ImagePlus className="h-24 w-24" />
-                    <p className="font-black text-2xl text-slate-400">لا توجد صور لعرضها</p>
+                    <p className="font-black text-2xl">لا توجد صور</p>
                   </div>
                 )}
-                <button onClick={closePreview} className="absolute top-8 right-8 z-[60] bg-red-600 text-white p-4 rounded-full shadow-2xl hover:bg-red-700 transition-all active:scale-90 border-4 border-white">
+                <button onClick={closePreview} className="absolute top-8 right-8 z-[60] bg-red-600 text-white p-4 rounded-full shadow-2xl hover:bg-red-700 transition-all border-4 border-white">
                   <X className="h-8 w-8" />
                 </button>
               </div>
 
-              <ScrollArea className="max-h-[70vh] p-12 bg-white">
-                <div className="space-y-12 pb-10">
-                  <div className="flex flex-col md:flex-row justify-between items-start gap-6">
-                    <div className="space-y-4">
-                      <h2 className="text-5xl font-black text-slate-900 leading-tight">{previewProject.name}</h2>
-                      <div className="flex items-center gap-3 text-primary font-black text-2xl">
-                        <User className="h-8 w-8" /> العميل: {previewProject.clientName}
-                      </div>
+              <ScrollArea className="max-h-[60vh] p-12 bg-white">
+                <div className="space-y-12">
+                  <div className="space-y-4">
+                    <h2 className="text-4xl font-black text-slate-900">{previewProject.name}</h2>
+                    <div className="flex items-center gap-3 text-primary font-black text-xl">
+                      <User className="h-6 w-6" /> العميل: {previewProject.clientName}
                     </div>
-                    <Badge className={`px-10 py-4 text-2xl font-black border-none shadow-md rounded-[1.5rem] ${previewProject.progress === 100 ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700'}`}>
-                      {previewProject.status}
-                    </Badge>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    {profile?.role === 'admin' && (
-                      <div className="p-10 bg-slate-50 rounded-[3rem] border border-slate-100 text-center shadow-sm">
-                        <p className="text-xs font-black text-slate-400 mb-2 uppercase tracking-[0.2em]">التكلفة الإجمالية</p>
-                        <p className="text-4xl font-black text-green-600">{(previewProject.cost || 0).toLocaleString('ar-EG')} ج.م</p>
-                      </div>
-                    )}
-                    <div className="p-10 bg-slate-50 rounded-[3rem] border border-slate-100 text-center shadow-sm">
-                      <p className="text-xs font-black text-slate-400 mb-2 uppercase tracking-[0.2em]">تاريخ التسليم</p>
-                      <p className="text-4xl font-black text-slate-800">{previewProject.deadline || "غير محدد"}</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="p-8 bg-slate-50 rounded-[2.5rem] text-center border">
+                      <p className="text-xs font-black text-slate-400 mb-2 uppercase">تاريخ التسليم</p>
+                      <p className="text-3xl font-black text-slate-800">{previewProject.deadline || "غير محدد"}</p>
                     </div>
-                    <div className="p-10 bg-slate-50 rounded-[3rem] border border-slate-100 text-center shadow-sm">
-                      <p className="text-xs font-black text-slate-400 mb-2 uppercase tracking-[0.2em]">نسبة الإنجاز</p>
-                      <p className="text-4xl font-black text-primary">{previewProject.progress}%</p>
+                    <div className="p-8 bg-slate-50 rounded-[2.5rem] text-center border">
+                      <p className="text-xs font-black text-slate-400 mb-2 uppercase">نسبة الإنجاز</p>
+                      <p className="text-3xl font-black text-primary">{previewProject.progress}%</p>
                     </div>
                   </div>
 
                   <div className="space-y-8">
-                    <h3 className="font-black text-3xl text-slate-900 flex items-center gap-4">
-                      <FileText className="h-10 w-10 text-primary" /> تفاصيل المتطلبات
+                    <h3 className="font-black text-2xl text-slate-900 flex items-center gap-3">
+                      <FileText className="h-8 w-8 text-primary" /> مراحل التنفيذ
                     </h3>
-                    <div className="p-12 bg-slate-50 rounded-[3.5rem] text-slate-700 leading-[1.8] font-bold border border-slate-100 shadow-inner whitespace-pre-wrap text-xl">
-                      {previewProject.requirements || "لم يتم تسجيل متطلبات لهذا المشروع."}
-                    </div>
-                  </div>
-
-                  <div className="space-y-10">
-                    <h3 className="font-black text-3xl text-slate-900">مراحل التنفيذ</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {previewProject.steps?.map((step: any) => (
                         <div 
                           key={step.id} 
                           onClick={() => toggleStep(previewProject.id, step.id)}
-                          className={`flex items-center gap-6 p-8 rounded-[2.5rem] border cursor-pointer transition-all shadow-lg active:scale-[0.97] hover:shadow-2xl ${step.completed ? 'bg-green-50 border-green-300 text-green-800' : 'bg-white border-slate-200 text-slate-500 hover:border-primary/50'}`}
+                          className={`flex items-center gap-6 p-6 rounded-[2rem] border cursor-pointer transition-all shadow-md active:scale-[0.98] ${step.completed ? 'bg-green-50 border-green-300 text-green-800' : 'bg-white border-slate-200 text-slate-500 hover:border-primary'}`}
                         >
-                          <CheckCircle2 className={`h-10 w-10 ${step.completed ? 'text-green-600' : 'text-slate-200'}`} />
-                          <span className="font-black text-2xl">{step.title}</span>
+                          <CheckCircle2 className={`h-8 w-8 ${step.completed ? 'text-green-600' : 'text-slate-200'}`} />
+                          <span className="font-black text-xl">{step.title}</span>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  <div className="pt-12">
+                  <div className="pt-8 pb-10">
                     <Button 
                       onClick={closePreview} 
-                      className="w-full rounded-[2.5rem] font-black h-24 text-3xl bg-slate-900 hover:bg-black text-white shadow-2xl transition-all active:scale-95 flex gap-6"
+                      className="w-full rounded-[2.5rem] font-black h-20 text-2xl bg-slate-900 hover:bg-black text-white shadow-2xl flex gap-6"
                     >
-                      <LogOut className="h-10 w-10 rotate-180" />
+                      <LogOut className="h-8 w-8 rotate-180" />
                       إغلاق ومعاودة العمل
                     </Button>
                   </div>
                 </div>
               </ScrollArea>
-              
-              {profile?.role === 'admin' && (
-                <div className="p-10 bg-slate-50 border-t flex flex-col md:flex-row gap-6">
-                  <Button onClick={() => router.push(`/clients/${previewProject.clientId}/statement`)} variant="outline" className="rounded-2xl font-black h-16 flex-1 shadow-md text-xl hover:bg-white active:scale-95 border-2">
-                    <User className="ml-2 h-7 w-7" /> بروفايل العميل المالي
-                  </Button>
-                  <Button onClick={() => { closePreview(); handleEditProject(previewProject); }} className="rounded-2xl font-black h-16 flex-1 shadow-2xl text-xl bg-blue-600 hover:bg-blue-700 text-white">
-                    <Edit className="ml-2 h-7 w-7" /> تعديل المشروع
-                  </Button>
-                </div>
-              )}
             </>
           )}
         </DialogContent>
