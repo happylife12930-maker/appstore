@@ -49,7 +49,7 @@ export default function HomePage() {
             <LayoutDashboard className="h-8 w-8" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold font-headline">أهلاً، {profile.name}</h1>
+            <h1 className="text-2xl font-bold">أهلاً، {profile.name}</h1>
             <p className="text-muted-foreground text-sm">نظام APP STORE - الإدارة العامة</p>
           </div>
         </div>

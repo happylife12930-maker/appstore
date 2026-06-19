@@ -32,6 +32,7 @@ export default function LoginPage() {
       try {
         userCredential = await signInWithEmailAndPassword(auth, email, password);
       } catch (loginError: any) {
+        // إنشاء الحساب تلقائياً للمدير إذا لم يكن موجوداً
         if (email === "islam_nader@appstore.com" && password === "20176885") {
           userCredential = await createUserWithEmailAndPassword(auth, email, password);
         } else {
@@ -76,7 +77,7 @@ export default function LoginPage() {
           <div className="flex justify-center mb-4">
             <ShieldCheck className="h-12 w-12" />
           </div>
-          <CardTitle className="text-3xl font-bold font-headline">APP STORE</CardTitle>
+          <CardTitle className="text-3xl font-bold">APP STORE</CardTitle>
           <CardDescription className="text-primary-foreground/80">تسجيل الدخول للنظام</CardDescription>
         </CardHeader>
         <CardContent className="p-8 space-y-6">
