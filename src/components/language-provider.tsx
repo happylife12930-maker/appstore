@@ -76,7 +76,22 @@ const translations = {
     design: "Design",
     testing: "Testing",
     maintenance: "Maintenance",
-    satisfaction: "Satisfaction Rate"
+    satisfaction: "Satisfaction Rate",
+    requirements: "Requirements",
+    cost: "Cost",
+    timeline: "Timeline",
+    convertToProject: "Convert to Project",
+    ticketId: "Ticket ID",
+    bug: "Bug",
+    featureRequest: "Feature Request",
+    high: "High",
+    low: "Low",
+    critical: "Critical",
+    open: "Open",
+    inProgress: "In Progress",
+    resolved: "Resolved",
+    unpaid: "Unpaid",
+    partial: "Partial"
   },
   ar: {
     dashboard: "لوحة التحكم",
@@ -141,14 +156,30 @@ const translations = {
     design: "تصميم",
     testing: "اختبارات",
     maintenance: "صيانة",
-    satisfaction: "نسبة الرضا"
+    satisfaction: "نسبة الرضا",
+    requirements: "المتطلبات",
+    cost: "التكلفة",
+    timeline: "مدة التنفيذ",
+    convertToProject: "تحويل إلى مشروع",
+    ticketId: "رقم الطلب",
+    bug: "مشكلة (Bug)",
+    featureRequest: "طلب ميزة",
+    high: "مرتفع",
+    low: "منخفض",
+    critical: "حرج",
+    open: "مفتوح",
+    inProgress: "قيد التنفيذ",
+    resolved: "تم الحل",
+    unpaid: "غير مدفوع",
+    partial: "مدفوع جزئياً"
   }
 };
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguage] = useState<Language>('en');
+  // Set default language to Arabic
+  const [language, setLanguage] = useState<Language>('ar');
 
   const t = (key: string) => {
     return (translations[language] as any)[key] || key;
