@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import Image from "next/image";
 import { 
   ImagePlus, 
@@ -44,7 +44,7 @@ import {
 } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -73,9 +73,10 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 
-export default function ProjectsPage() {
+function ProjectsContent() {
   const { toast } = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
   
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -105,19 +106,16 @@ export default function ProjectsPage() {
     ]
   });
 
-  // دالة قوية لفك تجميد الموقع وإعادة التمرير
   const forceEnableScroll = useCallback(() => {
     if (typeof document !== 'undefined') {
       document.body.style.pointerEvents = 'auto';
       document.body.style.overflow = 'auto';
       document.body.removeAttribute('data-scroll-locked');
-      // إزالة الطبقات العالقة
       const overlays = document.querySelectorAll('[data-radix-focus-guard]');
       overlays.forEach(el => el.remove());
     }
   }, []);
 
-  // مراقبة حالات الإغلاق لضمان عدم حدوث فريز
   useEffect(() => {
     if (!isModalOpen && !isPreviewOpen) {
       forceEnableScroll();
@@ -128,11 +126,22 @@ export default function ProjectsPage() {
     if (!db) return;
     const projectsQuery = query(collection(db, "projects"), orderBy("createdAt", "desc"));
     const unsubscribe = onSnapshot(projectsQuery, (snapshot) => {
-      setProjects(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })));
+      const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+      setProjects(data);
       setLoading(false);
+
+      // التحقق من وجود ID في الرابط لفتح المشروع تلقائياً
+      const projectIdFromUrl = searchParams.get('id');
+      if (projectIdFromUrl && data.length > 0) {
+        const found = data.find(p => p.id === projectIdFromUrl);
+        if (found) {
+          setPreviewProject(found);
+          setIsPreviewOpen(true);
+        }
+      }
     });
     return () => unsubscribe();
-  }, []);
+  }, [searchParams]);
 
   const handleClientSearch = async () => {
     if (!formData.clientPhone || !db) return;
@@ -287,13 +296,14 @@ export default function ProjectsPage() {
     setIsPreviewOpen(false);
     setPreviewProject(null);
     forceEnableScroll();
+    // إزالة المعرف من الرابط عند الإغلاق
+    router.replace('/projects', { scroll: false });
   };
 
   const toggleStep = async (projectId: string, stepId: number) => {
     const project = projects.find(p => p.id === projectId);
     if (!project) return;
 
-    // تحديث لحظي (Optimistic Update)
     const newSteps = project.steps.map((s: any) => 
       s.id === stepId ? { ...s, completed: !s.completed } : s
     );
@@ -301,7 +311,6 @@ export default function ProjectsPage() {
     const completedSteps = newSteps.filter((s: any) => s.completed).length;
     const progress = Math.round((completedSteps / newSteps.length) * 100);
 
-    // تحديث الحالة المحلية فوراً لسرعة الاستجابة
     setPreviewProject((prev: any) => ({
       ...prev,
       steps: newSteps,
@@ -309,7 +318,6 @@ export default function ProjectsPage() {
       status: progress === 100 ? "مكتمل" : "قيد التنفيذ"
     }));
 
-    // التحديث في Firestore في الخلفية
     try {
       await updateDoc(doc(db, "projects", projectId), {
         steps: newSteps,
@@ -660,7 +668,6 @@ export default function ProjectsPage() {
                     </div>
                   </div>
 
-                  {/* زر إغلاق المشروع أسفل مراحل التنفيذ مباشرة كما طلبت */}
                   <div className="pt-8">
                     <Button 
                       onClick={closePreview} 
@@ -687,5 +694,13 @@ export default function ProjectsPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+export default function ProjectsPage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>}>
+      <ProjectsContent />
+    </Suspense>
   );
 }

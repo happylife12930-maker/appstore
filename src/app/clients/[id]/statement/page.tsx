@@ -51,6 +51,14 @@ export default function ClientStatementPage() {
     }
   };
 
+  const handleOpenProject = () => {
+    if (project?.id) {
+      router.push(`/projects?id=${project.id}`);
+    } else {
+      router.push('/projects');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
@@ -92,7 +100,7 @@ export default function ClientStatementPage() {
         </Button>
         <div className="flex gap-2">
           {project && (
-            <Button onClick={() => router.push("/projects")} variant="outline" className="gap-2 rounded-xl font-bold border-slate-200 h-12 shadow-sm">
+            <Button onClick={handleOpenProject} variant="outline" className="gap-2 rounded-xl font-bold border-slate-200 h-12 shadow-sm">
               <ExternalLink className="h-4 w-4" /> فتح المشروع
             </Button>
           )}
@@ -144,11 +152,11 @@ export default function ClientStatementPage() {
               <h3 className="text-lg font-black text-slate-800 border-b pb-2">تفاصيل العمل</h3>
               {project ? (
                 <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 space-y-4">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 cursor-pointer" onClick={handleOpenProject}>
                     <div className="p-2 bg-blue-100 rounded-xl"><Briefcase className="h-5 w-5 text-blue-600" /></div>
                     <div>
                       <p className="text-[10px] text-slate-400 font-black uppercase">المشروع المرتبط</p>
-                      <p className="font-black text-blue-700">{project.name}</p>
+                      <p className="font-black text-blue-700 hover:underline">{project.name}</p>
                     </div>
                   </div>
                   <div className="flex justify-between items-center text-sm">
@@ -159,7 +167,7 @@ export default function ClientStatementPage() {
                     <span className="font-bold text-slate-500">الإنجاز:</span>
                     <span className="font-black text-slate-800">{project.progress}%</span>
                   </div>
-                  <Button onClick={() => router.push('/projects')} variant="link" className="p-0 h-auto text-primary font-black text-xs no-print">
+                  <Button onClick={handleOpenProject} variant="link" className="p-0 h-auto text-primary font-black text-xs no-print">
                     الانتقال لصفحة المشاريع <ExternalLink className="h-3 w-3 mr-1" />
                   </Button>
                 </div>
