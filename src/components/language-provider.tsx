@@ -178,7 +178,7 @@ const translations = {
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguage] = useState<Language>('ar');
+  const [language, setLanguage] = useState<Language>('ar'); // العربية هي الافتراضية
 
   const t = (key: string) => {
     return (translations[language] as any)[key] || key;
