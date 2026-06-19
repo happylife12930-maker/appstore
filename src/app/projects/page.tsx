@@ -20,7 +20,9 @@ import {
   MoreVertical,
   ExternalLink,
   Edit,
-  Clock
+  Clock,
+  Phone,
+  Check
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -37,7 +39,8 @@ import {
   addDoc, 
   getDocs, 
   where,
-  updateDoc
+  updateDoc,
+  limit
 } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
@@ -72,7 +75,8 @@ export default function ProjectsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [searchingClient, setSearchingClient] = useState(false);
-  const [foundClient, setFoundClient] = useState<any>(null);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [selectedClient, setSelectedClient] = useState<any>(null);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -104,19 +108,35 @@ export default function ProjectsPage() {
   const handleClientSearch = async () => {
     if (!formData.clientPhone || !db) return;
     setSearchingClient(true);
+    setSearchResults([]);
     try {
-      const q = query(collection(db, "clients"), where("phone", "==", formData.clientPhone));
+      // استخدام تكنيك البداية (Prefix Search) في Firestore
+      const searchTerm = formData.clientPhone;
+      const q = query(
+        collection(db, "clients"), 
+        where("phone", ">=", searchTerm),
+        where("phone", "<=", searchTerm + "\uf8ff"),
+        limit(10)
+      );
+      
       const querySnapshot = await getDocs(q);
       if (!querySnapshot.empty) {
-        const client = { id: querySnapshot.docs[0].id, ...querySnapshot.docs[0].data() };
-        setFoundClient(client);
-        toast({ title: "تم العثور على العميل", description: `العميل: ${client.name}` });
+        const results = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setSearchResults(results);
+        if (results.length === 1) {
+          setSelectedClient(results[0]);
+          toast({ title: "تم العثور على عميل", description: results[0].name });
+        } else {
+          toast({ title: "نتائج متعددة", description: `تم العثور على ${results.length} عملاء.` });
+        }
       } else {
-        setFoundClient(null);
-        toast({ title: "عذراً", description: "لم يتم العثور على عميل بهذا الرقم.", variant: "destructive" });
+        setSearchResults([]);
+        setSelectedClient(null);
+        toast({ title: "عذراً", description: "لم يتم العثور على أي عملاء بهذا الرقم.", variant: "destructive" });
       }
     } catch (err) {
       console.error(err);
+      toast({ title: "خطأ", description: "فشل البحث في قاعدة البيانات.", variant: "destructive" });
     } finally {
       setSearchingClient(false);
     }
@@ -153,8 +173,8 @@ export default function ProjectsPage() {
   };
 
   const handleSaveProject = async () => {
-    if (!formData.name || !foundClient || !db) {
-      toast({ title: "بيانات ناقصة", description: "يرجى إدخال اسم المشروع والبحث عن عميل.", variant: "destructive" });
+    if (!formData.name || !selectedClient || !db) {
+      toast({ title: "بيانات ناقصة", description: "يرجى إدخال اسم المشروع واختيار عميل من نتائج البحث.", variant: "destructive" });
       return;
     }
 
@@ -165,8 +185,8 @@ export default function ProjectsPage() {
 
       const projectData = {
         ...formData,
-        clientId: foundClient.id,
-        clientName: foundClient.name,
+        clientId: selectedClient.id,
+        clientName: selectedClient.name,
         progress: progress,
         createdAt: serverTimestamp(),
       };
@@ -178,7 +198,8 @@ export default function ProjectsPage() {
         name: "", clientPhone: "", requirements: "", cost: 0, deadline: "", status: "قيد التنفيذ", images: [],
         steps: formData.steps.map(s => ({ ...s, completed: false }))
       });
-      setFoundClient(null);
+      setSelectedClient(null);
+      setSearchResults([]);
     } catch (err) {
       toast({ title: "خطأ", description: "فشل في حفظ المشروع.", variant: "destructive" });
     } finally {
@@ -349,11 +370,11 @@ export default function ProjectsPage() {
               {/* البحث عن العميل */}
               <div className="p-6 bg-slate-50 rounded-3xl space-y-4 border border-slate-100">
                 <Label className="font-black text-slate-800 flex items-center gap-2">
-                  <Search className="h-5 w-5 text-primary" /> البحث عن العميل برقم الهاتف
+                  <Search className="h-5 w-5 text-primary" /> البحث عن العميل بجزء من الرقم
                 </Label>
                 <div className="flex gap-2">
                   <Input 
-                    placeholder="أدخل رقم هاتف العميل المسجل..." 
+                    placeholder="اكتب جزء من رقم الهاتف..." 
                     className="rounded-2xl h-12 border-slate-200 font-bold" 
                     value={formData.clientPhone}
                     onChange={(e) => setFormData(prev => ({ ...prev, clientPhone: e.target.value }))}
@@ -362,12 +383,40 @@ export default function ProjectsPage() {
                     {searchingClient ? <Loader2 className="animate-spin" /> : "بحث"}
                   </Button>
                 </div>
-                {foundClient && (
-                  <div className="flex items-center gap-3 p-4 bg-green-50 rounded-2xl border border-green-100 animate-in fade-in slide-in-from-top-2">
-                    <div className="p-3 bg-green-600 text-white rounded-xl"><User className="h-5 w-5" /></div>
+
+                {/* قائمة نتائج البحث */}
+                {searchResults.length > 0 && (
+                  <div className="mt-4 space-y-2 animate-in fade-in slide-in-from-top-2">
+                    <p className="text-xs font-black text-slate-400 uppercase">نتائج البحث:</p>
+                    <div className="grid grid-cols-1 gap-2">
+                      {searchResults.map((client) => (
+                        <div 
+                          key={client.id} 
+                          onClick={() => setSelectedClient(client)}
+                          className={`flex items-center justify-between p-4 rounded-2xl border cursor-pointer transition-all ${selectedClient?.id === client.id ? 'bg-primary text-white border-primary shadow-lg' : 'bg-white border-slate-100 hover:bg-slate-100'}`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-xl ${selectedClient?.id === client.id ? 'bg-white/20' : 'bg-slate-100'}`}>
+                              <User className="h-4 w-4" />
+                            </div>
+                            <div>
+                              <p className="font-black text-sm">{client.name}</p>
+                              <p className={`text-xs ${selectedClient?.id === client.id ? 'text-white/80' : 'text-slate-400'}`} dir="ltr">{client.phone}</p>
+                            </div>
+                          </div>
+                          {selectedClient?.id === client.id && <Check className="h-5 w-5" />}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {selectedClient && (
+                  <div className="flex items-center gap-3 p-4 bg-green-50 rounded-2xl border border-green-100 animate-in zoom-in-95">
+                    <div className="p-3 bg-green-600 text-white rounded-xl"><CheckCircle2 className="h-5 w-5" /></div>
                     <div>
-                      <p className="text-xs font-bold text-green-600">عميل مرتبط:</p>
-                      <p className="font-black text-green-800 text-lg">{foundClient.name}</p>
+                      <p className="text-xs font-bold text-green-600">العميل المختار:</p>
+                      <p className="font-black text-green-800 text-lg">{selectedClient.name}</p>
                     </div>
                   </div>
                 )}
@@ -435,7 +484,7 @@ export default function ProjectsPage() {
           </ScrollArea>
 
           <DialogFooter className="p-8 bg-slate-50 border-t gap-3">
-            <Button onClick={handleSaveProject} disabled={isSaving || !foundClient} className="rounded-2xl font-black h-14 px-12 text-lg shadow-xl w-full md:w-auto">
+            <Button onClick={handleSaveProject} disabled={isSaving || !selectedClient} className="rounded-2xl font-black h-14 px-12 text-lg shadow-xl w-full md:w-auto">
               {isSaving ? <Loader2 className="ml-2 h-6 w-6 animate-spin" /> : <Plus className="ml-2 h-6 w-6" />}
               تأكيد وحفظ المشروع
             </Button>
@@ -448,4 +497,3 @@ export default function ProjectsPage() {
     </div>
   );
 }
-
