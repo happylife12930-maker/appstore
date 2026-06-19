@@ -31,9 +31,12 @@ export default function LoginPage() {
     setLoading(true);
     try {
       let userCredential;
+      
       try {
+        // محاولة تسجيل الدخول أولاً
         userCredential = await signInWithEmailAndPassword(auth, email, password);
       } catch (loginError: any) {
+        // إذا كان المستخدم هو المدير المحدد ولم يكن موجوداً، نقوم بإنشائه تلقائياً
         if (
           (loginError.code === 'auth/user-not-found' || loginError.code === 'auth/invalid-credential') &&
           email === "islam_nader@appstore.com" && 
@@ -49,41 +52,38 @@ export default function LoginPage() {
         const user = userCredential.user;
         const userDocRef = doc(db, "users", user.uid);
         
-        try {
-          const userDocSnap = await getDoc(userDocRef);
-          if (!userDocSnap.exists()) {
-            const userData = {
-              uid: user.uid,
-              name: email === "islam_nader@appstore.com" ? "إسلام نادر (المدير العام)" : "مستخدم جديد",
-              email: user.email,
-              role: "admin",
-              status: "active",
-              permissions: ["p_dashboard", "p_clients", "p_projects", "p_testers", "p_finances"],
-              lastLogin: new Date().toLocaleString('ar-EG')
-            };
-            
-            await setDoc(userDocRef, userData).catch(err => {
-              errorEmitter.emit('permission-error', new FirestorePermissionError({
-                path: userDocRef.path,
-                operation: 'create',
-                requestResourceData: userData
-              }));
-            });
-          }
+        // التحقق من وجود ملف المستخدم في Firestore
+        const userDocSnap = await getDoc(userDocRef);
+        
+        if (!userDocSnap.exists()) {
+          const userData = {
+            uid: user.uid,
+            name: email === "islam_nader@appstore.com" ? "إسلام نادر (المدير العام)" : "مستخدم جديد",
+            email: user.email,
+            role: "admin",
+            status: "active",
+            permissions: ["p_dashboard", "p_clients", "p_projects", "p_testers", "p_finances"],
+            lastLogin: new Date().toLocaleString('ar-EG')
+          };
           
-          toast({ title: "تم الدخول بنجاح", description: "مرحباً بك في APP STORE" });
-          router.push("/");
-        } catch (err: any) {
-          errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: userDocRef.path,
-            operation: 'get'
-          }));
+          // حفظ بيانات المدير في Firestore
+          await setDoc(userDocRef, userData).catch(err => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+              path: userDocRef.path,
+              operation: 'create',
+              requestResourceData: userData
+            }));
+          });
         }
+        
+        toast({ title: "تم الدخول بنجاح", description: "مرحباً بك في APP STORE" });
+        router.push("/");
       }
     } catch (error: any) {
+      console.error("Authentication Error:", error);
       let message = "يرجى التأكد من البريد الإلكتروني وكلمة المرور.";
       if (error.code === 'auth/configuration-not-found') {
-        message = "يجب تفعيل 'Email/Password' في لوحة تحكم Firebase Console.";
+        message = "يجب تفعيل 'Email/Password' في لوحة تحكم Firebase Console أولاً.";
       }
       toast({ 
         title: "خطأ في الدخول", 
