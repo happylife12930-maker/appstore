@@ -1,29 +1,40 @@
+
 "use client";
 import * as React from "react";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, Printer, Building2, User, Phone, Mail, Calendar, Calculator } from "lucide-react";
+import { ArrowRight, Printer, Building2, User, Phone, Mail, Calendar, Calculator, ExternalLink, Briefcase } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 export default function ClientStatementPage() {
   const params = useParams();
   const router = useRouter();
   const [client, setClient] = useState<any>(null);
+  const [project, setProject] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchClient() {
+    async function fetchData() {
       if (!db || !params.id) return;
       try {
+        // جلب بيانات العميل
         const docRef = doc(db, "clients", params.id as string);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           setClient({ id: docSnap.id, ...docSnap.data() });
+          
+          // البحث عن المشروع المرتبط بهذا العميل
+          const projectsRef = collection(db, "projects");
+          const q = query(projectsRef, where("clientId", "==", params.id));
+          const querySnapshot = await getDocs(q);
+          if (!querySnapshot.empty) {
+            setProject({ id: querySnapshot.docs[0].id, ...querySnapshot.docs[0].data() });
+          }
         }
       } catch (err) {
         console.error("Error fetching client for statement:", err);
@@ -31,7 +42,7 @@ export default function ClientStatementPage() {
         setLoading(false);
       }
     }
-    fetchClient();
+    fetchData();
   }, [params.id]);
 
   const handlePrint = () => {
@@ -61,7 +72,6 @@ export default function ClientStatementPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 pb-20" dir="rtl" style={{ fontFamily: "'Cairo', sans-serif" }}>
-      {/* CSS مخصص للطباعة لضمان إخفاء العناصر غير الضرورية وتنسيق الصفحة */}
       <style dangerouslySetInnerHTML={{ __html: `
         @media print {
           .no-print { display: none !important; }
@@ -76,11 +86,16 @@ export default function ClientStatementPage() {
         }
       `}} />
 
-      <header className="flex justify-between items-center no-print">
+      <header className="flex justify-between items-center no-print px-4 md:px-0">
         <Button variant="ghost" onClick={() => router.push("/clients")} className="gap-2 font-bold">
           <ArrowRight className="h-4 w-4" /> العودة للعملاء
         </Button>
         <div className="flex gap-2">
+          {project && (
+            <Button onClick={() => router.push("/projects")} variant="outline" className="gap-2 rounded-xl font-bold border-slate-200 h-12 shadow-sm">
+              <ExternalLink className="h-4 w-4" /> فتح المشروع
+            </Button>
+          )}
           <Button onClick={handlePrint} className="gap-2 rounded-xl font-bold bg-slate-800 hover:bg-slate-700 text-white shadow-lg h-12 px-6">
             <Printer className="h-5 w-5" /> طباعة الكشف
           </Button>
@@ -88,7 +103,7 @@ export default function ClientStatementPage() {
       </header>
 
       <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden bg-white print-border">
-        <div className="bg-primary p-10 text-primary-foreground text-center">
+        <div className="bg-primary p-10 text-primary-foreground text-center relative">
           <div className="bg-white/20 w-16 h-16 rounded-3xl flex items-center justify-center mx-auto mb-4 no-print">
             <Building2 className="h-8 w-8" />
           </div>
@@ -126,15 +141,29 @@ export default function ClientStatementPage() {
             </div>
 
             <div className="space-y-6">
-              <h3 className="text-lg font-black text-slate-800 border-b pb-2">تفاصيل المشروع</h3>
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-50 rounded-xl"><Building2 className="h-5 w-5 text-blue-600" /></div>
-                  <div>
-                    <p className="text-xs text-slate-400 font-bold">اسم المشروع</p>
-                    <p className="font-black text-blue-600">{client.projectName || "بدون اسم"}</p>
+              <h3 className="text-lg font-black text-slate-800 border-b pb-2">تفاصيل العمل</h3>
+              {project ? (
+                <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-100 rounded-xl"><Briefcase className="h-5 w-5 text-blue-600" /></div>
+                    <div>
+                      <p className="text-[10px] text-slate-400 font-black uppercase">المشروع المرتبط</p>
+                      <p className="font-black text-blue-700">{project.name}</p>
+                    </div>
                   </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="font-bold text-slate-500">الحالة:</span>
+                    <Badge className="bg-blue-600 font-black">{project.status}</Badge>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="font-bold text-slate-500">الإنجاز:</span>
+                    <span className="font-black text-slate-800">{project.progress}%</span>
+                  </div>
+                  <Button onClick={() => router.push('/projects')} variant="link" className="p-0 h-auto text-primary font-black text-xs no-print">
+                    الانتقال لصفحة المشاريع <ExternalLink className="h-3 w-3 mr-1" />
+                  </Button>
                 </div>
+              ) : (
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-slate-50 rounded-xl"><Calendar className="h-5 w-5 text-primary" /></div>
                   <div>
@@ -142,7 +171,7 @@ export default function ClientStatementPage() {
                     <p className="font-bold text-slate-800">{client.startDate || "غير متوفر"}</p>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
 
@@ -171,7 +200,7 @@ export default function ClientStatementPage() {
           <div className="pt-10 border-t border-dashed space-y-4">
             <div className="flex justify-between items-center">
               <div className="text-sm font-bold text-slate-400">حالة الحساب النهائية:</div>
-              <Badge variant={balance <= 0 ? "default" : "destructive"} className="px-6 py-2 rounded-xl font-black text-lg">
+              <Badge variant={balance <= 0 ? "default" : "destructive"} className="px-6 py-2 rounded-xl font-black text-lg shadow-sm">
                 {balance <= 0 ? "حساب مُغلق / مدفوع بالكامل" : `متبقي مبلغ ${balance.toLocaleString('ar-EG')} ج.م`}
               </Badge>
             </div>

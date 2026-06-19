@@ -2,29 +2,29 @@
 "use client";
 
 import * as React from "react";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { 
   ImagePlus, 
   Loader2, 
   Trash2, 
-  ShieldAlert,
   Home,
   Plus,
   Search,
   User,
   Calendar,
-  DollarSign,
   FileText,
   CheckCircle2,
   MoreVertical,
   ExternalLink,
   Edit,
   Clock,
-  Phone,
-  Check
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Maximize2
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -65,6 +65,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 
 export default function ProjectsPage() {
   const { toast } = useToast();
@@ -110,7 +117,6 @@ export default function ProjectsPage() {
     setSearchingClient(true);
     setSearchResults([]);
     try {
-      // استخدام تكنيك البداية (Prefix Search) في Firestore
       const searchTerm = formData.clientPhone;
       const q = query(
         collection(db, "clients"), 
@@ -262,34 +268,60 @@ export default function ProjectsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {projects.map((project) => (
             <Card key={project.id} className="rounded-3xl border-none shadow-xl bg-white overflow-hidden group hover:shadow-2xl transition-all">
-              <div className="relative aspect-video bg-slate-100 overflow-hidden">
+              {/* معرض الصور المطور */}
+              <div className="relative aspect-video bg-slate-900 overflow-hidden">
                 {project.images && project.images.length > 0 ? (
-                  <Image src={project.images[0]} alt={project.name} fill className="object-cover group-hover:scale-105 transition-transform duration-700" />
+                  <Carousel className="w-full h-full">
+                    <CarouselContent className="h-full ml-0">
+                      {project.images.map((img: string, idx: number) => (
+                        <CarouselItem key={idx} className="h-full pl-0 relative">
+                          <Image 
+                            src={img} 
+                            alt={`${project.name} ${idx + 1}`} 
+                            fill 
+                            className="object-cover"
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                          />
+                        </CarouselItem>
+                      ))}
+                    </CarouselContent>
+                    {project.images.length > 1 && (
+                      <>
+                        <CarouselPrevious className="right-4 left-auto bg-black/30 hover:bg-black/50 text-white border-none h-8 w-8" />
+                        <CarouselNext className="left-4 right-auto bg-black/30 hover:bg-black/50 text-white border-none h-8 w-8" />
+                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 px-3 py-1 rounded-full text-[10px] text-white font-black z-10">
+                          {project.images.length} صور
+                        </div>
+                      </>
+                    )}
+                  </Carousel>
                 ) : (
                   <div className="flex items-center justify-center h-full text-slate-300"><ImagePlus className="h-12 w-12" /></div>
                 )}
-                <div className="absolute top-4 right-4 flex gap-2">
+                
+                <div className="absolute top-4 right-4 flex gap-2 z-20">
                   <Badge className={`border-none shadow-lg px-3 py-1 font-black ${project.progress === 100 ? 'bg-green-500 text-white' : 'bg-primary text-white'}`}>
                     {project.status}
                   </Badge>
                 </div>
-                <div className="absolute left-4 top-4">
+                
+                <div className="absolute left-4 top-4 z-20">
                    <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="secondary" size="icon" className="rounded-full bg-white/90 backdrop-blur shadow-lg">
                         <MoreVertical className="h-5 w-5" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" dir="rtl" className="font-bold rounded-2xl">
-                      <DropdownMenuItem onClick={() => router.push(`/clients/${project.clientId}/statement`)} className="gap-2 cursor-pointer">
-                        <User className="h-4 w-4" /> بروفايل العميل
+                    <DropdownMenuContent align="start" dir="rtl" className="font-bold rounded-2xl p-2 shadow-2xl border-none">
+                      <DropdownMenuItem onClick={() => router.push(`/clients/${project.clientId}/statement`)} className="gap-3 cursor-pointer py-3 rounded-xl hover:bg-slate-50">
+                        <User className="h-5 w-5 text-primary" /> فتح بروفايل العميل
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="gap-2 cursor-pointer">
-                        <Edit className="h-4 w-4" /> تعديل المشروع
+                      <DropdownMenuItem className="gap-3 cursor-pointer py-3 rounded-xl hover:bg-slate-50">
+                        <Edit className="h-5 w-5 text-blue-500" /> تعديل تفاصيل المشروع
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => handleDeleteProject(project.id)} className="gap-2 text-red-600 cursor-pointer focus:bg-red-50 focus:text-red-600">
-                        <Trash2 className="h-4 w-4" /> حذف المشروع
+                      <DropdownMenuItem onClick={() => handleDeleteProject(project.id)} className="gap-3 text-red-600 cursor-pointer py-3 rounded-xl focus:bg-red-50 focus:text-red-600">
+                        <Trash2 className="h-5 w-5" /> حذف المشروع نهائياً
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -335,16 +367,16 @@ export default function ProjectsPage() {
                 </div>
 
                 <div className="space-y-3">
-                  <h4 className="text-xs font-black text-slate-400 uppercase">خطوات العمل</h4>
-                  <div className="space-y-2 max-h-32 overflow-y-auto pr-2">
+                  <h4 className="text-xs font-black text-slate-400 uppercase">خطوات العمل التفاعلية</h4>
+                  <div className="space-y-2 max-h-32 overflow-y-auto pr-2 custom-scrollbar">
                     {project.steps?.map((step: any) => (
                       <div 
                         key={step.id} 
                         onClick={() => toggleStep(project.id, step.id)}
-                        className={`flex items-center gap-3 p-2 rounded-xl border cursor-pointer transition-all ${step.completed ? 'bg-green-50 border-green-100 text-green-700' : 'bg-slate-50 border-slate-100 text-slate-500'}`}
+                        className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${step.completed ? 'bg-green-50 border-green-100 text-green-700 shadow-sm' : 'bg-slate-50 border-slate-100 text-slate-500 hover:border-slate-300'}`}
                       >
-                        <CheckCircle2 className={`h-4 w-4 ${step.completed ? 'text-green-600' : 'text-slate-300'}`} />
-                        <span className="text-xs font-bold">{step.title}</span>
+                        <CheckCircle2 className={`h-5 w-5 transition-colors ${step.completed ? 'text-green-600' : 'text-slate-300'}`} />
+                        <span className="text-xs font-black">{step.title}</span>
                       </div>
                     ))}
                   </div>
@@ -454,7 +486,7 @@ export default function ProjectsPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="font-black flex items-center gap-2"><ImagePlus className="h-4 w-4" /> صور المشروع (اختياري)</Label>
+                  <Label className="font-black flex items-center gap-2"><ImagePlus className="h-4 w-4" /> رفع صور المشروع (مكتبة صور)</Label>
                   <Input type="file" multiple accept="image/*" onChange={handleFileUpload} className="rounded-2xl h-12 border-slate-200 p-2 cursor-pointer" />
                 </div>
               </div>
