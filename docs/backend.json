@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "UserProfile": {
@@ -21,14 +22,29 @@
       "type": "object",
       "properties": {
         "name": { "type": "string" },
-        "client": { "type": "string" },
-        "type": { "type": "string" },
+        "clientId": { "type": "string" },
+        "clientName": { "type": "string" },
+        "clientPhone": { "type": "string" },
+        "requirements": { "type": "string" },
+        "cost": { "type": "number" },
+        "deadline": { "type": "string" },
         "progress": { "type": "number" },
         "status": { "type": "string" },
-        "imageUrl": { "type": "string" },
+        "images": { "type": "array", "items": { "type": "string" } },
+        "steps": { 
+          "type": "array", 
+          "items": { 
+            "type": "object",
+            "properties": {
+              "id": { "type": "number" },
+              "title": { "type": "string" },
+              "completed": { "type": "boolean" }
+            }
+          }
+        },
         "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["name", "client"]
+      "required": ["name", "clientId"]
     }
   },
   "auth": {
