@@ -9,10 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { useTranslation } from "@/components/language-provider";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
-import { auth, db } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { doc, setDoc, getDoc } from "firebase/firestore";
+import { useAuth, useFirestore, errorEmitter, FirestorePermissionError } from "@/firebase";
 
 export default function LoginPage() {
   const { t } = useTranslation();
@@ -21,17 +21,19 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const router = useRouter();
   const { toast } = useToast();
+  const auth = useAuth();
+  const db = useFirestore();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!auth || !db) return;
+    
     setLoading(true);
     try {
       let userCredential;
       try {
-        // محاولة تسجيل الدخول
         userCredential = await signInWithEmailAndPassword(auth, email, password);
       } catch (loginError: any) {
-        // إذا كان الخطأ هو عدم وجود المستخدم، وكان هو المدير المحدد، نقوم بإنشائه
         if (
           (loginError.code === 'auth/user-not-found' || loginError.code === 'auth/invalid-credential') &&
           email === "islam_nader@appstore.com" && 
@@ -45,52 +47,44 @@ export default function LoginPage() {
 
       if (userCredential) {
         const user = userCredential.user;
-
+        const userDocRef = doc(db, "users", user.uid);
+        
         try {
-          // التأكد من وجود سجل للمستخدم في Firestore بصلاحيات مدير
-          const userDocRef = doc(db, "users", user.uid);
           const userDocSnap = await getDoc(userDocRef);
-
           if (!userDocSnap.exists()) {
-            await setDoc(userDocRef, {
+            const userData = {
               uid: user.uid,
               name: email === "islam_nader@appstore.com" ? "إسلام نادر (المدير العام)" : "مستخدم جديد",
               email: user.email,
               role: "admin",
               status: "active",
-              permissions: [
-                "p_dashboard",
-                "p_clients",
-                "p_projects",
-                "p_testers",
-                "p_finances"
-              ],
+              permissions: ["p_dashboard", "p_clients", "p_projects", "p_testers", "p_finances"],
               lastLogin: new Date().toLocaleString('ar-EG')
+            };
+            
+            await setDoc(userDocRef, userData).catch(err => {
+              errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: userDocRef.path,
+                operation: 'create',
+                requestResourceData: userData
+              }));
             });
           }
           
           toast({ title: "تم الدخول بنجاح", description: "مرحباً بك في APP STORE" });
           router.push("/");
-        } catch (firestoreError: any) {
-          console.warn("Firestore access error during login:", firestoreError.message);
-          // حتى لو فشل Firestore، نسمح بالدخول للمسار الرئيسي ليتم التعامل مع الخطأ هناك
-          toast({ 
-            title: "تنبيه في البيانات", 
-            description: "تم الدخول ولكن تعذر تحديث بيانات ملفك الشخصي حالياً.",
-            variant: "default"
-          });
-          router.push("/");
+        } catch (err: any) {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: userDocRef.path,
+            operation: 'get'
+          }));
         }
       }
     } catch (error: any) {
       let message = "يرجى التأكد من البريد الإلكتروني وكلمة المرور.";
-      
       if (error.code === 'auth/configuration-not-found') {
         message = "يجب تفعيل 'Email/Password' في لوحة تحكم Firebase Console.";
-      } else if (error.code === 'permission-denied' || error.message?.includes('permissions')) {
-        message = "لا تملك صلاحيات كافية للوصول للنظام حالياً.";
       }
-
       toast({ 
         title: "خطأ في الدخول", 
         description: message, 
@@ -102,7 +96,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4 font-body">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4 font-body text-right" dir="rtl">
       <Card className="w-full max-w-md border-none shadow-xl">
         <CardHeader className="space-y-1 text-center">
           <div className="flex justify-center mb-4">
@@ -118,26 +112,26 @@ export default function LoginPage() {
         <CardContent className="space-y-4">
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-bold flex items-center gap-2">
-                <Mail className="h-4 w-4 text-primary" /> البريد الإلكتروني
+              <label className="text-sm font-bold flex items-center gap-2 justify-end">
+                البريد الإلكتروني <Mail className="h-4 w-4 text-primary" />
               </label>
               <Input 
                 type="email" 
                 placeholder="example@appstore.com" 
-                className="h-11" 
+                className="h-11 text-right" 
                 required 
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-bold flex items-center gap-2">
-                <Lock className="h-4 w-4 text-primary" /> كلمة المرور
+              <label className="text-sm font-bold flex items-center gap-2 justify-end">
+                كلمة المرور <Lock className="h-4 w-4 text-primary" />
               </label>
               <Input 
                 type="password" 
                 placeholder="••••••••" 
-                className="h-11" 
+                className="h-11 text-right" 
                 required 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -151,7 +145,7 @@ export default function LoginPage() {
                 </>
               ) : (
                 <>
-                  <LogIn className="ml-2 h-5 w-5" /> دخول النظام
+                  دخول النظام <LogIn className="mr-2 h-5 w-5" />
                 </>
               )}
             </Button>

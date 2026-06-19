@@ -2,72 +2,51 @@
 "use client";
 
 import * as React from "react";
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import Image from "next/image";
 import { 
   ImagePlus, 
   ExternalLink, 
-  CheckCircle, 
-  Clock, 
-  MoreVertical,
-  LayoutGrid,
-  List,
-  Upload,
-  Loader2,
-  Trash2,
+  Upload, 
+  Loader2, 
+  Trash2, 
   ShieldAlert
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { db, storage } from "@/lib/firebase";
-import { collection, onSnapshot, addDoc, query, orderBy, serverTimestamp, deleteDoc, doc } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { collection, query, orderBy, serverTimestamp, deleteDoc, doc, addDoc } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL, getStorage } from "firebase/storage";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/components/language-provider";
+import { useFirestore, useCollection, errorEmitter, FirestorePermissionError } from "@/firebase";
 
 export default function ProjectsPage() {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const [projects, setProjects] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const db = useFirestore();
   const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  // استماع لحظي للمشاريع من Firestore مع معالجة الأخطاء
-  useEffect(() => {
-    const q = query(collection(db, "projects"), orderBy("createdAt", "desc"));
-    const unsubscribe = onSnapshot(
-      q, 
-      (snapshot) => {
-        const projectsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setProjects(projectsData);
-        setLoading(false);
-        setError(null);
-      },
-      (err) => {
-        console.warn("Firestore Permission Error:", err.message);
-        setError("لا تملك صلاحية الوصول لعرض قائمة المشاريع.");
-        setLoading(false);
-      }
-    );
-    return () => unsubscribe();
-  }, []);
+  const projectsQuery = useMemo(() => {
+    if (!db) return null;
+    return query(collection(db, "projects"), orderBy("createdAt", "desc"));
+  }, [db]);
+
+  const { data: projects, loading, error } = useCollection(projectsQuery);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !db) return;
 
     setUploading(true);
     try {
-      // 1. رفع الصورة إلى Firebase Storage
+      const storage = getStorage();
       const storageRef = ref(storage, `projects/${Date.now()}_${file.name}`);
       await uploadBytes(storageRef, file);
       const downloadURL = await getDownloadURL(storageRef);
 
-      // 2. إضافة بيانات المشروع إلى Firestore
-      await addDoc(collection(db, "projects"), {
+      const projectData = {
         name: "مشروع جديد " + (projects.length + 1),
         client: "عميل جديد",
         type: "تطبيق أندرويد",
@@ -75,26 +54,36 @@ export default function ProjectsPage() {
         status: "قيد البدء",
         imageUrl: downloadURL,
         createdAt: serverTimestamp(),
+      };
+
+      await addDoc(collection(db, "projects"), projectData).catch(err => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: 'projects',
+          operation: 'create',
+          requestResourceData: projectData
+        }));
       });
 
       toast({ title: "تم الرفع", description: "تمت إضافة المشروع والصورة بنجاح." });
-    } catch (error: any) {
-      console.error(error);
-      const msg = error.code === 'permission-denied' ? "عذراً، لا تملك صلاحية إضافة مشاريع." : "فشل في رفع الصورة.";
-      toast({ title: "خطأ", description: msg, variant: "destructive" });
+    } catch (err: any) {
+      toast({ title: "خطأ", description: "فشل في رفع الملف.", variant: "destructive" });
     } finally {
       setUploading(false);
     }
   };
 
   const handleDeleteProject = async (id: string) => {
+    if (!db) return;
+    const docRef = doc(db, "projects", id);
     try {
-      await deleteDoc(doc(db, "projects", id));
+      await deleteDoc(docRef).catch(err => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'delete'
+        }));
+      });
       toast({ title: "تم الحذف", description: "تم حذف المشروع بنجاح." });
-    } catch (error: any) {
-      const msg = error.code === 'permission-denied' ? "لا تملك صلاحية حذف المشاريع." : "فشل في الحذف.";
-      toast({ title: "خطأ", description: msg, variant: "destructive" });
-    }
+    } catch (err: any) {}
   };
 
   if (error) {
@@ -102,7 +91,7 @@ export default function ProjectsPage() {
       <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
         <ShieldAlert className="h-12 w-12 text-rose-500 opacity-50" />
         <h3 className="text-xl font-bold font-headline">خطأ في الصلاحيات</h3>
-        <p className="text-muted-foreground">{error}</p>
+        <p className="text-muted-foreground">لا تملك صلاحية الوصول لعرض قائمة المشاريع.</p>
         <Button onClick={() => window.location.reload()}>إعادة المحاولة</Button>
       </div>
     );
@@ -139,7 +128,7 @@ export default function ProjectsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {projects.map((project) => (
+          {projects.map((project: any) => (
             <Card key={project.id} className="overflow-hidden border-none shadow-sm group hover:shadow-md transition-all">
               <div className="relative aspect-video bg-muted overflow-hidden">
                 {project.imageUrl ? (
