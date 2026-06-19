@@ -1,7 +1,6 @@
-
 /**
- * هذا الملف معطل لتجنب تعارض المسارات مع src/app/page.tsx.
+ * DEACTIVATED: This file was causing a routing conflict with src/app/page.tsx.
  */
-export default function ConflictResolution() {
+export default function DeactivatedPage() {
   return null;
 }

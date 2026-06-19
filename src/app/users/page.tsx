@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -41,14 +40,11 @@ import {
   collection, 
   query, 
   onSnapshot, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  doc, 
   getDocs, 
-  where,
   setDoc,
-  serverTimestamp
+  doc,
+  serverTimestamp,
+  deleteDoc
 } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/auth-provider";
@@ -56,7 +52,6 @@ import { useAuth } from "@/components/auth-provider";
 export default function UserManagementPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showPassword, setShowPassword] = useState<{[key: string]: boolean}>({});
@@ -74,37 +69,41 @@ export default function UserManagementPage() {
 
   const [clientSearch, setClientSearch] = useState("");
   const [foundClients, setFoundClients] = useState<any[]>([]);
+  const [allClients, setAllClients] = useState<any[]>([]);
   const [searchingClient, setSearchingClient] = useState(false);
 
   useEffect(() => {
     if (!db || profile?.role !== 'admin') return;
-    const q = query(collection(db, "users"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    
+    // جلب كل المستخدمين
+    const unsubUsers = onSnapshot(collection(db, "users"), (snapshot) => {
       setUsers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       setLoading(false);
     });
-    return () => unsubscribe();
+
+    // جلب كل العملاء للبحث المحلي (أسرع وأدق للبحث بالاسم أو الهاتف)
+    const fetchClients = async () => {
+      const snap = await getDocs(collection(db, "clients"));
+      setAllClients(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    };
+    fetchClients();
+
+    return () => unsubUsers();
   }, [profile]);
 
-  const handleSearchClients = async () => {
-    if (!clientSearch || !db) return;
-    setSearchingClient(true);
-    try {
-      const q = query(
-        collection(db, "clients"), 
-        where("name", ">=", clientSearch),
-        where("name", "<=", clientSearch + "\uf8ff")
-      );
-      const snap = await getDocs(q);
-      const results = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setFoundClients(results);
-      if (results.length === 0) {
-        toast({ title: "عذراً", description: "لم يتم العثور على عميل بهذا الاسم.", variant: "destructive" });
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setSearchingClient(false);
+  const handleSearchClients = () => {
+    if (!clientSearch) {
+      setFoundClients([]);
+      return;
+    }
+    const searchLower = clientSearch.toLowerCase();
+    const results = allClients.filter(c => 
+      c.name?.toLowerCase().includes(searchLower) || 
+      c.phone?.includes(clientSearch)
+    );
+    setFoundClients(results);
+    if (results.length === 0) {
+      toast({ title: "عذراً", description: "لم يتم العثور على عميل بهذا الاسم أو الرقم.", variant: "destructive" });
     }
   };
 
@@ -135,7 +134,6 @@ export default function UserManagementPage() {
         updatedAt: serverTimestamp()
       };
 
-      // حفظ في جدول تمهيدي ليقوم النظام بإنشاء الحساب عند أول دخول للعميل
       await setDoc(doc(db, "users_provision", formData.email), userData);
       
       toast({ 
@@ -148,6 +146,16 @@ export default function UserManagementPage() {
       toast({ title: "خطأ", description: "فشل في حفظ بيانات المستخدم.", variant: "destructive" });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm("هل أنت متأكد من حذف هذا المستخدم ومنع وصوله للنظام؟")) return;
+    try {
+      await deleteDoc(doc(db, "users", userId));
+      toast({ title: "تم الحذف", description: "تم سحب صلاحيات الوصول للمستخدم." });
+    } catch (err) {
+      toast({ title: "خطأ", description: "فشل في حذف المستخدم." });
     }
   };
 
@@ -172,7 +180,7 @@ export default function UserManagementPage() {
           <h1 className="text-4xl font-black text-slate-900 flex items-center gap-4">
             <ShieldCheck className="h-10 w-10 text-primary" /> إدارة الصلاحيات
           </h1>
-          <p className="text-muted-foreground font-bold text-lg mt-2">منح العملاء والموظفين صلاحية الدخول للنظام</p>
+          <p className="text-muted-foreground font-bold text-lg mt-2">البحث عن العملاء وتجهيز حسابات الدخول</p>
         </div>
         <Button onClick={() => setIsModalOpen(true)} className="rounded-2xl font-black h-16 px-10 text-xl shadow-xl transition-all active:scale-95">
           <UserPlus className="ml-3 h-7 w-7" /> إضافة مستخدم جديد
@@ -195,6 +203,9 @@ export default function UserManagementPage() {
                     <Badge variant="outline" className="mt-1 font-black bg-white">{user.role === 'admin' ? 'مدير عام' : (user.role === 'client' ? 'عميل' : 'مختبر جودة')}</Badge>
                   </div>
                 </div>
+                <Button variant="ghost" size="icon" onClick={() => handleDeleteUser(user.id)} className="text-slate-300 hover:text-rose-600 transition-colors">
+                  <Trash2 className="h-5 w-5" />
+                </Button>
               </div>
 
               <CardContent className="p-8 space-y-6">
@@ -218,11 +229,6 @@ export default function UserManagementPage() {
                     </Button>
                   </div>
                 </div>
-
-                <div className="pt-6 border-t flex justify-between items-center">
-                  <span className={`h-3 w-3 rounded-full animate-pulse ${user.status === 'active' ? 'bg-green-500' : 'bg-slate-300'}`}></span>
-                  <span className="text-xs font-black text-slate-400 uppercase tracking-widest">{user.status === 'active' ? 'نشط الآن' : 'غير نشط'}</span>
-                </div>
               </CardContent>
             </Card>
           ))
@@ -233,26 +239,25 @@ export default function UserManagementPage() {
         <DialogContent className="sm:max-w-[650px] rounded-[3rem] p-0 overflow-hidden border-none shadow-2xl bg-white" dir="rtl">
           <DialogHeader className="bg-primary p-10 text-primary-foreground">
             <DialogTitle className="text-3xl font-black">تجهيز حساب مستخدم</DialogTitle>
-            <DialogDescription className="text-primary-foreground/80 font-bold text-lg mt-2">ابحث عن العميل بالاسم واربطه بحساب دخول.</DialogDescription>
+            <DialogDescription className="text-primary-foreground/80 font-bold text-lg mt-2">ابحث بالاسم أو الهاتف لربط العميل بحساب دخول.</DialogDescription>
           </DialogHeader>
 
           <div className="p-10 space-y-8">
             <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-200 space-y-4">
-              <label className="font-black text-slate-800 pr-2">البحث عن عميل مسجل</label>
+              <label className="font-black text-slate-800 pr-2">البحث عن عميل (اسم أو هاتف)</label>
               <div className="flex gap-3">
                 <Input 
-                  placeholder="اسم العميل..." 
+                  placeholder="ابحث هنا..." 
                   className="rounded-2xl h-14 border-slate-200 font-bold" 
                   value={clientSearch}
                   onChange={(e) => setClientSearch(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSearchClients()}
                 />
-                <Button onClick={handleSearchClients} disabled={searchingClient} className="rounded-2xl h-14 px-8 font-black">
-                  {searchingClient ? <Loader2 className="animate-spin" /> : "بحث"}
-                </Button>
+                <Button onClick={handleSearchClients} className="rounded-2xl h-14 px-8 font-black">بحث</Button>
               </div>
 
               {foundClients.length > 0 && (
-                <div className="mt-4 space-y-2">
+                <div className="mt-4 space-y-2 max-h-[150px] overflow-y-auto pr-2">
                   {foundClients.map((client) => (
                     <div 
                       key={client.id} 
@@ -260,7 +265,7 @@ export default function UserManagementPage() {
                       className="p-4 bg-white border rounded-xl cursor-pointer hover:bg-slate-100 transition-colors flex justify-between items-center"
                     >
                       <span className="font-black">{client.name}</span>
-                      <span className="text-xs text-slate-400" dir="ltr">{client.phone}</span>
+                      <span className="text-xs text-slate-400 font-bold" dir="ltr">{client.phone}</span>
                     </div>
                   ))}
                 </div>
@@ -270,11 +275,7 @@ export default function UserManagementPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="font-black text-slate-700 pr-2">الاسم بالكامل</label>
-                <Input 
-                  value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  className="rounded-2xl h-14 border-slate-200 font-bold" 
-                />
+                <Input value={formData.name} readOnly className="rounded-2xl h-14 bg-slate-50 font-bold" />
               </div>
               <div className="space-y-2">
                 <label className="font-black text-slate-700 pr-2">الرتبة / الدور</label>
@@ -302,13 +303,13 @@ export default function UserManagementPage() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="font-black text-slate-700 pr-2">كلمة المرور المحددة</label>
+                <label className="font-black text-slate-700 pr-2">كلمة المرور (حددها له)</label>
                 <Input 
                   type="text"
                   value={formData.tempPassword}
                   onChange={(e) => setFormData(prev => ({ ...prev, tempPassword: e.target.value }))}
                   className="rounded-2xl h-14 border-slate-200 font-black text-amber-600" 
-                  placeholder="كلمة مرور الدخول"
+                  placeholder="اكتب الباسورد هنا"
                 />
               </div>
             </div>
@@ -318,9 +319,7 @@ export default function UserManagementPage() {
             <Button onClick={handleSaveUser} disabled={isSaving || !formData.email} className="rounded-2xl font-black h-16 px-16 text-xl shadow-2xl w-full">
               {isSaving ? <Loader2 className="animate-spin" /> : "تأكيد وتجهيز الحساب"}
             </Button>
-            <Button variant="outline" onClick={() => setIsModalOpen(false)} className="rounded-2xl font-black h-16 px-10 text-xl w-full">
-              إلغاء
-            </Button>
+            <Button variant="outline" onClick={() => setIsModalOpen(false)} className="rounded-2xl font-black h-16 px-10 text-xl w-full">إلغاء</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
