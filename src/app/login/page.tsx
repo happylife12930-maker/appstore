@@ -31,45 +31,57 @@ export default function LoginPage() {
         // محاولة تسجيل الدخول
         userCredential = await signInWithEmailAndPassword(auth, email, password);
       } catch (loginError: any) {
-        // إذا كان المستخدم هو المدير المحدد (إسلام نادر) ولم يكن موجوداً بعد، نقوم بإنشائه تلقائياً في المرة الأولى
-        if (email === "islam_nader@appstore.com" && password === "20176885") {
+        // إذا كان الخطأ هو عدم وجود المستخدم، وكان هو المدير المحدد، نقوم بإنشائه
+        if (
+          (loginError.code === 'auth/user-not-found' || loginError.code === 'auth/invalid-credential') &&
+          email === "islam_nader@appstore.com" && 
+          password === "20176885"
+        ) {
           userCredential = await createUserWithEmailAndPassword(auth, email, password);
         } else {
           throw loginError;
         }
       }
 
-      const user = userCredential.user;
+      if (userCredential) {
+        const user = userCredential.user;
 
-      // التأكد من وجود سجل للمستخدم في Firestore بصلاحيات مدير
-      const userDocRef = doc(db, "users", user.uid);
-      const userDocSnap = await getDoc(userDocRef);
+        // التأكد من وجود سجل للمستخدم في Firestore بصلاحيات مدير
+        const userDocRef = doc(db, "users", user.uid);
+        const userDocSnap = await getDoc(userDocRef);
 
-      if (!userDocSnap.exists()) {
-        await setDoc(userDocRef, {
-          uid: user.uid,
-          name: email === "islam_nader@appstore.com" ? "إسلام نادر (المدير العام)" : "مستخدم جديد",
-          email: user.email,
-          role: "admin",
-          status: "active",
-          permissions: [
-            "p_dashboard",
-            "p_clients",
-            "p_projects",
-            "p_testers",
-            "p_finances"
-          ],
-          lastLogin: new Date().toLocaleString('ar-EG')
-        });
+        if (!userDocSnap.exists()) {
+          await setDoc(userDocRef, {
+            uid: user.uid,
+            name: email === "islam_nader@appstore.com" ? "إسلام نادر (المدير العام)" : "مستخدم جديد",
+            email: user.email,
+            role: "admin",
+            status: "active",
+            permissions: [
+              "p_dashboard",
+              "p_clients",
+              "p_projects",
+              "p_testers",
+              "p_finances"
+            ],
+            lastLogin: new Date().toLocaleString('ar-EG')
+          });
+        }
+
+        toast({ title: "تم الدخول بنجاح", description: "مرحباً بك في APP STORE" });
+        router.push("/");
+      }
+    } catch (error: any) {
+      console.error("Login Error:", error.code, error.message);
+      let message = "يرجى التأكد من البريد الإلكتروني وكلمة المرور.";
+      
+      if (error.code === 'auth/configuration-not-found') {
+        message = "تنبيه: يجب تفعيل 'Email/Password' في لوحة تحكم Firebase Console أولاً.";
       }
 
-      toast({ title: "تم الدخول بنجاح", description: "مرحباً بك في APP STORE" });
-      router.push("/");
-    } catch (error: any) {
-      console.error(error);
       toast({ 
         title: "خطأ في الدخول", 
-        description: "يرجى التأكد من البريد الإلكتروني وكلمة المرور.", 
+        description: message, 
         variant: "destructive" 
       });
     } finally {
