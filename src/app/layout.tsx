@@ -1,9 +1,9 @@
-
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
-import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { AuthProvider } from '@/components/auth-provider';
+import { LanguageProvider } from '@/components/language-provider';
+import { DashboardShell } from '@/components/dashboard-shell';
 
 export const metadata: Metadata = {
   title: 'APP STORE | نظام الوكالة',
@@ -23,14 +23,16 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet" />
       </head>
       <body className="antialiased bg-background text-foreground" style={{ fontFamily: "'Cairo', sans-serif" }}>
-        <FirebaseClientProvider>
-          <AuthProvider>
-            <div className="min-h-screen">
-              {children}
-            </div>
-            <Toaster />
-          </AuthProvider>
-        </FirebaseClientProvider>
+        <AuthProvider>
+          <LanguageProvider>
+            <DashboardShell>
+              <div className="min-h-screen">
+                {children}
+              </div>
+            </DashboardShell>
+          </LanguageProvider>
+          <Toaster />
+        </AuthProvider>
       </body>
     </html>
   );

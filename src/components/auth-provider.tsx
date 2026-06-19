@@ -4,7 +4,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useRouter, usePathname } from 'next/navigation';
-import { useAuth as useFirebaseAuth, useFirestore } from '@/firebase';
+import { auth, db } from '@/lib/firebase';
 
 interface UserProfile {
   uid: string;
@@ -28,8 +28,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
-  const auth = useFirebaseAuth();
-  const db = useFirestore();
 
   useEffect(() => {
     if (!auth || !db) return;
@@ -61,7 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => unsubscribe();
-  }, [auth, db, router, pathname]);
+  }, [db, router, pathname]);
 
   return (
     <AuthContext.Provider value={{ user, profile, loading }}>

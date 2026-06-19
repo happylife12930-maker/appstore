@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useState, useMemo } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { 
   ImagePlus, 
@@ -15,10 +15,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { collection, query, orderBy, serverTimestamp, deleteDoc, doc, addDoc } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL, getStorage } from "firebase/storage";
+import { collection, query, orderBy, onSnapshot, serverTimestamp, deleteDoc, doc, addDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
-import { useFirestore, useCollection } from "@/firebase";
+import { db } from "@/lib/firebase"; // Correct import
 import { useRouter } from "next/navigation";
 
 /**
@@ -26,30 +25,62 @@ import { useRouter } from "next/navigation";
  */
 export default function ProjectsPage() {
   const { toast } = useToast();
-  const db = useFirestore();
   const router = useRouter();
+  
+  const [projects, setProjects] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
   const [uploading, setUploading] = useState(false);
 
-  const projectsQuery = useMemo(() => {
-    if (!db) return null;
-    return query(collection(db, "projects"), orderBy("createdAt", "desc"));
-  }, [db]);
+  useEffect(() => {
+    if (!db) return;
 
-  const { data: projects, loading, error } = useCollection(projectsQuery);
+    setLoading(true);
+    const projectsQuery = query(collection(db, "projects"), orderBy("createdAt", "desc"));
+
+    const unsubscribe = onSnapshot(projectsQuery, (snapshot) => {
+      const projectsData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+      setProjects(projectsData);
+      setLoading(false);
+    }, (err) => {
+      console.error("Firebase Snapshot Error:", err);
+      setError(err);
+      setLoading(false);
+      toast({
+        title: "خطأ في الاتصال",
+        description: "لا يمكن تحميل بيانات المشاريع. تأكد من اتصالك بالإنترنت.",
+        variant: "destructive",
+      });
+    });
+
+    return () => unsubscribe();
+  }, [toast]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !db) return;
 
     setUploading(true);
+    const apiKey = "182b7fc61cf92fcbd3094ed2dce7cd27";
+    const formData = new FormData();
+    formData.append("image", file);
+
     try {
-      const storage = getStorage();
-      const storageRef = ref(storage, `projects/${Date.now()}_${file.name}`);
-      await uploadBytes(storageRef, file);
-      const downloadURL = await getDownloadURL(storageRef);
+      const response = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error?.message || "ImgBB upload failed");
+      }
+
+      const downloadURL = result.data.url;
 
       const projectData = {
-        name: "مشروع جديد " + ((projects?.length || 0) + 1),
+        name: "مشروع جديد " + (projects.length + 1),
         client: "عميل جديد",
         type: "تطبيق ويب / موبايل",
         progress: 10,
@@ -58,10 +89,11 @@ export default function ProjectsPage() {
         createdAt: serverTimestamp(),
       };
 
-      addDoc(collection(db, "projects"), projectData);
+      await addDoc(collection(db, "projects"), projectData);
       toast({ title: "تم الرفع", description: "تمت إضافة المشروع بنجاح." });
     } catch (err: any) {
-      toast({ title: "خطأ", description: "فشل في رفع الملف. تأكد من إعدادات الاستجابة.", variant: "destructive" });
+      console.error("File Upload Error:", err);
+      toast({ title: "خطأ في الرفع", description: err.message || "فشل في رفع الملف.", variant: "destructive" });
     } finally {
       setUploading(false);
     }
@@ -69,8 +101,13 @@ export default function ProjectsPage() {
 
   const handleDeleteProject = async (id: string) => {
     if (!db) return;
-    deleteDoc(doc(db, "projects", id));
-    toast({ title: "تم الحذف", description: "تم حذف المشروع بنجاح." });
+    try {
+      await deleteDoc(doc(db, "projects", id));
+      toast({ title: "تم الحذف", description: "تم حذف المشروع بنجاح." });
+    } catch (err) {
+      console.error("Delete Error:", err);
+      toast({ title: "خطأ", description: "فشل في حذف المشروع.", variant: "destructive" });
+    }
   };
 
   if (error) {
@@ -78,7 +115,8 @@ export default function ProjectsPage() {
       <div className="flex flex-col items-center justify-center py-20 text-center space-y-4" dir="rtl">
         <ShieldAlert className="h-12 w-12 text-rose-500 opacity-50" />
         <h3 className="text-xl font-bold">مشكلة في الوصول للبيانات</h3>
-        <p className="text-muted-foreground">تأكد من صلاحيات Firebase.</p>
+        <p className="text-muted-foreground">حدث خطأ أثناء تحميل المشاريع. تحقق من وحدة التحكم للمزيد من التفاصيل.</p>
+        <pre className="text-xs text-left p-2 bg-gray-100 rounded">{error.message}</pre>
         <Button onClick={() => router.push("/")} className="rounded-xl">العودة للرئيسية</Button>
       </div>
     );
@@ -120,7 +158,7 @@ export default function ProjectsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {projects?.map((project: any) => (
+          {projects.map((project: any) => (
             <Card key={project.id} className="overflow-hidden border-none shadow-md group hover:shadow-xl transition-all rounded-3xl bg-white">
               <div className="relative aspect-video bg-muted overflow-hidden">
                 {project.imageUrl ? (
@@ -162,7 +200,7 @@ export default function ProjectsPage() {
             </Card>
           ))}
           
-          {(!projects || projects.length === 0) && (
+          {(!projects || projects.length === 0) && !loading && (
             <div className="col-span-full py-24 text-center border-2 border-dashed rounded-3xl bg-muted/20">
               <p className="text-muted-foreground font-medium">لا توجد مشاريع حالياً. ابدأ بإضافة أول مشروع!</p>
             </div>

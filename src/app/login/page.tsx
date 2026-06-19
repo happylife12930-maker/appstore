@@ -2,41 +2,64 @@
 
 import * as React from "react";
 import { useState } from "react";
-import { LogIn, Loader2, ShieldCheck } from "lucide-react";
+import { LogIn, Loader2, ShieldCheck, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { doc, setDoc, getDoc } from "firebase/firestore";
-import { useAuth, useFirestore } from "@/firebase";
+import { auth, db } from "@/lib/firebase";
+
+// Helper function to get a user-friendly error message in Arabic
+const getFriendlyErrorMessage = (errorCode: string) => {
+  switch (errorCode) {
+    case "auth/invalid-email":
+      return "البريد الإلكتروني غير صالح. يرجى التحقق منه.";
+    case "auth/user-not-found":
+      return "لم يتم العثور على حساب بهذا البريد الإلكتروني.";
+    case "auth/wrong-password":
+      return "كلمة المرور غير صحيحة. يرجى المحاولة مرة أخرى.";
+    case "auth/weak-password":
+      return "كلمة المرور ضعيفة جدًا. يجب أن تتكون من 6 أحرف على الأقل.";
+    case "auth/email-already-in-use":
+      return "هذا البريد الإلكتروني مُستخدم بالفعل في حساب آخر.";
+    case "auth/operation-not-allowed":
+      return "تسجيل الدخول بالبريد وكلمة المرور غير مُفعّل. يرجى مراجعة مدير النظام.";
+    default:
+      return "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.";
+  }
+};
+
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null); // State to hold the error message
   const router = useRouter();
   const { toast } = useToast();
-  const auth = useAuth();
-  const db = useFirestore();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!auth || !db) return;
     
     setLoading(true);
+    setError(null); // Reset error on new login attempt
+
     try {
       let userCredential;
       
       try {
         userCredential = await signInWithEmailAndPassword(auth, email, password);
       } catch (loginError: any) {
-        // إنشاء الحساب تلقائياً للمدير إذا لم يكن موجوداً
-        if (email === "islam_nader@appstore.com" && password === "20176885") {
+        // Create account for admin if it doesn't exist
+        if (email === "islam_nader@appstore.com" && password === "20176885" && loginError.code === 'auth/user-not-found') {
           userCredential = await createUserWithEmailAndPassword(auth, email, password);
         } else {
-          throw loginError;
+          throw loginError; // Re-throw other errors
         }
       }
 
@@ -64,7 +87,9 @@ export default function LoginPage() {
         router.push("/");
       }
     } catch (error: any) {
-      toast({ title: "خطأ", description: "فشل في تسجيل الدخول. تأكد من البيانات.", variant: "destructive" });
+      const friendlyMessage = getFriendlyErrorMessage(error.code);
+      setError(friendlyMessage); // Set the friendly error message to state
+      toast({ title: "فشل في تسجيل الدخول", description: friendlyMessage, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -82,6 +107,15 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent className="p-8 space-y-6">
           <form onSubmit={handleLogin} className="space-y-4">
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>خطأ في المصادقة</AlertTitle>
+                <AlertDescription>
+                  {error}
+                </AlertDescription>
+              </Alert>
+            )}
             <div className="space-y-2">
               <label className="text-sm font-bold">البريد الإلكتروني</label>
               <Input 
