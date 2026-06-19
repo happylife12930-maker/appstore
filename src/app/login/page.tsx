@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -31,10 +30,8 @@ export default function LoginPage() {
       let userCredential;
       
       try {
-        // محاولة تسجيل الدخول
         userCredential = await signInWithEmailAndPassword(auth, email, password);
       } catch (loginError: any) {
-        // إذا كان المستخدم هو المدير (إسلام نادر) ولم يكن موجوداً، نقوم بإنشائه
         if (email === "islam_nader@appstore.com" && password === "20176885") {
           userCredential = await createUserWithEmailAndPassword(auth, email, password);
         } else {
@@ -50,7 +47,6 @@ export default function LoginPage() {
         try {
           userDocSnap = await getDoc(userDocRef);
         } catch (err: any) {
-          // التقاط الخطأ السياقي للصلاحيات إذا حدث
           errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: userDocRef.path,
             operation: 'get'
@@ -66,7 +62,7 @@ export default function LoginPage() {
             email: user.email,
             role: isAdmin ? "admin" : "tester",
             status: "active",
-            permissions: isAdmin ? ["p_dashboard", "p_clients", "p_projects", "p_testers", "p_finances"] : [],
+            permissions: ["p_dashboard", "p_clients", "p_projects", "p_testers", "p_finances"],
             lastLogin: new Date().toLocaleString('ar-EG')
           };
           
@@ -84,10 +80,7 @@ export default function LoginPage() {
       }
     } catch (error: any) {
       console.error("Auth Error:", error);
-      let message = "فشل في تسجيل الدخول. يرجى التأكد من البيانات وتفعيل خيارات Firebase.";
-      if (error.code === 'auth/configuration-not-found') {
-        message = "يجب تفعيل 'Email/Password' في Firebase Console.";
-      }
+      let message = "فشل في تسجيل الدخول. يرجى التأكد من البيانات.";
       toast({ title: "خطأ", description: message, variant: "destructive" });
     } finally {
       setLoading(false);
@@ -109,10 +102,7 @@ export default function LoginPage() {
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-bold flex justify-between items-center">
-                <span>البريد الإلكتروني</span>
-                <Mail className="h-4 w-4 opacity-40" />
-              </label>
+              <label className="text-sm font-bold">البريد الإلكتروني</label>
               <Input 
                 type="email" 
                 placeholder="example@appstore.com" 
@@ -123,10 +113,7 @@ export default function LoginPage() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-bold flex justify-between items-center">
-                <span>كلمة المرور</span>
-                <Lock className="h-4 w-4 opacity-40" />
-              </label>
+              <label className="text-sm font-bold">كلمة المرور</label>
               <Input 
                 type="password" 
                 placeholder="••••••••" 

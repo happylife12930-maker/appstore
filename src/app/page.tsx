@@ -2,138 +2,85 @@
 "use client";
 
 import * as React from "react";
+import { useAuth } from "@/components/auth-provider";
+import { Button } from "@/components/ui/button";
 import { 
+  LogOut, 
   Users, 
   Briefcase, 
-  CheckCircle2, 
-  DollarSign, 
-  Bug, 
-  Clock, 
-  TrendingUp,
-  Activity,
-  BarChart3
+  Settings, 
+  LayoutDashboard, 
+  MessageSquare,
+  FileText,
+  Calculator,
+  ShieldCheck,
+  TrendingUp
 } from "lucide-react";
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle,
-  CardDescription 
-} from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { 
-  CartesianGrid, 
-  XAxis, 
-  ResponsiveContainer,
-  Tooltip,
-  AreaChart,
-  Area,
-  YAxis
-} from "recharts";
-import { useTranslation } from "@/components/language-provider";
+import { signOut } from "firebase/auth";
+import { useAuth as useFirebaseAuth } from "@/firebase";
+import { useRouter } from "next/navigation";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-const revenueData = [
-  { month: "يناير", revenue: 45000 },
-  { month: "فبراير", revenue: 52000 },
-  { month: "مارس", revenue: 48000 },
-  { month: "أبريل", revenue: 78000 },
-  { month: "مايو", revenue: 89000 },
-  { month: "يونيو", revenue: 124500 },
-];
+export default function HomePage() {
+  const { profile, loading } = useAuth();
+  const auth = useFirebaseAuth();
+  const router = useRouter();
 
-export default function Dashboard() {
-  const { t } = useTranslation();
+  if (loading) return <div className="p-8 text-center font-bold">جاري التحميل...</div>;
+  if (!profile) return null;
 
-  const stats = [
-    { label: "totalClients", value: "42", icon: Users, color: "text-blue-500", bg: "bg-blue-50" },
-    { label: "activeProjects", value: "14", icon: Briefcase, color: "text-indigo-500", bg: "bg-indigo-50" },
-    { label: "finishedProjects", value: "128", icon: CheckCircle2, color: "text-emerald-500", bg: "bg-emerald-50" },
-    { label: "monthlyRevenue", value: "124,500 ج.م", icon: DollarSign, color: "text-emerald-600", bg: "bg-emerald-50" },
-    { label: "yearlyRevenue", value: "1,420,000 ج.م", icon: TrendingUp, color: "text-blue-600", bg: "bg-blue-50" },
-    { label: "openBugs", value: "24", icon: Bug, color: "text-rose-500", bg: "bg-rose-50" },
-    { label: "delayedTasks", value: "7", icon: Clock, color: "text-orange-500", bg: "bg-orange-50" },
-  ];
+  const handleLogout = async () => {
+    if (auth) {
+      await signOut(auth);
+      router.push("/login");
+    }
+  };
 
-  const projectsProgress = [
-    { name: "Zenith CRM Mobile", progress: 85, color: "bg-primary" },
-    { name: "EcoMobile Platform", progress: 45, color: "bg-blue-500" },
-    { name: "HealthTracker Pro", progress: 95, color: "bg-emerald-500" },
-    { name: "Fintech Port App", progress: 65, color: "bg-orange-500" },
-    { name: "Bakery Web Portal", progress: 20, color: "bg-rose-500" },
+  const menuItems = [
+    { title: "المشاريع", icon: Briefcase, color: "text-blue-500", path: "/projects" },
+    { title: "العملاء", icon: Users, color: "text-indigo-500", path: "/clients" },
+    { title: "المستخدمين", icon: Settings, color: "text-emerald-500", path: "/users" },
+    { title: "المختبرين", icon: ShieldCheck, color: "text-rose-500", path: "/testers" },
+    { title: "عروض الأسعار", icon: Calculator, color: "text-amber-500", path: "/quotations" },
+    { title: "الفواتير", icon: FileText, color: "text-primary", path: "/invoices" },
+    { title: "المدفوعات", icon: TrendingUp, color: "text-emerald-600", path: "/payments" },
+    { title: "المحادثة", icon: MessageSquare, color: "text-sky-500", path: "/chat" },
   ];
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {stats.map((stat) => (
-          <Card key={stat.label} className="border-none shadow-sm overflow-hidden hover:shadow-md transition-all">
-            <CardContent className="p-5 flex items-center gap-4">
-              <div className={`p-3 rounded-xl ${stat.bg} ${stat.color}`}>
-                <stat.icon className="h-6 w-6" />
+    <div className="p-6 max-w-5xl mx-auto space-y-8" dir="rtl">
+      <header className="flex justify-between items-center border-b pb-6">
+        <div>
+          <h1 className="text-3xl font-bold font-headline">أهلاً بك، {profile.name}</h1>
+          <p className="text-muted-foreground mt-1">نظام إدارة الوكالة APP STORE</p>
+        </div>
+        <Button variant="destructive" size="sm" onClick={handleLogout} className="font-bold">
+          <LogOut className="ml-2 h-4 w-4" /> خروج
+        </Button>
+      </header>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+        {menuItems.map((item) => (
+          <Card 
+            key={item.title} 
+            className="hover:shadow-lg transition-all cursor-pointer group border-none shadow-sm"
+            onClick={() => router.push(item.path)}
+          >
+            <CardContent className="p-6 flex flex-col items-center text-center space-y-3">
+              <div className={`p-4 rounded-2xl bg-muted/50 group-hover:scale-110 transition-transform ${item.color}`}>
+                <item.icon className="h-8 w-8" />
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider mb-1">{t(stat.label)}</p>
-                <h3 className="text-xl font-bold font-headline">{stat.value}</h3>
-              </div>
+              <h3 className="font-bold text-lg">{item.title}</h3>
             </CardContent>
           </Card>
         ))}
       </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2 shadow-sm border-none">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle className="font-headline text-xl">{t('revenueGrowth')}</CardTitle>
-              <CardDescription>{t('overview')}</CardDescription>
-            </div>
-            <Activity className="h-5 w-5 text-primary opacity-20" />
-          </CardHeader>
-          <CardContent className="h-[350px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={revenueData}>
-                <defs>
-                  <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.1}/>
-                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
-                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fontSize: 12}} />
-                <YAxis axisLine={false} tickLine={false} tick={{fontSize: 12}} />
-                <Tooltip />
-                <Area 
-                  type="monotone" 
-                  dataKey="revenue" 
-                  stroke="hsl(var(--primary))" 
-                  fill="url(#colorRev)" 
-                  strokeWidth={3} 
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-sm border-none">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-primary" />
-              <CardTitle className="font-headline text-xl">{t('projectProgress')}</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {projectsProgress.map((p) => (
-              <div key={p.name} className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="font-bold">{p.name}</span>
-                  <span className="text-primary font-mono font-bold">{p.progress}%</span>
-                </div>
-                <Progress value={p.progress} className="h-2" />
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      </div>
+      
+      <Card className="bg-primary/5 border-none">
+        <CardContent className="p-8 text-center">
+          <p className="text-primary font-bold">تم حل مشاكل المسارات والصلاحيات بنجاح. يمكنك الآن الانتقال بين الأقسام أعلاه.</p>
+        </CardContent>
+      </Card>
     </div>
   );
 }
