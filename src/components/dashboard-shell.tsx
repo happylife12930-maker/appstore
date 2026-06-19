@@ -18,7 +18,8 @@ import {
   CreditCard,
   Settings,
   LogOut,
-  Languages
+  Languages,
+  UserCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -44,6 +45,7 @@ const navItems = [
   { title: "dashboard", url: "/", icon: LayoutDashboard },
   { title: "clients", url: "/clients", icon: Users },
   { title: "projects", url: "/projects", icon: Briefcase },
+  { title: "testers", url: "/testers", icon: UserCheck },
   { title: "quotations", url: "/quotations", icon: Calculator },
   { title: "invoices", url: "/invoices", icon: FileText },
   { title: "payments", url: "/payments", icon: CreditCard },
