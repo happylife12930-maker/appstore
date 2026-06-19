@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useEffect, useCallback, Suspense, useMemo } from "react";
 import Image from "next/image";
 import { 
   ImagePlus, 
@@ -45,6 +45,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useAuth } from "@/components/auth-provider";
 import {
   Dialog,
   DialogContent,
@@ -75,6 +76,7 @@ import {
 
 function ProjectsContent() {
   const { toast } = useToast();
+  const { profile } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -111,26 +113,30 @@ function ProjectsContent() {
       document.body.style.pointerEvents = 'auto';
       document.body.style.overflow = 'auto';
       document.body.removeAttribute('data-scroll-locked');
-      const overlays = document.querySelectorAll('[data-radix-focus-guard]');
-      overlays.forEach(el => el.remove());
     }
   }, []);
 
   useEffect(() => {
-    if (!isModalOpen && !isPreviewOpen) {
-      forceEnableScroll();
+    if (!db || !profile) return;
+    
+    // فلترة المشاريع بناءً على دور المستخدم
+    let projectsQuery;
+    if (profile.role === 'admin') {
+      projectsQuery = query(collection(db, "projects"), orderBy("createdAt", "desc"));
+    } else {
+      // إذا كان عميل، يرى فقط مشاريعه المرتبطة بـ clientId الخاص به
+      projectsQuery = query(
+        collection(db, "projects"), 
+        where("clientId", "==", profile.clientId || ""),
+        orderBy("createdAt", "desc")
+      );
     }
-  }, [isModalOpen, isPreviewOpen, forceEnableScroll]);
 
-  useEffect(() => {
-    if (!db) return;
-    const projectsQuery = query(collection(db, "projects"), orderBy("createdAt", "desc"));
     const unsubscribe = onSnapshot(projectsQuery, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
       setProjects(data);
       setLoading(false);
 
-      // التحقق من وجود ID في الرابط لفتح المشروع تلقائياً
       const projectIdFromUrl = searchParams.get('id');
       if (projectIdFromUrl && data.length > 0) {
         const found = data.find(p => p.id === projectIdFromUrl);
@@ -139,9 +145,12 @@ function ProjectsContent() {
           setIsPreviewOpen(true);
         }
       }
+    }, (err) => {
+      console.error(err);
+      setLoading(false);
     });
     return () => unsubscribe();
-  }, [searchParams]);
+  }, [searchParams, profile]);
 
   const handleClientSearch = async () => {
     if (!formData.clientPhone || !db) return;
@@ -296,11 +305,16 @@ function ProjectsContent() {
     setIsPreviewOpen(false);
     setPreviewProject(null);
     forceEnableScroll();
-    // إزالة المعرف من الرابط عند الإغلاق
     router.replace('/projects', { scroll: false });
   };
 
   const toggleStep = async (projectId: string, stepId: number) => {
+    // العملاء لا يستطيعون تعديل الخطوات، فقط الأدمن والمختبرين
+    if (profile?.role === 'client') {
+      toast({ title: "تنبيه", description: "لا تملك صلاحية تعديل مراحل التنفيذ." });
+      return;
+    }
+
     const project = projects.find(p => p.id === projectId);
     if (!project) return;
 
@@ -341,19 +355,21 @@ function ProjectsContent() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-8" dir="rtl" style={{ fontFamily: "'Cairo', sans-serif" }}>
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-3xl shadow-sm border border-slate-100 gap-4">
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 gap-4">
         <div className="flex items-center gap-4">
-          <Button variant="outline" size="icon" onClick={() => router.push("/")} className="rounded-xl h-12 w-12 hover:bg-primary hover:text-white transition-colors">
-            <Home className="h-6 w-6" />
+          <Button variant="outline" size="icon" onClick={() => router.push("/")} className="rounded-2xl h-14 w-14 hover:bg-primary hover:text-white transition-colors">
+            <Home className="h-7 w-7" />
           </Button>
           <div>
-            <h1 className="text-3xl font-black text-slate-900">إدارة المشاريع</h1>
-            <p className="text-muted-foreground font-medium">تتبع الإنجاز، التكاليف، والمواعيد النهائية</p>
+            <h1 className="text-3xl font-black text-slate-900">{profile?.role === 'client' ? 'مشروعي' : 'إدارة المشاريع'}</h1>
+            <p className="text-muted-foreground font-bold">{profile?.role === 'client' ? 'تتبع مراحل تنفيذ تطبيقك' : 'تتبع الإنجاز، التكاليف، والمواعيد النهائية'}</p>
           </div>
         </div>
-        <Button onClick={() => setIsModalOpen(true)} className="rounded-xl font-black shadow-lg h-14 px-8 text-lg w-full md:w-auto">
-          <Plus className="ml-2 h-6 w-6" /> إضافة مشروع جديد
-        </Button>
+        {profile?.role === 'admin' && (
+          <Button onClick={() => setIsModalOpen(true)} className="rounded-2xl font-black shadow-lg h-16 px-10 text-lg w-full md:w-auto transition-all active:scale-95">
+            <Plus className="ml-2 h-7 w-7" /> إضافة مشروع جديد
+          </Button>
+        )}
       </header>
 
       {loading ? (
@@ -361,7 +377,7 @@ function ProjectsContent() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {projects.map((project) => (
-            <Card key={project.id} className="rounded-3xl border-none shadow-xl bg-white overflow-hidden group hover:shadow-2xl transition-all cursor-pointer" onClick={() => handlePreviewProject(project)}>
+            <Card key={project.id} className="rounded-[2.5rem] border-none shadow-xl bg-white overflow-hidden group hover:shadow-2xl transition-all cursor-pointer" onClick={() => handlePreviewProject(project)}>
               <div className="relative aspect-video bg-slate-100 overflow-hidden">
                 {project.images && project.images.length > 0 ? (
                   <Image 
@@ -376,61 +392,65 @@ function ProjectsContent() {
                 )}
                 
                 <div className="absolute top-4 right-4 flex gap-2 z-20">
-                  <Badge className={`border-none shadow-lg px-3 py-1 font-black ${project.progress === 100 ? 'bg-green-500 text-white' : 'bg-primary text-white'}`}>
+                  <Badge className={`border-none shadow-lg px-4 py-2 rounded-xl font-black ${project.progress === 100 ? 'bg-green-500 text-white' : 'bg-primary text-white'}`}>
                     {project.status}
                   </Badge>
                 </div>
                 
-                <div className="absolute left-4 top-4 z-20" onClick={(e) => e.stopPropagation()}>
-                   <DropdownMenu onOpenChange={(open) => !open && forceEnableScroll()}>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="secondary" size="icon" className="rounded-full bg-white/90 backdrop-blur shadow-lg hover:bg-white">
-                        <MoreVertical className="h-5 w-5" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" dir="rtl" className="font-bold rounded-2xl p-2 shadow-2xl border-none min-w-[180px]">
-                      <DropdownMenuItem onClick={() => handlePreviewProject(project)} className="gap-3 cursor-pointer py-3 rounded-xl hover:bg-slate-50">
-                        <Eye className="h-5 w-5 text-primary" /> عرض التفاصيل
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => router.push(`/clients/${project.clientId}/statement`)} className="gap-3 cursor-pointer py-3 rounded-xl hover:bg-slate-50">
-                        <User className="h-5 w-5 text-slate-500" /> فتح بروفايل العميل
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleEditProject(project)} className="gap-3 cursor-pointer py-3 rounded-xl hover:bg-blue-50">
-                        <Edit className="h-5 w-5 text-blue-500" /> تعديل تفاصيل المشروع
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => handleDeleteProject(project.id)} className="gap-3 text-red-600 cursor-pointer py-3 rounded-xl focus:bg-red-50 focus:text-red-600">
-                        <Trash2 className="h-5 w-5" /> حذف المشروع نهائياً
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
+                {profile?.role === 'admin' && (
+                  <div className="absolute left-4 top-4 z-20" onClick={(e) => e.stopPropagation()}>
+                    <DropdownMenu onOpenChange={(open) => !open && forceEnableScroll()}>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="secondary" size="icon" className="rounded-full bg-white/90 backdrop-blur shadow-lg hover:bg-white h-10 w-10">
+                          <MoreVertical className="h-6 w-6" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" dir="rtl" className="font-black rounded-2xl p-2 shadow-2xl border-none min-w-[200px]">
+                        <DropdownMenuItem onClick={() => handlePreviewProject(project)} className="gap-3 cursor-pointer py-4 rounded-xl hover:bg-slate-50">
+                          <Eye className="h-5 w-5 text-primary" /> عرض التفاصيل
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => router.push(`/clients/${project.clientId}/statement`)} className="gap-3 cursor-pointer py-4 rounded-xl hover:bg-slate-50">
+                          <User className="h-5 w-5 text-slate-500" /> فتح بروفايل العميل
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleEditProject(project)} className="gap-3 cursor-pointer py-4 rounded-xl hover:bg-blue-50">
+                          <Edit className="h-5 w-5 text-blue-500" /> تعديل تفاصيل المشروع
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => handleDeleteProject(project.id)} className="gap-3 text-red-600 cursor-pointer py-4 rounded-xl focus:bg-red-50 focus:text-red-600">
+                          <Trash2 className="h-5 w-5" /> حذف المشروع نهائياً
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                )}
               </div>
 
-              <CardHeader className="p-6 pb-2">
+              <CardHeader className="p-8 pb-2">
                 <div className="flex justify-between items-start">
                   <div>
-                    <CardTitle className="text-xl font-black text-slate-800">{project.name}</CardTitle>
-                    <div className="flex items-center gap-2 text-primary font-bold text-sm mt-1">
-                      <User className="h-4 w-4" /> {project.clientName}
+                    <CardTitle className="text-2xl font-black text-slate-800">{project.name}</CardTitle>
+                    <div className="flex items-center gap-2 text-primary font-black text-base mt-2">
+                      <User className="h-5 w-5" /> {project.clientName}
                     </div>
                   </div>
-                  <div className="text-left">
-                    <div className="text-lg font-black text-green-600">{(project.cost || 0).toLocaleString('ar-EG')} ج.م</div>
-                  </div>
+                  {profile?.role === 'admin' && (
+                    <div className="text-left">
+                      <div className="text-xl font-black text-green-600">{(project.cost || 0).toLocaleString('ar-EG')} ج.م</div>
+                    </div>
+                  )}
                 </div>
               </CardHeader>
 
-              <CardContent className="p-6 space-y-4">
-                <div className="space-y-2">
-                  <div className="flex justify-between text-[10px] font-black text-slate-400 uppercase">
+              <CardContent className="p-8 space-y-4">
+                <div className="space-y-3">
+                  <div className="flex justify-between text-xs font-black text-slate-400 uppercase tracking-widest">
                     <span>نسبة الإنجاز</span>
                     <span>{project.progress}%</span>
                   </div>
-                  <Progress value={project.progress} className="h-2 rounded-full" />
+                  <Progress value={project.progress} className="h-3 rounded-full" />
                 </div>
-                <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
-                  <Clock className="h-3 w-3" /> التسليم: {project.deadline || "غير محدد"}
+                <div className="flex items-center gap-2 text-sm font-bold text-slate-500">
+                  <Clock className="h-4 w-4" /> التسليم: {project.deadline || "غير محدد"}
                 </div>
               </CardContent>
             </Card>
@@ -440,29 +460,27 @@ function ProjectsContent() {
 
       {/* مودال الإضافة والتعديل */}
       <Dialog open={isModalOpen} onOpenChange={(open) => !open && closeModal()}>
-        <DialogContent className="sm:max-w-[700px] rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl bg-white" dir="rtl">
-          <div className="bg-primary p-8 text-primary-foreground relative">
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-black">{selectedProject ? 'تعديل بيانات المشروع' : 'إضافة مشروع جديد للوكالة'}</DialogTitle>
-              <DialogDescription className="text-primary-foreground/80 font-bold mt-1">قم بتحديث بيانات المشروع والصور والخطوات.</DialogDescription>
-            </DialogHeader>
+        <DialogContent className="sm:max-w-[750px] rounded-[3rem] p-0 overflow-hidden border-none shadow-2xl bg-white" dir="rtl">
+          <div className="bg-primary p-10 text-primary-foreground">
+            <DialogTitle className="text-3xl font-black">{selectedProject ? 'تعديل بيانات المشروع' : 'إضافة مشروع جديد'}</DialogTitle>
+            <DialogDescription className="text-primary-foreground/80 font-bold text-lg mt-2">قم بتحديث بيانات المشروع والصور والخطوات.</DialogDescription>
           </div>
 
-          <ScrollArea className="max-h-[75vh] p-8">
+          <ScrollArea className="max-h-[70vh] p-10">
             <div className="space-y-8">
               {!selectedProject && (
-                <div className="p-6 bg-slate-50 rounded-3xl space-y-4 border border-slate-100">
-                  <Label className="font-black text-slate-800 flex items-center gap-2">
-                    <Search className="h-5 w-5 text-primary" /> البحث عن العميل
+                <div className="p-8 bg-slate-50 rounded-[2.5rem] space-y-4 border border-slate-100">
+                  <Label className="font-black text-slate-800 text-lg flex items-center gap-2">
+                    <Search className="h-6 w-6 text-primary" /> البحث عن العميل
                   </Label>
-                  <div className="flex gap-2">
+                  <div className="flex gap-3">
                     <Input 
                       placeholder="رقم هاتف العميل..." 
-                      className="rounded-2xl h-12 border-slate-200 font-bold" 
+                      className="rounded-2xl h-14 border-slate-200 font-bold text-lg" 
                       value={formData.clientPhone}
                       onChange={(e) => setFormData(prev => ({ ...prev, clientPhone: e.target.value }))}
                     />
-                    <Button onClick={handleClientSearch} disabled={searchingClient} className="rounded-2xl h-12 px-6 font-black">
+                    <Button onClick={handleClientSearch} disabled={searchingClient} className="rounded-2xl h-14 px-8 font-black text-lg">
                       {searchingClient ? <Loader2 className="animate-spin" /> : "بحث"}
                     </Button>
                   </div>
@@ -473,13 +491,13 @@ function ProjectsContent() {
                         <div 
                           key={client.id} 
                           onClick={() => setSelectedClient(client)}
-                          className={`flex items-center justify-between p-4 rounded-2xl border cursor-pointer transition-all ${selectedClient?.id === client.id ? 'bg-primary text-white border-primary shadow-lg' : 'bg-white border-slate-100 hover:bg-slate-100'}`}
+                          className={`flex items-center justify-between p-5 rounded-2xl border cursor-pointer transition-all ${selectedClient?.id === client.id ? 'bg-primary text-white border-primary shadow-xl scale-[1.02]' : 'bg-white border-slate-100 hover:bg-slate-100'}`}
                         >
                           <div>
-                            <p className="font-black text-sm">{client.name}</p>
-                            <p className="text-xs opacity-80" dir="ltr">{client.phone}</p>
+                            <p className="font-black text-base">{client.name}</p>
+                            <p className="text-sm opacity-80" dir="ltr">{client.phone}</p>
                           </div>
-                          {selectedClient?.id === client.id && <Check className="h-5 w-5" />}
+                          {selectedClient?.id === client.id && <Check className="h-6 w-6" />}
                         </div>
                       ))}
                     </div>
@@ -488,72 +506,72 @@ function ProjectsContent() {
               )}
               
               {selectedClient && (
-                <div className="flex items-center gap-3 p-4 bg-green-50 rounded-2xl border border-green-100">
-                  <div className="p-3 bg-green-600 text-white rounded-xl"><CheckCircle2 className="h-5 w-5" /></div>
+                <div className="flex items-center gap-4 p-5 bg-green-50 rounded-[2rem] border border-green-100">
+                  <div className="p-3 bg-green-600 text-white rounded-2xl"><CheckCircle2 className="h-6 w-6" /></div>
                   <div>
-                    <p className="text-xs font-bold text-green-600">العميل المرتبط:</p>
-                    <p className="font-black text-green-800">{selectedClient.name}</p>
+                    <p className="text-xs font-black text-green-600 uppercase">العميل المرتبط بالعمل:</p>
+                    <p className="font-black text-xl text-green-800">{selectedClient.name}</p>
                   </div>
                 </div>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label className="font-black">اسم المشروع</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-3">
+                  <Label className="font-black text-base pr-2">اسم المشروع</Label>
                   <Input 
                     value={formData.name}
                     onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                    className="rounded-2xl h-12 border-slate-200 font-bold" 
+                    className="rounded-2xl h-14 border-slate-200 font-bold text-lg" 
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label className="font-black">التكلفة (ج.م)</Label>
+                <div className="space-y-3">
+                  <Label className="font-black text-base pr-2">التكلفة المتفق عليها (ج.م)</Label>
                   <Input 
                     type="number"
                     value={formData.cost}
                     onChange={(e) => setFormData(prev => ({ ...prev, cost: Number(e.target.value) }))}
-                    className="rounded-2xl h-12 border-slate-200 font-black" 
+                    className="rounded-2xl h-14 border-slate-200 font-black text-xl" 
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label className="font-black">موعد التسليم</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-3">
+                  <Label className="font-black text-base pr-2">موعد التسليم النهائي</Label>
                   <Input 
                     type="date"
                     value={formData.deadline}
                     onChange={(e) => setFormData(prev => ({ ...prev, deadline: e.target.value }))}
-                    className="rounded-2xl h-12 border-slate-200 font-bold" 
+                    className="rounded-2xl h-14 border-slate-200 font-bold text-lg" 
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label className="font-black">رفع الصور</Label>
-                  <Input type="file" multiple accept="image/*" onChange={handleFileUpload} className="rounded-2xl h-12 border-slate-200 p-2" />
+                <div className="space-y-3">
+                  <Label className="font-black text-base pr-2">ألبوم صور المشروع</Label>
+                  <Input type="file" multiple accept="image/*" onChange={handleFileUpload} className="rounded-2xl h-14 border-slate-200 p-2 text-sm" />
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label className="font-black">متطلبات المشروع</Label>
+              <div className="space-y-3">
+                <Label className="font-black text-base pr-2">متطلبات العميل وتفاصيل العمل</Label>
                 <Textarea 
                   value={formData.requirements}
                   onChange={(e) => setFormData(prev => ({ ...prev, requirements: e.target.value }))}
-                  className="rounded-2xl min-h-[120px] border-slate-200 font-bold" 
+                  className="rounded-[2rem] min-h-[150px] border-slate-200 font-bold text-lg p-5" 
                 />
               </div>
 
               {formData.images.length > 0 && (
-                <div className="space-y-2">
-                  <Label className="font-black">الصور الحالية ({formData.images.length})</Label>
-                  <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
+                <div className="space-y-4">
+                  <Label className="font-black text-base pr-2">الصور المرفوعة ({formData.images.length})</Label>
+                  <div className="grid grid-cols-3 md:grid-cols-5 gap-4">
                     {formData.images.map((img, idx) => (
-                      <div key={idx} className="relative aspect-square rounded-xl overflow-hidden group border">
+                      <div key={idx} className="relative aspect-square rounded-2xl overflow-hidden group border shadow-md">
                         <Image src={img} alt="project" fill className="object-cover" />
                         <button 
                           onClick={() => setFormData(prev => ({ ...prev, images: prev.images.filter((_, i) => i !== idx) }))}
-                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
                         >
-                          <X className="h-3 w-3" />
+                          <X className="h-4 w-4" />
                         </button>
                       </div>
                     ))}
@@ -563,27 +581,22 @@ function ProjectsContent() {
             </div>
           </ScrollArea>
 
-          <DialogFooter className="p-8 bg-slate-50 border-t gap-3">
-            <Button onClick={handleSaveProject} disabled={isSaving || !selectedClient} className="rounded-2xl font-black h-14 px-12 text-lg shadow-xl w-full md:w-auto transition-transform active:scale-95">
-              {isSaving ? <Loader2 className="animate-spin" /> : (selectedProject ? "تحديث التعديلات" : "حفظ المشروع")}
+          <DialogFooter className="p-10 bg-slate-50 border-t gap-4">
+            <Button onClick={handleSaveProject} disabled={isSaving || !selectedClient} className="rounded-2xl font-black h-16 px-16 text-xl shadow-2xl w-full md:w-auto transition-transform active:scale-95">
+              {isSaving ? <Loader2 className="animate-spin" /> : (selectedProject ? "حفظ التغييرات" : "إضافة المشروع للنظام")}
             </Button>
-            <Button variant="outline" onClick={closeModal} className="rounded-2xl font-black h-14 px-8 text-lg w-full md:w-auto">
+            <Button variant="outline" onClick={closeModal} className="rounded-2xl font-black h-16 px-10 text-xl w-full md:w-auto">
               إلغاء
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* مودال عرض تفاصيل المشروع الكاملة */}
+      {/* مودال عرض التفاصيل */}
       <Dialog open={isPreviewOpen} onOpenChange={(open) => !open && closePreview()}>
-        <DialogContent className="sm:max-w-[900px] rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl bg-white" dir="rtl">
+        <DialogContent className="sm:max-w-[1000px] rounded-[3.5rem] p-0 overflow-hidden border-none shadow-2xl bg-white" dir="rtl">
           {previewProject && (
             <>
-              <DialogHeader className="sr-only">
-                <DialogTitle>{previewProject.name}</DialogTitle>
-                <DialogDescription>تفاصيل المشروع الكاملة والصور</DialogDescription>
-              </DialogHeader>
-              
               <div className="relative w-full aspect-video bg-slate-50 flex items-center justify-center overflow-hidden border-b">
                 {previewProject.images && previewProject.images.length > 0 ? (
                   <Carousel className="w-full h-full" opts={{ direction: 'rtl' }}>
@@ -596,99 +609,105 @@ function ProjectsContent() {
                             fill 
                             className="object-contain"
                             priority={idx === 0}
-                            sizes="900px"
+                            sizes="1000px"
                           />
                         </CarouselItem>
                       ))}
                     </CarouselContent>
-                    <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-between px-6 z-50">
-                      <CarouselPrevious className="relative h-14 w-14 bg-white/90 text-slate-900 border-none shadow-2xl hover:bg-white active:scale-90 transition-transform" />
-                      <CarouselNext className="relative h-14 w-14 bg-white/90 text-slate-900 border-none shadow-2xl hover:bg-white active:scale-90 transition-transform" />
+                    <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-between px-10 z-50">
+                      <CarouselPrevious className="relative h-16 w-16 bg-white/90 text-slate-900 border-none shadow-2xl hover:bg-white active:scale-90 transition-transform" />
+                      <CarouselNext className="relative h-16 w-16 bg-white/90 text-slate-900 border-none shadow-2xl hover:bg-white active:scale-90 transition-transform" />
                     </div>
                   </Carousel>
                 ) : (
                   <div className="flex items-center justify-center h-full text-slate-300 flex-col gap-4">
                     <ImagePlus className="h-24 w-24" />
-                    <p className="font-black text-2xl text-slate-400">لا توجد صور لهذا المشروع</p>
+                    <p className="font-black text-2xl text-slate-400">لا توجد صور لعرضها</p>
                   </div>
                 )}
+                <button onClick={closePreview} className="absolute top-8 right-8 z-[60] bg-red-600 text-white p-4 rounded-full shadow-2xl hover:bg-red-700 transition-all active:scale-90 border-4 border-white">
+                  <X className="h-8 w-8" />
+                </button>
               </div>
 
-              <ScrollArea className="max-h-[50vh] p-10 bg-white">
+              <ScrollArea className="max-h-[50vh] p-12 bg-white">
                 <div className="space-y-12 pb-10">
-                  <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-                    <div className="space-y-3">
-                      <h2 className="text-4xl font-black text-slate-900 leading-tight">{previewProject.name}</h2>
-                      <div className="flex items-center gap-2 text-primary font-black text-xl">
-                        <User className="h-7 w-7" /> العميل: {previewProject.clientName}
+                  <div className="flex flex-col md:flex-row justify-between items-start gap-6">
+                    <div className="space-y-4">
+                      <h2 className="text-5xl font-black text-slate-900 leading-tight">{previewProject.name}</h2>
+                      <div className="flex items-center gap-3 text-primary font-black text-2xl">
+                        <User className="h-8 w-8" /> العميل: {previewProject.clientName}
                       </div>
                     </div>
-                    <Badge className={`px-8 py-3 text-xl font-black border-none shadow-sm rounded-2xl ${previewProject.progress === 100 ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700'}`}>
+                    <Badge className={`px-10 py-4 text-2xl font-black border-none shadow-md rounded-[1.5rem] ${previewProject.progress === 100 ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700'}`}>
                       {previewProject.status}
                     </Badge>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 text-center shadow-sm">
-                      <p className="text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">التكلفة</p>
-                      <p className="text-3xl font-black text-green-600">{(previewProject.cost || 0).toLocaleString('ar-EG')} ج.م</p>
+                    {profile?.role === 'admin' && (
+                      <div className="p-10 bg-slate-50 rounded-[3rem] border border-slate-100 text-center shadow-sm">
+                        <p className="text-xs font-black text-slate-400 mb-2 uppercase tracking-[0.2em]">التكلفة الإجمالية</p>
+                        <p className="text-4xl font-black text-green-600">{(previewProject.cost || 0).toLocaleString('ar-EG')} ج.م</p>
+                      </div>
+                    )}
+                    <div className="p-10 bg-slate-50 rounded-[3rem] border border-slate-100 text-center shadow-sm">
+                      <p className="text-xs font-black text-slate-400 mb-2 uppercase tracking-[0.2em]">تاريخ التسليم</p>
+                      <p className="text-4xl font-black text-slate-800">{previewProject.deadline || "غير محدد"}</p>
                     </div>
-                    <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 text-center shadow-sm">
-                      <p className="text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">التسليم</p>
-                      <p className="text-3xl font-black text-slate-800">{previewProject.deadline || "غير محدد"}</p>
-                    </div>
-                    <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 text-center shadow-sm">
-                      <p className="text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">الإنجاز</p>
-                      <p className="text-3xl font-black text-primary">{previewProject.progress}%</p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-6">
-                    <h3 className="font-black text-2xl text-slate-900 flex items-center gap-3">
-                      <FileText className="h-8 w-8 text-primary" /> المتطلبات
-                    </h3>
-                    <div className="p-10 bg-slate-50 rounded-[3rem] text-slate-700 leading-relaxed font-bold border border-slate-100 shadow-inner whitespace-pre-wrap text-lg">
-                      {previewProject.requirements || "لم يتم إدخال متطلبات."}
+                    <div className="p-10 bg-slate-50 rounded-[3rem] border border-slate-100 text-center shadow-sm">
+                      <p className="text-xs font-black text-slate-400 mb-2 uppercase tracking-[0.2em]">نسبة الإنجاز</p>
+                      <p className="text-4xl font-black text-primary">{previewProject.progress}%</p>
                     </div>
                   </div>
 
                   <div className="space-y-8">
-                    <h3 className="font-black text-2xl text-slate-900">مراحل التنفيذ</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <h3 className="font-black text-3xl text-slate-900 flex items-center gap-4">
+                      <FileText className="h-10 w-10 text-primary" /> تفاصيل المتطلبات
+                    </h3>
+                    <div className="p-12 bg-slate-50 rounded-[3.5rem] text-slate-700 leading-[1.8] font-bold border border-slate-100 shadow-inner whitespace-pre-wrap text-xl">
+                      {previewProject.requirements || "لم يتم تسجيل متطلبات لهذا المشروع."}
+                    </div>
+                  </div>
+
+                  <div className="space-y-10">
+                    <h3 className="font-black text-3xl text-slate-900">مراحل التنفيذ</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                       {previewProject.steps?.map((step: any) => (
                         <div 
                           key={step.id} 
                           onClick={() => toggleStep(previewProject.id, step.id)}
-                          className={`flex items-center gap-5 p-6 rounded-[2rem] border cursor-pointer transition-all shadow-md active:scale-[0.97] hover:shadow-lg ${step.completed ? 'bg-green-50 border-green-300 text-green-800' : 'bg-white border-slate-200 text-slate-500 hover:border-primary/50'}`}
+                          className={`flex items-center gap-6 p-8 rounded-[2.5rem] border cursor-pointer transition-all shadow-lg active:scale-[0.97] hover:shadow-2xl ${step.completed ? 'bg-green-50 border-green-300 text-green-800' : 'bg-white border-slate-200 text-slate-500 hover:border-primary/50'}`}
                         >
-                          <CheckCircle2 className={`h-9 w-9 ${step.completed ? 'text-green-600' : 'text-slate-200'}`} />
-                          <span className="font-black text-xl">{step.title}</span>
+                          <CheckCircle2 className={`h-10 w-10 ${step.completed ? 'text-green-600' : 'text-slate-200'}`} />
+                          <span className="font-black text-2xl">{step.title}</span>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  <div className="pt-8">
+                  <div className="pt-12">
                     <Button 
                       onClick={closePreview} 
-                      variant="destructive" 
-                      className="w-full rounded-[2rem] font-black h-20 text-2xl bg-slate-900 hover:bg-black text-white shadow-2xl transition-all active:scale-95 flex gap-4"
+                      className="w-full rounded-[2.5rem] font-black h-24 text-3xl bg-slate-900 hover:bg-black text-white shadow-2xl transition-all active:scale-95 flex gap-6"
                     >
-                      <LogOut className="h-8 w-8 rotate-180" />
+                      <LogOut className="h-10 w-10 rotate-180" />
                       إغلاق ومعاودة العمل
                     </Button>
                   </div>
                 </div>
               </ScrollArea>
               
-              <div className="p-8 bg-slate-50 border-t flex flex-col md:flex-row gap-4">
-                <Button onClick={() => router.push(`/clients/${previewProject.clientId}/statement`)} variant="outline" className="rounded-2xl font-black h-14 flex-1 shadow-sm text-lg hover:bg-white active:scale-95 border-2">
-                  <User className="ml-2 h-6 w-6" /> بروفايل العميل
-                </Button>
-                <Button onClick={() => { closePreview(); handleEditProject(previewProject); }} className="rounded-2xl font-black h-14 flex-1 shadow-xl text-lg bg-blue-600 hover:bg-blue-700 text-white">
-                  <Edit className="ml-2 h-6 w-6" /> تعديل المشروع
-                </Button>
-              </div>
+              {profile?.role === 'admin' && (
+                <div className="p-10 bg-slate-50 border-t flex flex-col md:flex-row gap-6">
+                  <Button onClick={() => router.push(`/clients/${previewProject.clientId}/statement`)} variant="outline" className="rounded-2xl font-black h-16 flex-1 shadow-md text-xl hover:bg-white active:scale-95 border-2">
+                    <User className="ml-2 h-7 w-7" /> بروفايل العميل المالي
+                  </Button>
+                  <Button onClick={() => { closePreview(); handleEditProject(previewProject); }} className="rounded-2xl font-black h-16 flex-1 shadow-2xl text-xl bg-blue-600 hover:bg-blue-700 text-white">
+                    <Edit className="ml-2 h-7 w-7" /> تعديل المشروع
+                  </Button>
+                </div>
+              )}
             </>
           )}
         </DialogContent>
