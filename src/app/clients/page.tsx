@@ -73,6 +73,7 @@ export default function ClientsPage() {
       const balance = Number(clientData.totalInvoices || 0) - Number(clientData.totalPayments || 0);
       
       if (clientData.id) {
+        // حالة التحديث: استخراج الـ id وتحديث بقية البيانات
         const clientRef = doc(db, "clients", clientData.id);
         const { id, ...dataToUpdate } = clientData;
         await updateDoc(clientRef, {
@@ -82,8 +83,10 @@ export default function ClientsPage() {
         });
         toast({ title: "تم التحديث", description: "تم تحديث بيانات العميل بنجاح." });
       } else {
+        // حالة الإضافة: استخراج الـ id (الذي يكون undefined) لضمان عدم إرساله للـ Firestore
+        const { id, ...dataToAdd } = clientData;
         await addDoc(collection(db, "clients"), {
-          ...clientData,
+          ...dataToAdd,
           balance: balance,
           projects: 1,
           startDate: new Date().toISOString().split('T')[0],
