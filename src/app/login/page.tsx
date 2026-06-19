@@ -8,16 +8,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { useTranslation } from "@/components/language-provider";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
+import { auth, db } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
+import { doc, setDoc, getDoc } from "firebase/firestore";
 
 export default function LoginPage() {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  // تعيين البيانات التي طلبتها كقيم افتراضية للتسهيل (مع إضافة @appstore.com لأن Firebase يتطلب إيميل)
+  const [email, setEmail] = useState("islam_nader@appstore.com");
+  const [password, setPassword] = useState("20176885");
   const router = useRouter();
   const { toast } = useToast();
 
@@ -25,13 +27,50 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      toast({ title: "تم الدخول بنجاح", description: "مرحباً بك في APP STORE" });
+      let userCredential;
+      try {
+        // محاولة تسجيل الدخول
+        userCredential = await signInWithEmailAndPassword(auth, email, password);
+      } catch (loginError: any) {
+        // إذا لم يكن المستخدم موجوداً، نقوم بإنشائه (للمرة الأولى فقط)
+        if (loginError.code === 'auth/user-not-found' || loginError.code === 'auth/invalid-credential') {
+          userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        } else {
+          throw loginError;
+        }
+      }
+
+      const user = userCredential.user;
+
+      // التأكد من وجود سجل للمستخدم في Firestore بصلاحيات مدير
+      const userDocRef = doc(db, "users", user.uid);
+      const userDocSnap = await getDoc(userDocRef);
+
+      if (!userDocSnap.exists()) {
+        await setDoc(userDocRef, {
+          uid: user.uid,
+          name: "إسلام نادر (المدير العام)",
+          email: user.email,
+          role: "admin",
+          status: "active",
+          permissions: [
+            "p_dashboard",
+            "p_clients",
+            "p_projects",
+            "p_testers",
+            "p_finances"
+          ],
+          lastLogin: new Date().toLocaleString('ar-EG')
+        });
+      }
+
+      toast({ title: "تم الدخول بنجاح", description: "مرحباً بك يا مدير النظام" });
       router.push("/");
     } catch (error: any) {
+      console.error(error);
       toast({ 
         title: "خطأ في الدخول", 
-        description: "يرجى التأكد من البريد الإلكتروني وكلمة المرور.", 
+        description: "يرجى التأكد من البيانات أو الاتصال بالدعم.", 
         variant: "destructive" 
       });
     } finally {
@@ -57,7 +96,7 @@ export default function LoginPage() {
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-bold flex items-center gap-2">
-                <Mail className="h-4 w-4 text-primary" /> {t('email')}
+                <Mail className="h-4 w-4 text-primary" /> البريد الإلكتروني (المدير)
               </label>
               <Input 
                 type="email" 
