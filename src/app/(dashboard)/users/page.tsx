@@ -42,9 +42,9 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useTranslation } from "@/components/language-provider";
-import { db } from "@/lib/firebase";
-import { collection, query, getDocs, doc, setDoc, onSnapshot } from "firebase/firestore";
+import { collection, doc, setDoc, onSnapshot, query, orderBy } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
+import { useFirestore, errorEmitter, FirestorePermissionError } from "@/firebase";
 
 const permissionsList = [
   { id: "p_dashboard", label: "لوحة التحكم", icon: Shield },
@@ -57,13 +57,13 @@ const permissionsList = [
 export default function UsersPage() {
   const { t } = useTranslation();
   const { toast } = useToast();
+  const db = useFirestore();
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // فورم إضافة مستخدم
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -72,8 +72,11 @@ export default function UsersPage() {
   });
 
   useEffect(() => {
+    if (!db) return;
+
+    const usersQuery = query(collection(db, "users"));
     const unsubscribe = onSnapshot(
-      collection(db, "users"), 
+      usersQuery, 
       (snapshot) => {
         const usersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setUsers(usersData);
@@ -81,13 +84,17 @@ export default function UsersPage() {
         setError(null);
       },
       (err) => {
-        console.warn("Users Permission Error:", err.message);
-        setError("لا تملك الصلاحية لعرض قائمة المستخدمين.");
+        const permissionError = new FirestorePermissionError({
+          path: "users",
+          operation: "list"
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        setError("لا تملك الصلاحية لعرض قائمة المستخدمين حالياً.");
         setLoading(false);
       }
     );
     return () => unsubscribe();
-  }, []);
+  }, [db]);
 
   const handleTogglePermission = (permId: string) => {
     setFormData(prev => ({
@@ -99,25 +106,31 @@ export default function UsersPage() {
   };
 
   const handleSaveUser = async () => {
-    if (!formData.name || !formData.email) return;
+    if (!formData.name || !formData.email || !db) return;
     setSaving(true);
-    try {
-      const userRef = doc(collection(db, "users")); 
-      await setDoc(userRef, {
-        ...formData,
-        uid: userRef.id,
-        status: "active",
-        lastLogin: "لم يسجل بعد"
-      });
-      setIsAddUserOpen(false);
-      setFormData({ name: "", email: "", role: "tester", permissions: [] });
-      toast({ title: "تم الحفظ", description: "تم إنشاء المستخدم وتحديد صلاحياته بنجاح." });
-    } catch (error: any) {
-      const msg = error.code === 'permission-denied' ? "لا تملك صلاحية إضافة مستخدمين." : "فشل في حفظ البيانات.";
-      toast({ title: "خطأ", description: msg, variant: "destructive" });
-    } finally {
-      setSaving(false);
-    }
+    const userRef = doc(collection(db, "users")); 
+    const newUserData = {
+      ...formData,
+      uid: userRef.id,
+      status: "active",
+      lastLogin: "لم يسجل بعد",
+      createdAt: new Date().toISOString()
+    };
+
+    setDoc(userRef, newUserData)
+      .then(() => {
+        setIsAddUserOpen(false);
+        setFormData({ name: "", email: "", role: "tester", permissions: [] });
+        toast({ title: "تم الحفظ", description: "تم إنشاء المستخدم بنجاح." });
+      })
+      .catch((err) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: userRef.path,
+          operation: "create",
+          requestResourceData: newUserData
+        }));
+      })
+      .finally(() => setSaving(false));
   };
 
   if (error) {
@@ -135,19 +148,19 @@ export default function UsersPage() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-headline font-bold">إدارة المستخدمين والصلاحيات</h2>
-          <p className="text-muted-foreground text-sm">أضف مستخدمين جدد وحدد ما يمكنهم رؤيته في النظام.</p>
+          <h2 className="text-2xl font-headline font-bold">إدارة المستخدمين</h2>
+          <p className="text-muted-foreground text-sm">تعديل الأدوار وصلاحيات الظهور في القائمة.</p>
         </div>
         <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
           <DialogTrigger asChild>
             <Button className="font-bold">
-              <UserPlus className="ml-2 h-4 w-4" /> إضافة مستخدم جديد
+              <UserPlus className="ml-2 h-4 w-4" /> إضافة مستخدم
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl text-right" dir="rtl">
             <DialogHeader>
-              <DialogTitle>إنشاء حساب مستخدم جديد</DialogTitle>
-              <DialogDescription>حدد بيانات المستخدم ودوره الأساسي في الوكالة.</DialogDescription>
+              <DialogTitle>إنشاء مستخدم جديد</DialogTitle>
+              <DialogDescription>حدد بيانات المستخدم ودوره الأساسي.</DialogDescription>
             </DialogHeader>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
               <div className="space-y-4">
@@ -156,7 +169,8 @@ export default function UsersPage() {
                   <Input 
                     value={formData.name}
                     onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    placeholder="اسم المستخدم" 
+                    placeholder="اسم المستخدم"
+                    className="text-right"
                   />
                 </div>
                 <div className="space-y-2">
@@ -165,38 +179,39 @@ export default function UsersPage() {
                     type="email" 
                     value={formData.email}
                     onChange={(e) => setFormData({...formData, email: e.target.value})}
-                    placeholder="user@example.com" 
+                    placeholder="user@example.com"
+                    className="text-right"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-bold">نوع المستخدم (Role)</label>
+                  <label className="text-sm font-bold">الدور الأساسي</label>
                   <Select 
                     value={formData.role} 
                     onValueChange={(val) => setFormData({...formData, role: val as any})}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="text-right">
                       <SelectValue placeholder="اختر الدور" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="admin">أدمن (مدير كامل)</SelectItem>
+                      <SelectItem value="admin">مدير (Admin)</SelectItem>
                       <SelectItem value="tester">مختبر (Tester)</SelectItem>
-                      <SelectItem value="client">عميل مستفيد</SelectItem>
+                      <SelectItem value="client">عميل (Client)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
               
               <div className="space-y-4 border-r pr-6">
-                <label className="text-sm font-bold block mb-2 text-primary">تحديد الصلاحيات (الظهور في القائمة)</label>
+                <label className="text-sm font-bold block mb-2 text-primary">صلاحيات الوصول</label>
                 <div className="grid gap-3">
                   {permissionsList.map((perm) => (
-                    <div key={perm.id} className="flex items-center space-x-reverse space-x-2">
+                    <div key={perm.id} className="flex items-center gap-2">
                       <Checkbox 
                         id={perm.id} 
                         checked={formData.permissions.includes(perm.id)}
                         onCheckedChange={() => handleTogglePermission(perm.id)}
                       />
-                      <label htmlFor={perm.id} className="text-sm font-medium leading-none flex items-center gap-2 cursor-pointer pr-2">
+                      <label htmlFor={perm.id} className="text-sm font-medium flex items-center gap-2 cursor-pointer">
                         <perm.icon className="h-3.5 w-3.5 opacity-50" />
                         {perm.label}
                       </label>
@@ -205,11 +220,11 @@ export default function UsersPage() {
                 </div>
               </div>
             </div>
-            <DialogFooter>
+            <DialogFooter className="gap-2">
               <Button variant="outline" onClick={() => setIsAddUserOpen(false)}>إلغاء</Button>
               <Button onClick={handleSaveUser} disabled={saving}>
                 {saving && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
-                حفظ المستخدم
+                حفظ البيانات
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -217,17 +232,11 @@ export default function UsersPage() {
       </div>
 
       <Card className="border-none shadow-sm overflow-hidden">
-        <div className="p-4 border-b bg-muted/20">
-          <div className="relative max-w-sm">
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="بحث عن مستخدم..." className="pr-10" />
-          </div>
-        </div>
         <CardContent className="p-0">
           {loading ? (
             <div className="p-12 text-center">
               <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-              <p className="mt-2 text-muted-foreground">جاري تحميل المستخدمين...</p>
+              <p className="mt-2 text-muted-foreground">جاري التحميل...</p>
             </div>
           ) : (
             <Table>
@@ -250,14 +259,7 @@ export default function UsersPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline" className={`font-bold ${
-                        user.role === 'admin' ? 'bg-indigo-50 text-indigo-700' :
-                        user.role === 'tester' ? 'bg-amber-50 text-amber-700' :
-                        'bg-emerald-50 text-emerald-700'
-                      }`}>
-                        {user.role === 'admin' ? 'مدير (Admin)' :
-                         user.role === 'tester' ? 'مختبر (Tester)' : 'عميل (Client)'}
-                      </Badge>
+                      <Badge variant="outline" className="font-bold">{user.role}</Badge>
                     </TableCell>
                     <TableCell>
                       {user.status === 'active' ? (
@@ -274,10 +276,7 @@ export default function UsersPage() {
                       {user.lastLogin}
                     </TableCell>
                     <TableCell className="text-left">
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8"><Lock className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button>
-                      </div>
+                      <Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button>
                     </TableCell>
                   </TableRow>
                 ))}

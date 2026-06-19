@@ -1,12 +1,10 @@
-rules_version = '2';
 
+rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // السماح بالوصول الكامل لجميع العمليات حالياً لحل مشاكل التهيئة الأولى
+    // تم فتح القواعد بالكامل لضمان الدخول وحل مشكلة الصلاحيات أثناء التطوير
     match /{document=**} {
       allow read, write: if true;
     }
-
   }
 }
