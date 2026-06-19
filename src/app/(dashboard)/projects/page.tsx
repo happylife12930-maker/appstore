@@ -14,7 +14,8 @@ import {
   List,
   Upload,
   Loader2,
-  Trash2
+  Trash2,
+  ShieldAlert
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,15 +33,25 @@ export default function ProjectsPage() {
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // استماع لحظي للمشاريع من Firestore
+  // استماع لحظي للمشاريع من Firestore مع معالجة الأخطاء
   useEffect(() => {
     const q = query(collection(db, "projects"), orderBy("createdAt", "desc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const projectsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setProjects(projectsData);
-      setLoading(false);
-    });
+    const unsubscribe = onSnapshot(
+      q, 
+      (snapshot) => {
+        const projectsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setProjects(projectsData);
+        setLoading(false);
+        setError(null);
+      },
+      (err) => {
+        console.warn("Firestore Permission Error:", err.message);
+        setError("لا تملك صلاحية الوصول لعرض قائمة المشاريع.");
+        setLoading(false);
+      }
+    );
     return () => unsubscribe();
   }, []);
 
@@ -67,9 +78,10 @@ export default function ProjectsPage() {
       });
 
       toast({ title: "تم الرفع", description: "تمت إضافة المشروع والصورة بنجاح." });
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast({ title: "خطأ", description: "فشل في رفع الصورة.", variant: "destructive" });
+      const msg = error.code === 'permission-denied' ? "عذراً، لا تملك صلاحية إضافة مشاريع." : "فشل في رفع الصورة.";
+      toast({ title: "خطأ", description: msg, variant: "destructive" });
     } finally {
       setUploading(false);
     }
@@ -79,10 +91,22 @@ export default function ProjectsPage() {
     try {
       await deleteDoc(doc(db, "projects", id));
       toast({ title: "تم الحذف", description: "تم حذف المشروع بنجاح." });
-    } catch (error) {
-      toast({ title: "خطأ", description: "فشل في الحذف.", variant: "destructive" });
+    } catch (error: any) {
+      const msg = error.code === 'permission-denied' ? "لا تملك صلاحية حذف المشاريع." : "فشل في الحذف.";
+      toast({ title: "خطأ", description: msg, variant: "destructive" });
     }
   };
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
+        <ShieldAlert className="h-12 w-12 text-rose-500 opacity-50" />
+        <h3 className="text-xl font-bold font-headline">خطأ في الصلاحيات</h3>
+        <p className="text-muted-foreground">{error}</p>
+        <Button onClick={() => window.location.reload()}>إعادة المحاولة</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">

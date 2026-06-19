@@ -46,37 +46,49 @@ export default function LoginPage() {
       if (userCredential) {
         const user = userCredential.user;
 
-        // التأكد من وجود سجل للمستخدم في Firestore بصلاحيات مدير
-        const userDocRef = doc(db, "users", user.uid);
-        const userDocSnap = await getDoc(userDocRef);
+        try {
+          // التأكد من وجود سجل للمستخدم في Firestore بصلاحيات مدير
+          const userDocRef = doc(db, "users", user.uid);
+          const userDocSnap = await getDoc(userDocRef);
 
-        if (!userDocSnap.exists()) {
-          await setDoc(userDocRef, {
-            uid: user.uid,
-            name: email === "islam_nader@appstore.com" ? "إسلام نادر (المدير العام)" : "مستخدم جديد",
-            email: user.email,
-            role: "admin",
-            status: "active",
-            permissions: [
-              "p_dashboard",
-              "p_clients",
-              "p_projects",
-              "p_testers",
-              "p_finances"
-            ],
-            lastLogin: new Date().toLocaleString('ar-EG')
+          if (!userDocSnap.exists()) {
+            await setDoc(userDocRef, {
+              uid: user.uid,
+              name: email === "islam_nader@appstore.com" ? "إسلام نادر (المدير العام)" : "مستخدم جديد",
+              email: user.email,
+              role: "admin",
+              status: "active",
+              permissions: [
+                "p_dashboard",
+                "p_clients",
+                "p_projects",
+                "p_testers",
+                "p_finances"
+              ],
+              lastLogin: new Date().toLocaleString('ar-EG')
+            });
+          }
+          
+          toast({ title: "تم الدخول بنجاح", description: "مرحباً بك في APP STORE" });
+          router.push("/");
+        } catch (firestoreError: any) {
+          console.warn("Firestore access error during login:", firestoreError.message);
+          // حتى لو فشل Firestore، نسمح بالدخول للمسار الرئيسي ليتم التعامل مع الخطأ هناك
+          toast({ 
+            title: "تنبيه في البيانات", 
+            description: "تم الدخول ولكن تعذر تحديث بيانات ملفك الشخصي حالياً.",
+            variant: "default"
           });
+          router.push("/");
         }
-
-        toast({ title: "تم الدخول بنجاح", description: "مرحباً بك في APP STORE" });
-        router.push("/");
       }
     } catch (error: any) {
-      console.error("Login Error:", error.code, error.message);
       let message = "يرجى التأكد من البريد الإلكتروني وكلمة المرور.";
       
       if (error.code === 'auth/configuration-not-found') {
-        message = "تنبيه: يجب تفعيل 'Email/Password' في لوحة تحكم Firebase Console أولاً.";
+        message = "يجب تفعيل 'Email/Password' في لوحة تحكم Firebase Console.";
+      } else if (error.code === 'permission-denied' || error.message?.includes('permissions')) {
+        message = "لا تملك صلاحيات كافية للوصول للنظام حالياً.";
       }
 
       toast({ 

@@ -15,7 +15,8 @@ import {
   UserCheck,
   Briefcase,
   Bug,
-  Loader2
+  Loader2,
+  ShieldAlert
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,6 +61,7 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // فورم إضافة مستخدم
   const [formData, setFormData] = useState({
@@ -70,11 +72,20 @@ export default function UsersPage() {
   });
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, "users"), (snapshot) => {
-      const usersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setUsers(usersData);
-      setLoading(false);
-    });
+    const unsubscribe = onSnapshot(
+      collection(db, "users"), 
+      (snapshot) => {
+        const usersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setUsers(usersData);
+        setLoading(false);
+        setError(null);
+      },
+      (err) => {
+        console.warn("Users Permission Error:", err.message);
+        setError("لا تملك الصلاحية لعرض قائمة المستخدمين.");
+        setLoading(false);
+      }
+    );
     return () => unsubscribe();
   }, []);
 
@@ -91,8 +102,6 @@ export default function UsersPage() {
     if (!formData.name || !formData.email) return;
     setSaving(true);
     try {
-      // ملاحظة: في النسخة التجريبية نستخدم الإيميل كمعرف للتبسيط
-      // في الإنتاج الحقيقي يجب استخدام Firebase Auth UID
       const userRef = doc(collection(db, "users")); 
       await setDoc(userRef, {
         ...formData,
@@ -103,12 +112,24 @@ export default function UsersPage() {
       setIsAddUserOpen(false);
       setFormData({ name: "", email: "", role: "tester", permissions: [] });
       toast({ title: "تم الحفظ", description: "تم إنشاء المستخدم وتحديد صلاحياته بنجاح." });
-    } catch (error) {
-      toast({ title: "خطأ", description: "فشل في حفظ بيانات المستخدم.", variant: "destructive" });
+    } catch (error: any) {
+      const msg = error.code === 'permission-denied' ? "لا تملك صلاحية إضافة مستخدمين." : "فشل في حفظ البيانات.";
+      toast({ title: "خطأ", description: msg, variant: "destructive" });
     } finally {
       setSaving(false);
     }
   };
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
+        <ShieldAlert className="h-12 w-12 text-rose-500 opacity-50" />
+        <h3 className="text-xl font-bold font-headline">خطأ في الصلاحيات</h3>
+        <p className="text-muted-foreground">{error}</p>
+        <Button onClick={() => window.location.reload()}>إعادة المحاولة</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
