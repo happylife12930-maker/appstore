@@ -10,7 +10,8 @@ import {
   Bug, 
   Clock, 
   TrendingUp,
-  Activity
+  Activity,
+  BarChart3
 } from "lucide-react";
 import { 
   Card, 
@@ -27,9 +28,7 @@ import {
   Tooltip,
   AreaChart,
   Area,
-  YAxis,
-  BarChart,
-  Bar
+  YAxis
 } from "recharts";
 import { useTranslation } from "@/components/language-provider";
 
@@ -46,25 +45,35 @@ export default function Dashboard() {
   const { t } = useTranslation();
 
   const stats = [
-    { label: "activeProjects", value: "14", icon: Briefcase, color: "text-blue-500" },
-    { label: "finishedProjects", value: "128", icon: CheckCircle2, color: "text-emerald-500" },
-    { label: "monthlyRevenue", value: "$12,450", icon: DollarSign, color: "text-indigo-500" },
-    { label: "yearlyRevenue", value: "$142,000", icon: TrendingUp, color: "text-emerald-600" },
-    { label: "openBugs", value: "24", icon: Bug, color: "text-rose-500" },
-    { label: "delayedTasks", value: "7", icon: Clock, color: "text-orange-500" },
+    { label: "totalClients", value: "42", icon: Users, color: "text-blue-500", bg: "bg-blue-50" },
+    { label: "activeProjects", value: "14", icon: Briefcase, color: "text-indigo-500", bg: "bg-indigo-50" },
+    { label: "finishedProjects", value: "128", icon: CheckCircle2, color: "text-emerald-500", bg: "bg-emerald-50" },
+    { label: "monthlyRevenue", value: "$12,450", icon: DollarSign, color: "text-emerald-600", bg: "bg-emerald-50" },
+    { label: "yearlyRevenue", value: "$142,000", icon: TrendingUp, color: "text-blue-600", bg: "bg-blue-50" },
+    { label: "openBugs", value: "24", icon: Bug, color: "text-rose-500", bg: "bg-rose-50" },
+    { label: "delayedTasks", value: "7", icon: Clock, color: "text-orange-500", bg: "bg-orange-50" },
+  ];
+
+  const projectsProgress = [
+    { name: "Zenith CRM Mobile", progress: 85, color: "bg-primary" },
+    { name: "EcoMobile Platform", progress: 45, color: "bg-blue-500" },
+    { name: "HealthTracker Pro", progress: 95, color: "bg-emerald-500" },
+    { name: "Fintech Port App", progress: 65, color: "bg-orange-500" },
+    { name: "Bakery Web Portal", progress: 20, color: "bg-rose-500" },
   ];
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      {/* Top Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {stats.map((stat) => (
-          <Card key={stat.label} className="border-none shadow-sm overflow-hidden group hover:shadow-md transition-shadow">
-            <CardContent className="p-4 flex flex-col justify-between h-full">
-              <div className={`p-2 rounded-lg bg-muted w-fit ${stat.color} mb-4`}>
-                <stat.icon className="h-5 w-5" />
+          <Card key={stat.label} className="border-none shadow-sm overflow-hidden hover:shadow-md transition-all">
+            <CardContent className="p-5 flex items-center gap-4">
+              <div className={`p-3 rounded-xl ${stat.bg} ${stat.color}`}>
+                <stat.icon className="h-6 w-6" />
               </div>
               <div>
-                <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">{t(stat.label)}</p>
+                <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider mb-1">{t(stat.label)}</p>
                 <h3 className="text-2xl font-bold font-headline">{stat.value}</h3>
               </div>
             </CardContent>
@@ -73,6 +82,7 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Revenue Chart */}
         <Card className="lg:col-span-2 shadow-sm border-none">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
@@ -81,7 +91,7 @@ export default function Dashboard() {
             </div>
             <Activity className="h-5 w-5 text-primary opacity-20" />
           </CardHeader>
-          <CardContent className="h-[300px]">
+          <CardContent className="h-[350px]">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={revenueData}>
                 <defs>
@@ -94,29 +104,34 @@ export default function Dashboard() {
                 <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fontSize: 12}} />
                 <YAxis axisLine={false} tickLine={false} tick={{fontSize: 12}} />
                 <Tooltip />
-                <Area type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" fill="url(#colorRev)" strokeWidth={3} />
+                <Area 
+                  type="monotone" 
+                  dataKey="revenue" 
+                  stroke="hsl(var(--primary))" 
+                  fill="url(#colorRev)" 
+                  strokeWidth={3} 
+                />
               </AreaChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
 
+        {/* Project Progress Tracker */}
         <Card className="shadow-sm border-none">
           <CardHeader>
-            <CardTitle className="font-headline text-xl">{t('projectProgress')}</CardTitle>
+            <div className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-primary" />
+              <CardTitle className="font-headline text-xl">{t('projectProgress')}</CardTitle>
+            </div>
           </CardHeader>
           <CardContent className="space-y-6">
-            {[
-              { name: "Zenith CRM", prog: 85 },
-              { name: "EcoMobile", prog: 45 },
-              { name: "Fintech Port", prog: 65 },
-              { name: "HealthTracker", prog: 95 }
-            ].map((p) => (
+            {projectsProgress.map((p) => (
               <div key={p.name} className="space-y-2">
-                <div className="flex justify-between text-sm font-bold">
-                  <span>{p.name}</span>
-                  <span className="text-primary">{p.prog}%</span>
+                <div className="flex justify-between text-sm">
+                  <span className="font-bold">{p.name}</span>
+                  <span className="text-primary font-mono font-bold">{p.progress}%</span>
                 </div>
-                <Progress value={p.prog} className="h-2" />
+                <Progress value={p.progress} className="h-2" />
               </div>
             ))}
           </CardContent>
