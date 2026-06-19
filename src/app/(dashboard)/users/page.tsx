@@ -1,7 +1,8 @@
 
 /**
- * تم تعطيل هذا الملف لمنع تعارض المسارات مع src/app/users/page.tsx
+ * تم تعطيل هذا الملف نهائياً لمنع تعارض المسارات.
+ * الكود النشط موجود في src/app/users/page.tsx
  */
-export default function ObsoleteUsersPage() {
+export default function ObsoleteUsers() {
   return null;
 }

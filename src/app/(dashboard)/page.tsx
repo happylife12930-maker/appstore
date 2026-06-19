@@ -1,7 +1,8 @@
 
 /**
- * تم تعطيل هذا الملف لمنع تعارض المسارات مع src/app/page.tsx
+ * تم تعطيل هذا الملف نهائياً لمنع تعارض المسارات.
+ * الكود النشط موجود في src/app/page.tsx
  */
-export default function ObsoleteDashboardPage() {
+export default function ObsoleteRoot() {
   return null;
 }

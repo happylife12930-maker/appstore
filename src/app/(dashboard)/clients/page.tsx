@@ -1,7 +1,8 @@
 
 /**
- * تم تعطيل هذا الملف لمنع تعارض المسارات مع src/app/clients/page.tsx
+ * تم تعطيل هذا الملف نهائياً لمنع تعارض المسارات.
+ * الكود النشط موجود في src/app/clients/page.tsx
  */
-export default function ObsoleteClientsPage() {
+export default function ObsoleteClients() {
   return null;
 }
