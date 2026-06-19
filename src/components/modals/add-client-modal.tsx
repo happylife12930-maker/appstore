@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2 } from 'lucide-react';
+import { Loader2, User, Mail, Phone, Building, Wallet, CreditCard } from 'lucide-react';
 
 export interface ClientData {
   id?: string;
@@ -36,97 +36,138 @@ interface AddClientModalProps {
 }
 
 export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData }: AddClientModalProps) {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [company, setCompany] = useState('');
-  const [projectName, setProjectName] = useState('');
-  const [totalInvoices, setTotalInvoices] = useState<number>(0);
-  const [totalPayments, setTotalPayments] = useState<number>(0);
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    company: '',
+    projectName: '',
+    totalInvoices: 0,
+    totalPayments: 0
+  });
 
   useEffect(() => {
-    if (initialData) {
-      setName(initialData.name || '');
-      setEmail(initialData.email || '');
-      setPhone(initialData.phone || '');
-      setCompany(initialData.company || '');
-      setProjectName(initialData.projectName || '');
-      setTotalInvoices(initialData.totalInvoices || 0);
-      setTotalPayments(initialData.totalPayments || 0);
-    } else {
-      setName('');
-      setEmail('');
-      setPhone('');
-      setCompany('');
-      setProjectName('');
-      setTotalInvoices(0);
-      setTotalPayments(0);
+    if (initialData && isOpen) {
+      setFormData({
+        name: initialData.name || '',
+        email: initialData.email || '',
+        phone: initialData.phone || '',
+        company: initialData.company || '',
+        projectName: initialData.projectName || '',
+        totalInvoices: initialData.totalInvoices || 0,
+        totalPayments: initialData.totalPayments || 0
+      });
+    } else if (isOpen) {
+      setFormData({
+        name: '',
+        email: '',
+        phone: '',
+        company: '',
+        projectName: '',
+        totalInvoices: 0,
+        totalPayments: 0
+      });
     }
   }, [initialData, isOpen]);
 
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { id, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [id]: id.includes('total') ? Number(value) : value
+    }));
+  };
+
   const handleSaveClick = async () => {
+    if (!formData.name) return;
     await onSave({ 
+      ...formData,
       id: initialData?.id,
-      name, 
-      email, 
-      phone, 
-      company, 
-      projectName,
-      totalInvoices: Number(totalInvoices),
-      totalPayments: Number(totalPayments),
-      balance: Number(totalInvoices) - Number(totalPayments)
+      balance: formData.totalInvoices - formData.totalPayments
     });
   };
 
-  if (!isOpen) return null;
-
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto rounded-3xl" dir="rtl">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-bold">{initialData ? 'تعديل بيانات العميل' : 'إضافة عميل جديد'}</DialogTitle>
-          <DialogDescription className="font-medium">
-            أدخل تفاصيل العميل والبيانات المالية هنا.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="name" className="text-right font-bold">الاسم</Label>
-            <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="اسم العميل الكامل" className="col-span-3 rounded-xl" />
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-[550px] max-h-[95vh] overflow-y-auto rounded-[2rem] border-none shadow-2xl p-0 overflow-hidden" dir="rtl">
+        <div className="bg-primary p-8 text-primary-foreground">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black flex items-center gap-3">
+              {initialData ? 'تعديل بيانات العميل' : 'إضافة عميل جديد'}
+            </DialogTitle>
+            <DialogDescription className="text-primary-foreground/80 font-bold text-base mt-2">
+              يرجى إدخال تفاصيل العميل والبيانات المالية بدقة.
+            </DialogDescription>
+          </DialogHeader>
+        </div>
+
+        <div className="p-8 space-y-6 bg-white">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="name" className="text-right font-black flex items-center gap-2">
+                <User className="h-4 w-4 text-primary" /> الاسم الكامل
+              </Label>
+              <Input id="name" value={formData.name} onChange={handleChange} placeholder="اسم العميل" className="rounded-2xl h-12 border-slate-200 font-bold" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="projectName" className="text-right font-black flex items-center gap-2">
+                <Building className="h-4 w-4 text-primary" /> اسم المشروع
+              </Label>
+              <Input id="projectName" value={formData.projectName} onChange={handleChange} placeholder="مشروع العميل الحالي" className="rounded-2xl h-12 border-slate-200 font-bold" />
+            </div>
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="projectName" className="text-right font-bold">المشروع</Label>
-            <Input id="projectName" value={projectName} onChange={(e) => setProjectName(e.target.value)} placeholder="اسم المشروع الحالي" className="col-span-3 rounded-xl" />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-right font-black flex items-center gap-2">
+                <Mail className="h-4 w-4 text-primary" /> البريد الإلكتروني
+              </Label>
+              <Input id="email" type="email" value={formData.email} onChange={handleChange} placeholder="example@mail.com" className="rounded-2xl h-12 border-slate-200 font-bold" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="phone" className="text-right font-black flex items-center gap-2">
+                <Phone className="h-4 w-4 text-primary" /> رقم الجوال
+              </Label>
+              <Input id="phone" value={formData.phone} onChange={handleChange} placeholder="+966 5..." className="rounded-2xl h-12 border-slate-200 font-bold" />
+            </div>
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="email" className="text-right font-bold">الإيميل</Label>
-            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="example@company.com" className="col-span-3 rounded-xl" />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="phone" className="text-right font-bold">الهاتف</Label>
-            <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+966 5..." className="col-span-3 rounded-xl" />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="totalInvoices" className="text-right font-bold">المبلغ الكلي</Label>
-            <Input id="totalInvoices" type="number" value={totalInvoices} onChange={(e) => setTotalInvoices(Number(e.target.value))} className="col-span-3 rounded-xl" />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="totalPayments" className="text-right font-bold">المدفوع</Label>
-            <Input id="totalPayments" type="number" value={totalPayments} onChange={(e) => setTotalPayments(Number(e.target.value))} className="col-span-3 rounded-xl" />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label className="text-right font-bold">المتبقي</Label>
-            <div className="col-span-3 p-2 bg-slate-100 rounded-xl font-black text-primary">
-              {(totalInvoices - totalPayments).toLocaleString('ar-SA')} ر.س
+
+          <div className="p-6 bg-slate-50 rounded-3xl space-y-4 border border-slate-100">
+            <h3 className="font-black text-slate-800 flex items-center gap-2">
+              <Wallet className="h-5 w-5 text-primary" /> البيانات المالية للتعاقد
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="totalInvoices" className="text-right font-black flex items-center gap-2">
+                   المبلغ الإجمالي (ر.س)
+                </Label>
+                <Input id="totalInvoices" type="number" value={formData.totalInvoices} onChange={handleChange} className="rounded-2xl h-12 border-slate-200 font-black text-lg" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="totalPayments" className="text-right font-black flex items-center gap-2 text-green-600">
+                   المبلغ المدفوع (ر.س)
+                </Label>
+                <Input id="totalPayments" type="number" value={formData.totalPayments} onChange={handleChange} className="rounded-2xl h-12 border-green-200 font-black text-lg text-green-700 bg-green-50/30" />
+              </div>
+            </div>
+            
+            <div className="pt-4 border-t flex justify-between items-center">
+              <span className="font-black text-slate-500">الرصيد المتبقي:</span>
+              <span className={`text-2xl font-black ${formData.totalInvoices - formData.totalPayments > 0 ? 'text-rose-600' : 'text-green-600'}`}>
+                {(formData.totalInvoices - formData.totalPayments).toLocaleString('ar-SA')} ر.س
+              </span>
             </div>
           </div>
         </div>
-        <DialogFooter className="gap-2">
-          <Button type="submit" onClick={handleSaveClick} disabled={isLoading} className="rounded-xl font-bold px-8">
-            {isLoading && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
-            {initialData ? 'تحديث البيانات' : 'حفظ العميل'}
+
+        <DialogFooter className="p-8 bg-slate-50 gap-3 border-t">
+          <Button type="submit" onClick={handleSaveClick} disabled={isLoading || !formData.name} className="rounded-2xl font-black h-14 px-10 text-lg shadow-xl w-full md:w-auto">
+            {isLoading ? <Loader2 className="ml-2 h-5 w-5 animate-spin" /> : <CreditCard className="ml-2 h-5 w-5" />}
+            {initialData ? 'تحديث البيانات' : 'تأكيد وحفظ العميل'}
           </Button> 
-          <Button variant="outline" onClick={onClose} disabled={isLoading} className="rounded-xl font-bold">إلغاء</Button>
+          <Button variant="outline" onClick={onClose} disabled={isLoading} className="rounded-2xl font-black h-14 px-8 text-lg w-full md:w-auto">
+            إلغاء
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
