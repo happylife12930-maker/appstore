@@ -112,15 +112,16 @@ export default function ProjectsPage() {
       document.body.style.pointerEvents = 'auto';
       document.body.style.overflow = 'auto';
       // إزالة أي طبقات متبقية من Radix
-      const overlays = document.querySelectorAll('[data-radix-focus-guard]');
-      overlays.forEach(el => (el as HTMLElement).style.display = 'none');
+      const overlays = document.querySelectorAll('[data-radix-focus-guard], [data-radix-portal]');
+      // لا نحذف البورتال نفسه بل نتأكد من حالة الجسم
+      document.body.removeAttribute('data-scroll-locked');
     }
   }, []);
 
   // مراقبة حالات الإغلاق بشكل مستمر
   useEffect(() => {
     if (!isModalOpen && !isPreviewOpen) {
-      const timer = setTimeout(forceEnableScroll, 300);
+      const timer = setTimeout(forceEnableScroll, 100);
       return () => clearTimeout(timer);
     }
   }, [isModalOpen, isPreviewOpen, forceEnableScroll]);
@@ -263,7 +264,7 @@ export default function ProjectsPage() {
     setPreviewProject(project);
     setTimeout(() => {
       setIsPreviewOpen(true);
-    }, 150);
+    }, 100);
   };
 
   const closeModal = () => {
@@ -281,19 +282,20 @@ export default function ProjectsPage() {
         { id: 5, title: "التسليم النهائي", completed: false },
       ]
     });
-    setTimeout(forceEnableScroll, 300);
+    forceEnableScroll();
   };
 
   const closePreview = () => {
     setIsPreviewOpen(false);
     setPreviewProject(null);
-    setTimeout(forceEnableScroll, 300);
+    forceEnableScroll();
   };
 
   const toggleStep = async (projectId: string, stepId: number) => {
     const project = projects.find(p => p.id === projectId);
     if (!project) return;
 
+    // تحديث لحظي (Optimistic Update)
     const newSteps = project.steps.map((s: any) => 
       s.id === stepId ? { ...s, completed: !s.completed } : s
     );
@@ -301,6 +303,7 @@ export default function ProjectsPage() {
     const completedSteps = newSteps.filter((s: any) => s.completed).length;
     const progress = Math.round((completedSteps / newSteps.length) * 100);
 
+    // تحديث الحالة المحلية فوراً
     setPreviewProject((prev: any) => ({
       ...prev,
       steps: newSteps,
@@ -308,6 +311,7 @@ export default function ProjectsPage() {
       status: progress === 100 ? "مكتمل" : "قيد التنفيذ"
     }));
 
+    // التحديث في Firestore في الخلفية
     try {
       await updateDoc(doc(db, "projects", projectId), {
         steps: newSteps,
@@ -315,7 +319,7 @@ export default function ProjectsPage() {
         status: progress === 100 ? "مكتمل" : "قيد التنفيذ"
       });
     } catch (err) {
-      toast({ title: "خطأ", description: "فشل في تحديث الحالة.", variant: "destructive" });
+      console.error(err);
     }
   };
 
@@ -566,7 +570,7 @@ export default function ProjectsPage() {
 
       {/* مودال عرض تفاصيل المشروع الكاملة */}
       <Dialog open={isPreviewOpen} onOpenChange={(open) => !open && closePreview()}>
-        <DialogContent className="sm:max-w-[850px] rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl bg-white" dir="rtl">
+        <DialogContent className="sm:max-w-[900px] rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl bg-white" dir="rtl">
           {previewProject && (
             <>
               <DialogHeader className="sr-only">
@@ -574,17 +578,7 @@ export default function ProjectsPage() {
                 <DialogDescription>تفاصيل المشروع الكاملة والصور</DialogDescription>
               </DialogHeader>
               
-              <div className="relative w-full aspect-video bg-slate-100 flex items-center justify-center overflow-hidden border-b">
-                {/* زر الإغلاق X العلوي الضخم والبارز جداً */}
-                <Button 
-                  variant="destructive"
-                  size="icon"
-                  className="absolute top-6 right-6 z-[999] h-16 w-16 rounded-full shadow-2xl border-4 border-white hover:scale-110 active:scale-90 transition-all duration-300 group"
-                  onClick={closePreview}
-                >
-                  <X className="h-10 w-10 stroke-[4px] group-hover:rotate-90 transition-transform" />
-                </Button>
-
+              <div className="relative w-full aspect-video bg-slate-50 flex items-center justify-center overflow-hidden border-b">
                 {previewProject.images && previewProject.images.length > 0 ? (
                   <Carousel className="w-full h-full" opts={{ direction: 'rtl' }}>
                     <CarouselContent className="h-full">
@@ -596,27 +590,42 @@ export default function ProjectsPage() {
                             fill 
                             className="object-contain"
                             priority={idx === 0}
-                            sizes="850px"
+                            sizes="900px"
                           />
                         </CarouselItem>
                       ))}
                     </CarouselContent>
-                    {previewProject.images.length > 1 && (
-                      <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-between px-6 pointer-events-none">
-                        <CarouselPrevious className="relative pointer-events-auto left-0 h-14 w-14 bg-white/90 text-slate-900 border-none shadow-2xl hover:bg-white" />
-                        <CarouselNext className="relative pointer-events-auto right-0 h-14 w-14 bg-white/90 text-slate-900 border-none shadow-2xl hover:bg-white" />
+                    
+                    {/* أدوات التحكم في الصور وزر الإغلاق بجانبها */}
+                    <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-between px-6 z-50">
+                      <CarouselPrevious className="relative h-14 w-14 bg-white/90 text-slate-900 border-none shadow-2xl hover:bg-white active:scale-90 transition-transform" />
+                      
+                      {/* زر الإغلاق X الموضع بجانب أدوات التحكم (في المنتصف العلوي ليكون واضحاً) */}
+                      <div className="absolute top-[-150px] left-1/2 -translate-x-1/2 flex items-center gap-4">
+                        <Button 
+                          variant="destructive"
+                          size="lg"
+                          className="h-16 px-8 rounded-full shadow-2xl border-4 border-white font-black text-xl hover:scale-110 active:scale-90 transition-all flex gap-3"
+                          onClick={closePreview}
+                        >
+                          <X className="h-8 w-8 stroke-[4px]" />
+                          إغلاق المعاينة
+                        </Button>
                       </div>
-                    )}
+
+                      <CarouselNext className="relative h-14 w-14 bg-white/90 text-slate-900 border-none shadow-2xl hover:bg-white active:scale-90 transition-transform" />
+                    </div>
                   </Carousel>
                 ) : (
                   <div className="flex items-center justify-center h-full text-slate-300 flex-col gap-4">
                     <ImagePlus className="h-24 w-24" />
                     <p className="font-black text-2xl text-slate-400">لا توجد صور لهذا المشروع</p>
+                    <Button onClick={closePreview} variant="outline" className="rounded-xl font-black mt-4">إغلاق</Button>
                   </div>
                 )}
               </div>
 
-              <ScrollArea className="max-h-[55vh] p-10 bg-white">
+              <ScrollArea className="max-h-[50vh] p-10 bg-white">
                 <div className="space-y-12">
                   <div className="flex flex-col md:flex-row justify-between items-start gap-4">
                     <div className="space-y-3">
@@ -632,30 +641,30 @@ export default function ProjectsPage() {
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                     <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 text-center shadow-sm">
-                      <p className="text-xs font-black text-slate-400 mb-2 uppercase tracking-widest">التكلفة المتفق عليها</p>
+                      <p className="text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">التكلفة</p>
                       <p className="text-3xl font-black text-green-600">{(previewProject.cost || 0).toLocaleString('ar-EG')} ج.م</p>
                     </div>
                     <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 text-center shadow-sm">
-                      <p className="text-xs font-black text-slate-400 mb-2 uppercase tracking-widest">موعد التسليم النهائي</p>
+                      <p className="text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">التسليم</p>
                       <p className="text-3xl font-black text-slate-800">{previewProject.deadline || "غير محدد"}</p>
                     </div>
                     <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 text-center shadow-sm">
-                      <p className="text-xs font-black text-slate-400 mb-2 uppercase tracking-widest">مستوى الإنجاز</p>
+                      <p className="text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">الإنجاز</p>
                       <p className="text-3xl font-black text-primary">{previewProject.progress}%</p>
                     </div>
                   </div>
 
                   <div className="space-y-6">
                     <h3 className="font-black text-2xl text-slate-900 flex items-center gap-3">
-                      <FileText className="h-8 w-8 text-primary" /> تفاصيل متطلبات العميل
+                      <FileText className="h-8 w-8 text-primary" /> المتطلبات
                     </h3>
                     <div className="p-10 bg-slate-50 rounded-[3rem] text-slate-700 leading-relaxed font-bold border border-slate-100 shadow-inner whitespace-pre-wrap text-lg">
-                      {previewProject.requirements || "لم يتم إدخال متطلبات تفصيلية لهذا المشروع."}
+                      {previewProject.requirements || "لم يتم إدخال متطلبات."}
                     </div>
                   </div>
 
                   <div className="space-y-8 pb-10">
-                    <h3 className="font-black text-2xl text-slate-900">مراحل التنفيذ (اضغط للتحديث اللحظي)</h3>
+                    <h3 className="font-black text-2xl text-slate-900">مراحل التنفيذ</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {previewProject.steps?.map((step: any) => (
                         <div 
@@ -672,20 +681,19 @@ export default function ProjectsPage() {
                 </div>
               </ScrollArea>
               
-              <div className="p-10 bg-slate-50 border-t flex flex-col md:flex-row gap-5">
-                <Button onClick={() => router.push(`/clients/${previewProject.clientId}/statement`)} variant="outline" className="rounded-2xl font-black h-16 flex-1 shadow-sm text-xl hover:bg-white transition-all active:scale-95 border-2">
-                  <User className="ml-2 h-7 w-7" /> بروفايل العميل
+              <div className="p-8 bg-slate-50 border-t flex flex-col md:flex-row gap-4">
+                <Button onClick={() => router.push(`/clients/${previewProject.clientId}/statement`)} variant="outline" className="rounded-2xl font-black h-14 flex-1 shadow-sm text-lg hover:bg-white active:scale-95 border-2">
+                  <User className="ml-2 h-6 w-6" /> بروفايل العميل
                 </Button>
-                <Button onClick={() => { closePreview(); handleEditProject(previewProject); }} className="rounded-2xl font-black h-16 flex-1 shadow-xl text-xl bg-blue-600 hover:bg-blue-700 transition-all active:scale-95 text-white">
-                  <Edit className="ml-2 h-7 w-7" /> تعديل المشروع
+                <Button onClick={() => { closePreview(); handleEditProject(previewProject); }} className="rounded-2xl font-black h-14 flex-1 shadow-xl text-lg bg-blue-600 hover:bg-blue-700 text-white">
+                  <Edit className="ml-2 h-6 w-6" /> تعديل المشروع
                 </Button>
-                {/* زر الخروج الضخم والمضمون */}
                 <Button 
                   onClick={closePreview} 
                   variant="destructive" 
-                  className="rounded-2xl font-black h-16 px-12 text-xl bg-slate-800 hover:bg-slate-900 text-white shadow-xl transition-all active:scale-95"
+                  className="rounded-2xl font-black h-14 px-10 text-lg bg-slate-800 hover:bg-slate-900 text-white shadow-xl"
                 >
-                  <LogOut className="ml-2 h-7 w-7 rotate-180" /> خروج من المعاينة
+                  <LogOut className="ml-2 h-6 w-6 rotate-180" /> خروج
                 </Button>
               </div>
             </>
