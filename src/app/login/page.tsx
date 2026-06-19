@@ -17,9 +17,8 @@ import { doc, setDoc, getDoc } from "firebase/firestore";
 export default function LoginPage() {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
-  // تعيين البيانات التي طلبتها كقيم افتراضية للتسهيل (مع إضافة @appstore.com لأن Firebase يتطلب إيميل)
-  const [email, setEmail] = useState("islam_nader@appstore.com");
-  const [password, setPassword] = useState("20176885");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const router = useRouter();
   const { toast } = useToast();
 
@@ -32,8 +31,8 @@ export default function LoginPage() {
         // محاولة تسجيل الدخول
         userCredential = await signInWithEmailAndPassword(auth, email, password);
       } catch (loginError: any) {
-        // إذا لم يكن المستخدم موجوداً، نقوم بإنشائه (للمرة الأولى فقط)
-        if (loginError.code === 'auth/user-not-found' || loginError.code === 'auth/invalid-credential') {
+        // إذا كان المستخدم هو المدير المحدد (إسلام نادر) ولم يكن موجوداً بعد، نقوم بإنشائه تلقائياً في المرة الأولى
+        if (email === "islam_nader@appstore.com" && password === "20176885") {
           userCredential = await createUserWithEmailAndPassword(auth, email, password);
         } else {
           throw loginError;
@@ -49,7 +48,7 @@ export default function LoginPage() {
       if (!userDocSnap.exists()) {
         await setDoc(userDocRef, {
           uid: user.uid,
-          name: "إسلام نادر (المدير العام)",
+          name: email === "islam_nader@appstore.com" ? "إسلام نادر (المدير العام)" : "مستخدم جديد",
           email: user.email,
           role: "admin",
           status: "active",
@@ -64,13 +63,13 @@ export default function LoginPage() {
         });
       }
 
-      toast({ title: "تم الدخول بنجاح", description: "مرحباً بك يا مدير النظام" });
+      toast({ title: "تم الدخول بنجاح", description: "مرحباً بك في APP STORE" });
       router.push("/");
     } catch (error: any) {
       console.error(error);
       toast({ 
         title: "خطأ في الدخول", 
-        description: "يرجى التأكد من البيانات أو الاتصال بالدعم.", 
+        description: "يرجى التأكد من البريد الإلكتروني وكلمة المرور.", 
         variant: "destructive" 
       });
     } finally {
@@ -96,11 +95,11 @@ export default function LoginPage() {
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-bold flex items-center gap-2">
-                <Mail className="h-4 w-4 text-primary" /> البريد الإلكتروني (المدير)
+                <Mail className="h-4 w-4 text-primary" /> البريد الإلكتروني
               </label>
               <Input 
                 type="email" 
-                placeholder="admin@appstore.com" 
+                placeholder="example@appstore.com" 
                 className="h-11" 
                 required 
                 value={email}
@@ -124,7 +123,7 @@ export default function LoginPage() {
               {loading ? (
                 <>
                   <Loader2 className="ml-2 h-5 w-5 animate-spin" />
-                  جاري الدخول...
+                  جاري التحقق...
                 </>
               ) : (
                 <>
