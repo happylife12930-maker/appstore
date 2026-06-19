@@ -281,9 +281,11 @@ export default function ProjectsPage() {
   const closePreview = () => {
     setIsPreviewOpen(false);
     setPreviewProject(null);
+    forceEnableScroll();
   };
 
   const toggleStep = async (projectId: string, stepId: number) => {
+    // تحديث محلي فوري للسرعة (Optimistic Update)
     const project = projects.find(p => p.id === projectId);
     if (!project) return;
 
@@ -293,6 +295,14 @@ export default function ProjectsPage() {
 
     const completedSteps = newSteps.filter((s: any) => s.completed).length;
     const progress = Math.round((completedSteps / newSteps.length) * 100);
+
+    // تحديث الحالة المحلية فوراً
+    setPreviewProject((prev: any) => ({
+      ...prev,
+      steps: newSteps,
+      progress: progress,
+      status: progress === 100 ? "مكتمل" : "قيد التنفيذ"
+    }));
 
     try {
       await updateDoc(doc(db, "projects", projectId), {
@@ -552,7 +562,7 @@ export default function ProjectsPage() {
 
       {/* مودال عرض تفاصيل المشروع الكاملة */}
       <Dialog open={isPreviewOpen} onOpenChange={(open) => !open && closePreview()}>
-        <DialogContent className="sm:max-w-[800px] rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl bg-white" dir="rtl">
+        <DialogContent className="sm:max-w-[850px] rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl bg-white" dir="rtl">
           {previewProject && (
             <>
               <DialogHeader className="sr-only">
@@ -561,14 +571,15 @@ export default function ProjectsPage() {
               </DialogHeader>
               
               <div className="relative w-full aspect-video bg-slate-100 flex items-center justify-center overflow-hidden border-b">
-                {/* زر الإغلاق X العلوي المطور والواضح جداً */}
+                {/* زر الإغلاق X العلوي الضخم والبارز جداً بلون أحمر */}
                 <DialogClose asChild>
                   <Button 
                     variant="destructive"
                     size="icon"
-                    className="absolute top-4 right-4 z-[999] h-14 w-14 rounded-full shadow-2xl border-4 border-white hover:scale-110 active:scale-90 transition-all duration-300 group"
+                    className="absolute top-6 right-6 z-[999] h-16 w-16 rounded-full shadow-2xl border-4 border-white hover:scale-110 active:scale-90 transition-all duration-300 group bg-red-600 hover:bg-red-700"
+                    onClick={closePreview}
                   >
-                    <X className="h-8 w-8 stroke-[4px] group-hover:rotate-90 transition-transform" />
+                    <X className="h-10 w-10 stroke-[4px] group-hover:rotate-90 transition-transform" />
                   </Button>
                 </DialogClose>
 
@@ -583,75 +594,75 @@ export default function ProjectsPage() {
                             fill 
                             className="object-contain"
                             priority={idx === 0}
-                            sizes="800px"
+                            sizes="850px"
                           />
                         </CarouselItem>
                       ))}
                     </CarouselContent>
                     {previewProject.images.length > 1 && (
                       <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-between px-6 pointer-events-none">
-                        <CarouselPrevious className="relative pointer-events-auto left-0 h-12 w-12 bg-white/80 text-slate-900 border-none shadow-xl hover:bg-white" />
-                        <CarouselNext className="relative pointer-events-auto right-0 h-12 w-12 bg-white/80 text-slate-900 border-none shadow-xl hover:bg-white" />
+                        <CarouselPrevious className="relative pointer-events-auto left-0 h-14 w-14 bg-white/90 text-slate-900 border-none shadow-2xl hover:bg-white" />
+                        <CarouselNext className="relative pointer-events-auto right-0 h-14 w-14 bg-white/90 text-slate-900 border-none shadow-2xl hover:bg-white" />
                       </div>
                     )}
                   </Carousel>
                 ) : (
                   <div className="flex items-center justify-center h-full text-slate-300 flex-col gap-4">
-                    <ImagePlus className="h-20 w-20" />
-                    <p className="font-black text-xl text-slate-400">لا توجد صور لهذا المشروع</p>
+                    <ImagePlus className="h-24 w-24" />
+                    <p className="font-black text-2xl text-slate-400">لا توجد صور لهذا المشروع</p>
                   </div>
                 )}
               </div>
 
-              <ScrollArea className="max-h-[50vh] p-10 bg-white">
-                <div className="space-y-10">
+              <ScrollArea className="max-h-[55vh] p-10 bg-white">
+                <div className="space-y-12">
                   <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-                    <div className="space-y-2">
-                      <h2 className="text-3xl font-black text-slate-900 leading-tight">{previewProject.name}</h2>
-                      <div className="flex items-center gap-2 text-primary font-black text-lg">
-                        <User className="h-6 w-6" /> العميل: {previewProject.clientName}
+                    <div className="space-y-3">
+                      <h2 className="text-4xl font-black text-slate-900 leading-tight">{previewProject.name}</h2>
+                      <div className="flex items-center gap-2 text-primary font-black text-xl">
+                        <User className="h-7 w-7" /> العميل: {previewProject.clientName}
                       </div>
                     </div>
-                    <Badge className={`px-6 py-2 text-lg font-black border-none shadow-sm rounded-xl ${previewProject.progress === 100 ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700'}`}>
+                    <Badge className={`px-8 py-3 text-xl font-black border-none shadow-sm rounded-2xl ${previewProject.progress === 100 ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700'}`}>
                       {previewProject.status}
                     </Badge>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 text-center shadow-sm">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 text-center shadow-sm">
                       <p className="text-xs font-black text-slate-400 mb-2 uppercase tracking-widest">التكلفة المتفق عليها</p>
-                      <p className="text-2xl font-black text-green-600">{(previewProject.cost || 0).toLocaleString('ar-EG')} ج.م</p>
+                      <p className="text-3xl font-black text-green-600">{(previewProject.cost || 0).toLocaleString('ar-EG')} ج.م</p>
                     </div>
-                    <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 text-center shadow-sm">
+                    <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 text-center shadow-sm">
                       <p className="text-xs font-black text-slate-400 mb-2 uppercase tracking-widest">موعد التسليم النهائي</p>
-                      <p className="text-2xl font-black text-slate-800">{previewProject.deadline || "غير محدد"}</p>
+                      <p className="text-3xl font-black text-slate-800">{previewProject.deadline || "غير محدد"}</p>
                     </div>
-                    <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 text-center shadow-sm">
+                    <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 text-center shadow-sm">
                       <p className="text-xs font-black text-slate-400 mb-2 uppercase tracking-widest">مستوى الإنجاز</p>
-                      <p className="text-2xl font-black text-primary">{previewProject.progress}%</p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <h3 className="font-black text-xl text-slate-900 flex items-center gap-3">
-                      <FileText className="h-6 w-6 text-primary" /> تفاصيل متطلبات العميل
-                    </h3>
-                    <div className="p-8 bg-slate-50 rounded-[2.5rem] text-slate-700 leading-relaxed font-bold border border-slate-100 shadow-inner whitespace-pre-wrap">
-                      {previewProject.requirements || "لم يتم إدخال متطلبات تفصيلية لهذا المشروع."}
+                      <p className="text-3xl font-black text-primary">{previewProject.progress}%</p>
                     </div>
                   </div>
 
                   <div className="space-y-6">
-                    <h3 className="font-black text-xl text-slate-900">مراحل التنفيذ (اضغط للتحديث)</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <h3 className="font-black text-2xl text-slate-900 flex items-center gap-3">
+                      <FileText className="h-8 w-8 text-primary" /> تفاصيل متطلبات العميل
+                    </h3>
+                    <div className="p-10 bg-slate-50 rounded-[3rem] text-slate-700 leading-relaxed font-bold border border-slate-100 shadow-inner whitespace-pre-wrap text-lg">
+                      {previewProject.requirements || "لم يتم إدخال متطلبات تفصيلية لهذا المشروع."}
+                    </div>
+                  </div>
+
+                  <div className="space-y-8 pb-10">
+                    <h3 className="font-black text-2xl text-slate-900">مراحل التنفيذ (اضغط للتحديث اللحظي)</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {previewProject.steps?.map((step: any) => (
                         <div 
                           key={step.id} 
                           onClick={() => toggleStep(previewProject.id, step.id)}
-                          className={`flex items-center gap-4 p-5 rounded-2xl border cursor-pointer transition-all shadow-sm active:scale-[0.98] ${step.completed ? 'bg-green-50 border-green-200 text-green-800' : 'bg-white border-slate-200 text-slate-400 hover:border-primary/40'}`}
+                          className={`flex items-center gap-5 p-6 rounded-[2rem] border cursor-pointer transition-all shadow-md active:scale-[0.97] hover:shadow-lg ${step.completed ? 'bg-green-50 border-green-300 text-green-800' : 'bg-white border-slate-200 text-slate-500 hover:border-primary/50'}`}
                         >
-                          <CheckCircle2 className={`h-7 w-7 ${step.completed ? 'text-green-600' : 'text-slate-200'}`} />
-                          <span className="font-black text-lg">{step.title}</span>
+                          <CheckCircle2 className={`h-9 w-9 ${step.completed ? 'text-green-600' : 'text-slate-200'}`} />
+                          <span className="font-black text-xl">{step.title}</span>
                         </div>
                       ))}
                     </div>
@@ -659,18 +670,21 @@ export default function ProjectsPage() {
                 </div>
               </ScrollArea>
               
-              <div className="p-8 bg-slate-50 border-t flex flex-col md:flex-row gap-4">
-                <Button onClick={() => router.push(`/clients/${previewProject.clientId}/statement`)} variant="outline" className="rounded-2xl font-black h-14 flex-1 shadow-sm text-lg hover:bg-white transition-all active:scale-95">
-                  <User className="ml-2 h-6 w-6" /> بروفايل العميل
+              <div className="p-10 bg-slate-50 border-t flex flex-col md:flex-row gap-5">
+                <Button onClick={() => router.push(`/clients/${previewProject.clientId}/statement`)} variant="outline" className="rounded-2xl font-black h-16 flex-1 shadow-sm text-xl hover:bg-white transition-all active:scale-95 border-2">
+                  <User className="ml-2 h-7 w-7" /> بروفايل العميل
                 </Button>
-                <Button onClick={() => { closePreview(); handleEditProject(previewProject); }} className="rounded-2xl font-black h-14 flex-1 shadow-lg text-lg bg-primary hover:bg-primary/90 transition-all active:scale-95">
-                  <Edit className="ml-2 h-6 w-6" /> تعديل المشروع
+                <Button onClick={() => { closePreview(); handleEditProject(previewProject); }} className="rounded-2xl font-black h-16 flex-1 shadow-xl text-xl bg-blue-600 hover:bg-blue-700 transition-all active:scale-95 text-white">
+                  <Edit className="ml-2 h-7 w-7" /> تعديل المشروع
                 </Button>
-                <DialogClose asChild>
-                  <Button variant="secondary" className="rounded-2xl font-black h-14 px-10 text-lg bg-slate-200 hover:bg-slate-300 text-slate-700 shadow-sm transition-all active:scale-95">
-                    <LogOut className="ml-2 h-6 w-6 rotate-180" /> خروج
-                  </Button>
-                </DialogClose>
+                {/* زر الخروج الضخم والواضح في أسفل المعاينة */}
+                <Button 
+                  onClick={closePreview} 
+                  variant="destructive" 
+                  className="rounded-2xl font-black h-16 px-12 text-xl bg-slate-800 hover:bg-slate-900 text-white shadow-xl transition-all active:scale-95"
+                >
+                  <LogOut className="ml-2 h-7 w-7 rotate-180" /> خروج من المعاينة
+                </Button>
               </div>
             </>
           )}
