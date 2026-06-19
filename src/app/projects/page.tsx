@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -55,7 +56,7 @@ export default function ProjectsPage() {
         createdAt: serverTimestamp(),
       };
 
-      await addDoc(collection(db, "projects"), projectData);
+      addDoc(collection(db, "projects"), projectData);
       toast({ title: "تم الرفع", description: "تمت إضافة المشروع بنجاح." });
     } catch (err: any) {
       toast({ title: "خطأ", description: "فشل في رفع الملف.", variant: "destructive" });
@@ -66,12 +67,8 @@ export default function ProjectsPage() {
 
   const handleDeleteProject = async (id: string) => {
     if (!db) return;
-    try {
-      await deleteDoc(doc(db, "projects", id));
-      toast({ title: "تم الحذف", description: "تم حذف المشروع بنجاح." });
-    } catch (err) {
-      toast({ title: "خطأ", description: "فشل في الحذف.", variant: "destructive" });
-    }
+    deleteDoc(doc(db, "projects", id));
+    toast({ title: "تم الحذف", description: "تم حذف المشروع بنجاح." });
   };
 
   if (error) {
