@@ -6,7 +6,7 @@ import {LanguageProvider} from '@/components/language-provider';
 import {DashboardShell} from '@/components/dashboard-shell';
 
 export const metadata: Metadata = {
-  title: 'زينيث | مدير الوكالة',
+  title: 'APP STORE | مدير الوكالة',
   description: 'نظام إدارة المشاريع والعملاء لوكالات البرمجيات.',
 };
 

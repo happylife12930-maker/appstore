@@ -70,10 +70,10 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         <SidebarHeader className="border-b border-sidebar-border/50 py-4">
           <div className="flex items-center gap-2 px-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground font-headline font-bold text-xl">
-              Z
+              A
             </div>
             <div className="flex flex-col overflow-hidden transition-all group-data-[collapsible=icon]:w-0">
-              <span className="font-headline font-bold text-lg leading-tight">Zenith</span>
+              <span className="font-headline font-bold text-lg leading-tight uppercase">APP STORE</span>
               <span className="text-[10px] uppercase tracking-wider text-sidebar-foreground/50 font-medium">{t('agencyAdmin')}</span>
             </div>
           </div>
