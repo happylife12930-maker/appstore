@@ -1,4 +1,3 @@
-
 "use client";
 import * as React from "react";
 import { useState, useEffect } from "react";
@@ -11,8 +10,7 @@ import {
   MoreVertical, 
   Trash2, 
   Edit3, 
-  FileText,
-  X
+  FileText
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,7 +23,7 @@ import {
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, query, orderBy } from "firebase/firestore";
+import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { AddClientModal, ClientData } from "@/components/modals/add-client-modal";
 import { useRouter } from "next/navigation";
@@ -79,70 +77,70 @@ export default function ClientsPage() {
   });
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6" dir="rtl">
+    <div className="max-w-7xl mx-auto space-y-6 pb-20" dir="rtl">
       <header className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-black text-slate-800">إدارة العملاء</h1>
-          <p className="text-slate-500 font-bold">قائمة العملاء والمستحقات المالية</p>
+          <h1 className="text-3xl font-black text-slate-800">قاعدة بيانات العملاء</h1>
+          <p className="text-slate-500 font-bold">إدارة البيانات والمستحقات والربط الفني</p>
         </div>
-        <Button onClick={() => { setEditingClient(null); setIsModalOpen(true); }} className="rounded-2xl h-12 font-black shadow-lg gap-2">
-          <Plus className="h-5 w-5" /> إضافة عميل
+        <Button onClick={() => { setEditingClient(null); setIsModalOpen(true); }} className="rounded-2xl h-14 font-black shadow-lg gap-2 px-8">
+          <Plus className="h-6 w-6" /> إضافة عميل
         </Button>
       </header>
 
-      <div className="relative">
+      <div className="relative group">
         <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5" />
         <Input 
-          placeholder="ابحث بالاسم، رقم الهاتف، أو المشروع..." 
-          className="pr-12 h-14 rounded-2xl border-none shadow-sm bg-white font-bold text-lg"
+          placeholder="ابحث بالاسم، رقم الهاتف، أو اسم المشروع..." 
+          className="pr-12 h-16 rounded-[1.5rem] border-none shadow-sm bg-white font-bold text-xl transition-all focus:ring-2 focus:ring-primary/20"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {filteredClients.map((client) => {
           const balance = (client.totalInvoices || 0) - (client.totalPayments || 0);
           return (
-            <Card key={client.id} className="rounded-[2rem] border-none shadow-sm hover:shadow-xl transition-all bg-white overflow-hidden group">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <div className="flex items-center gap-3">
-                  <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-black text-xl">
+            <Card key={client.id} className="rounded-[2.5rem] border-none shadow-sm hover:shadow-2xl transition-all bg-white overflow-hidden">
+              <CardHeader className="flex flex-row items-center justify-between pb-4">
+                <div className="flex items-center gap-4">
+                  <div className="h-16 w-16 rounded-[1.5rem] bg-primary/10 flex items-center justify-center text-primary font-black text-2xl">
                     {client.name?.[0]}
                   </div>
                   <div>
-                    <CardTitle className="text-lg font-black text-slate-800">{client.name}</CardTitle>
-                    <Badge variant="secondary" className="font-bold text-[10px] mt-1">{client.projectName || "بدون مشروع"}</Badge>
+                    <CardTitle className="text-xl font-black text-slate-800">{client.name}</CardTitle>
+                    <Badge variant="secondary" className="font-bold mt-1">{client.projectName || "غير مرتبط بمشروع"}</Badge>
                   </div>
                 </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="rounded-xl"><MoreVertical className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" className="rounded-xl h-10 w-10"><MoreVertical className="h-5 w-5" /></Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="rounded-xl font-bold">
-                    <DropdownMenuItem onClick={() => { setEditingClient(client); setIsModalOpen(true); }} className="gap-2"><Edit3 className="h-4 w-4" /> تعديل</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => router.push(`/clients/${client.id}/statement`)} className="gap-2"><FileText className="h-4 w-4" /> كشف حساب</DropdownMenuItem>
-                    <DropdownMenuItem onClick={async () => { if(confirm("حذف؟")) await deleteDoc(doc(db!, "clients", client.id)) }} className="text-rose-600 gap-2"><Trash2 className="h-4 w-4" /> حذف</DropdownMenuItem>
+                  <DropdownMenuContent align="end" className="rounded-2xl font-bold min-w-[150px]">
+                    <DropdownMenuItem onClick={() => { setEditingClient(client); setIsModalOpen(true); }} className="gap-2 p-3"><Edit3 className="h-4 w-4" /> تعديل البيانات</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => router.push(`/clients/${client.id}/statement`)} className="gap-2 p-3"><FileText className="h-4 w-4" /> كشف حساب مالي</DropdownMenuItem>
+                    <DropdownMenuItem onClick={async () => { if(confirm("هل أنت متأكد من حذف العميل؟")) await deleteDoc(doc(db!, "clients", client.id)) }} className="text-rose-600 gap-2 p-3 font-black"><Trash2 className="h-4 w-4" /> حذف العميل</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </CardHeader>
-              <CardContent className="space-y-4 pt-2">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-sm text-slate-500 font-bold">
-                    <Phone className="h-4 w-4 text-primary" /> <span dir="ltr">{client.phone}</span>
+              <CardContent className="space-y-6 pt-2">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3 text-slate-500 font-bold bg-slate-50 p-3 rounded-2xl">
+                    <Phone className="h-5 w-5 text-primary" /> <span dir="ltr">{client.phone}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-slate-500 font-bold">
-                    <Mail className="h-4 w-4 text-primary" /> {client.email}
+                  <div className="flex items-center gap-3 text-slate-500 font-bold bg-slate-50 p-3 rounded-2xl">
+                    <Mail className="h-5 w-5 text-primary" /> {client.email}
                   </div>
                 </div>
-                <div className="p-4 bg-slate-50 rounded-2xl flex justify-between items-center">
+                <div className="p-6 bg-slate-900 rounded-[2rem] flex justify-between items-center text-white">
                   <div>
-                    <p className="text-[10px] text-slate-400 font-black">الرصيد المتبقي</p>
-                    <p className={`text-xl font-black ${balance > 0 ? 'text-rose-600' : 'text-green-600'}`}>
+                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-wider">الرصيد المتبقي</p>
+                    <p className={`text-2xl font-black ${balance > 0 ? 'text-rose-400' : 'text-green-400'}`}>
                       {balance.toLocaleString('ar-EG')} <span className="text-xs">ج.م</span>
                     </p>
                   </div>
-                  <Button variant="outline" size="sm" onClick={() => router.push(`/clients/${client.id}/statement`)} className="rounded-xl font-black">كشف الحساب</Button>
+                  <Button variant="outline" size="sm" onClick={() => router.push(`/clients/${client.id}/statement`)} className="rounded-xl font-black bg-white/10 border-white/20 hover:bg-white/20 text-white">التفاصيل</Button>
                 </div>
               </CardContent>
             </Card>

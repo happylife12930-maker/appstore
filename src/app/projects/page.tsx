@@ -1,4 +1,3 @@
-
 "use client";
 import * as React from "react";
 import { useState, useEffect, Suspense } from "react";
@@ -48,13 +47,12 @@ function ProjectsContent() {
     
     const unsub = onSnapshot(collection(db, "projects"), (snapshot) => {
       let projectList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      
-      projectList.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      // ترتيب البيانات برمجياً لتجنب خطأ الفهرس في Firestore
+      projectList.sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
       
       if (profile?.role === 'client') {
         projectList = projectList.filter(p => p.clientEmail === profile.email || p.clientId === profile.uid);
       }
-
       setProjects(projectList);
       setLoading(false);
 
@@ -72,15 +70,29 @@ function ProjectsContent() {
   const toggleStep = async (projectId: string, stepId: number) => {
     if (profile?.role !== 'admin') return;
 
-    const project = projects.find(p => p.id === projectId);
-    if (!project) return;
+    const projectIndex = projects.findIndex(p => p.id === projectId);
+    if (projectIndex === -1) return;
 
-    const updatedSteps = project.steps?.map((s: any) => 
+    const currentProject = projects[projectIndex];
+    const updatedSteps = currentProject.steps?.map((s: any) => 
       s.id === stepId ? { ...s, completed: !s.completed } : s
     ) || [];
     
     const completedSteps = updatedSteps.filter((s: any) => s.completed).length;
     const progress = Math.round((completedSteps / updatedSteps.length) * 100);
+
+    const updatedProject = {
+      ...currentProject,
+      steps: updatedSteps,
+      progress: progress,
+      status: progress === 100 ? "مكتمل" : "قيد التنفيذ"
+    };
+    
+    // تحديث الواجهة فوراً (Optimistic UI)
+    const newProjects = [...projects];
+    newProjects[projectIndex] = updatedProject;
+    setProjects(newProjects);
+    setSelectedProject(updatedProject);
 
     try {
       await updateDoc(doc(db!, "projects", projectId), {
@@ -89,7 +101,7 @@ function ProjectsContent() {
         status: progress === 100 ? "مكتمل" : "قيد التنفيذ"
       });
     } catch (err) {
-      toast({ title: "خطأ", description: "فشل تحديث البيانات.", variant: "destructive" });
+      toast({ title: "خطأ", description: "فشل تحديث المرحلة.", variant: "destructive" });
     }
   };
 
@@ -102,15 +114,15 @@ function ProjectsContent() {
     <div className="max-w-7xl mx-auto space-y-6 pb-20" dir="rtl">
       <header className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-black text-slate-800">المشاريع</h1>
-          <p className="text-slate-500 font-bold">تتبع حالة التنفيذ والخطوات المكتملة</p>
+          <h1 className="text-3xl font-black text-slate-800">سجل المشروعات</h1>
+          <p className="text-slate-500 font-bold">متابعة دقيقة لمراحل الإنجاز والخطوات</p>
         </div>
       </header>
 
-      <div className="relative group">
+      <div className="relative">
         <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5" />
         <Input 
-          placeholder="ابحث باسم المشروع..." 
+          placeholder="ابحث باسم المشروع أو العميل..." 
           className="pr-12 h-14 rounded-2xl border-none shadow-sm bg-white font-bold text-lg"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
@@ -119,32 +131,32 @@ function ProjectsContent() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredProjects.map((project) => (
-          <Card key={project.id} className="rounded-[2.5rem] border-none shadow-sm hover:shadow-lg transition-all bg-white overflow-hidden">
+          <Card key={project.id} className="rounded-[2.5rem] border-none shadow-sm hover:shadow-xl transition-all bg-white overflow-hidden group">
             <CardHeader className="pb-2">
               <div className="flex justify-between items-start mb-2">
-                <Badge className={project.status === "مكتمل" ? "bg-green-500 font-black" : "bg-blue-600 font-black"}>
+                <Badge className={project.status === "مكتمل" ? "bg-green-600 font-black" : "bg-primary font-black"}>
                   {project.status}
                 </Badge>
                 <span className="text-[10px] font-black text-slate-400 flex items-center gap-1">
-                  <Calendar className="h-3 w-3" /> {new Date(project.createdAt).toLocaleDateString('ar-EG')}
+                  <Calendar className="h-3 w-3" /> {project.createdAt ? new Date(project.createdAt).toLocaleDateString('ar-EG') : '---'}
                 </span>
               </div>
-              <CardTitle className="text-xl font-black text-slate-800">{project.name}</CardTitle>
-              <CardDescription className="font-bold">الموعد المتوقع: {project.deadline}</CardDescription>
+              <CardTitle className="text-xl font-black text-slate-800 group-hover:text-primary transition-colors">{project.name}</CardTitle>
+              <CardDescription className="font-bold flex items-center gap-1">العميل: {project.clientName}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-2">
                 <div className="flex justify-between items-center text-xs font-black">
-                  <span className="text-slate-500">الإنجاز</span>
+                  <span className="text-slate-400 uppercase">نسبة الإنجاز</span>
                   <span className="text-primary">{project.progress}%</span>
                 </div>
-                <Progress value={project.progress} className="h-2 rounded-full" />
+                <Progress value={project.progress} className="h-2.5 rounded-full" />
               </div>
               <Button 
                 onClick={() => { setSelectedProject(project); setIsViewModalOpen(true); }}
-                className="w-full rounded-2xl h-12 font-black gap-2 shadow-md"
+                className="w-full rounded-2xl h-14 font-black gap-2 shadow-md transition-all active:scale-95"
               >
-                <Eye className="h-5 w-5" /> تفاصيل التنفيذ
+                <Eye className="h-5 w-5" /> متابعة التنفيذ
               </Button>
             </CardContent>
           </Card>
@@ -152,53 +164,61 @@ function ProjectsContent() {
       </div>
 
       <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>
-        <DialogContent className="sm:max-w-[700px] rounded-[3rem] p-0 overflow-hidden border-none shadow-2xl bg-white" dir="rtl">
-          <div className="bg-primary p-10 text-primary-foreground relative">
+        <DialogContent className="sm:max-w-[750px] rounded-[3.5rem] p-0 overflow-hidden border-none shadow-2xl bg-white" dir="rtl">
+          <div className="bg-primary p-12 text-primary-foreground relative">
              <Button 
               variant="ghost" 
               size="icon" 
               onClick={() => setIsViewModalOpen(false)}
-              className="absolute left-4 top-4 text-white hover:bg-white/20 rounded-full"
+              className="absolute left-6 top-6 text-white hover:bg-white/20 rounded-full h-12 w-12"
             >
-              <X className="h-6 w-6" />
+              <X className="h-8 w-8" />
             </Button>
             <DialogHeader>
-              <DialogTitle className="text-3xl font-black">{selectedProject?.name}</DialogTitle>
-              <p className="opacity-80 font-bold mt-2">متابعة مراحل العمل والجدول الزمني</p>
+              <DialogTitle className="text-4xl font-black">{selectedProject?.name}</DialogTitle>
+              <p className="opacity-80 font-bold mt-3 text-lg">خارطة الطريق التقنية وجدول الإنجاز</p>
             </DialogHeader>
           </div>
 
-          <ScrollArea className="max-h-[60vh] p-8">
-            <div className="space-y-8">
+          <ScrollArea className="max-h-[65vh] p-10">
+            <div className="space-y-10">
               <div className="space-y-4">
-                <h3 className="text-xl font-black text-slate-800 flex items-center gap-2">
-                  <CheckCircle2 className="h-6 w-6 text-primary" /> مراحل التنفيذ الحالية
+                <h3 className="text-2xl font-black text-slate-800 flex items-center gap-3">
+                  <CheckCircle2 className="h-7 w-7 text-primary" /> قائمة مراحل العمل
                 </h3>
-                <div className="grid grid-cols-1 gap-3">
+                <div className="grid grid-cols-1 gap-4">
                   {selectedProject?.steps?.map((step: any) => (
                     <div 
                       key={step.id} 
                       onClick={() => toggleStep(selectedProject.id, step.id)}
-                      className={`flex items-center justify-between p-5 rounded-3xl border-2 transition-all cursor-pointer ${
+                      className={`flex items-center justify-between p-6 rounded-[2rem] border-2 transition-all cursor-pointer ${
                         step.completed ? 'bg-green-50 border-green-200' : 'bg-slate-50 border-slate-100'
-                      }`}
+                      } ${profile?.role === 'admin' ? 'hover:scale-[1.02] hover:border-primary/20' : 'cursor-default'}`}
                     >
-                      <span className={`text-lg font-black ${step.completed ? 'text-green-700' : 'text-slate-600'}`}>
+                      <span className={`text-xl font-black ${step.completed ? 'text-green-700' : 'text-slate-600'}`}>
                         {step.title}
                       </span>
-                      {step.completed ? <Check className="h-6 w-6 text-green-500" /> : <Clock className="h-5 w-5 text-slate-300" />}
+                      {step.completed ? (
+                        <div className="h-10 w-10 bg-green-500 rounded-full flex items-center justify-center text-white shadow-lg">
+                          <Check className="h-6 w-6" />
+                        </div>
+                      ) : (
+                        <div className="h-10 w-10 bg-slate-200 rounded-full flex items-center justify-center text-slate-400">
+                          <Clock className="h-5 w-5" />
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* زر الإغلاق الموحد أسفل المراحل مباشرة كما طلب العميل */}
-              <div className="pt-4 pb-4">
+              {/* زر الخروج الموحد والبارز أسفل الخطوات مباشرة */}
+              <div className="pt-6 pb-2">
                 <Button 
                   onClick={() => setIsViewModalOpen(false)}
-                  className="w-full h-16 rounded-[2rem] bg-slate-900 hover:bg-slate-800 text-white font-black text-xl shadow-xl transition-all active:scale-95 flex items-center justify-center gap-3"
+                  className="w-full h-20 rounded-[2.5rem] bg-slate-900 hover:bg-slate-800 text-white font-black text-2xl shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-4"
                 >
-                  <ChevronRight className="h-6 w-6" /> إغلاق ومعاودة العمل
+                  <ChevronRight className="h-8 w-8" /> إغلاق ومعاودة العمل
                 </Button>
               </div>
             </div>
