@@ -19,7 +19,8 @@ import {
   Settings,
   LogOut,
   Languages,
-  UserCheck
+  UserCheck,
+  ShieldAlert
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -56,9 +57,16 @@ const navItems = [
   { title: "analytics", url: "/analytics", icon: BarChart3 },
 ];
 
+const adminItems = [
+  { title: "userManagement", url: "/users", icon: ShieldAlert },
+];
+
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { t, language, setLanguage, dir } = useTranslation();
+
+  // لا نعرض الـ Sidebar في صفحة تسجيل الدخول
+  if (pathname === '/login') return <>{children}</>;
 
   const toggleLanguage = () => {
     setLanguage(language === 'en' ? 'ar' : 'en');
@@ -100,6 +108,28 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
+
+          <SidebarGroup>
+            <SidebarGroupLabel>الإدارة العليا</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {adminItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton 
+                      asChild 
+                      isActive={pathname === item.url}
+                      tooltip={t(item.title)}
+                    >
+                      <Link href={item.url}>
+                        <item.icon className="text-rose-500" />
+                        <span>{t(item.title)}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
         </SidebarContent>
         <SidebarFooter className="border-t border-sidebar-border/50 p-4">
           <SidebarMenu>
@@ -124,7 +154,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             <SidebarTrigger />
             <div className="h-4 w-px bg-border" />
             <h2 className="font-headline text-lg font-bold">
-              {t(navItems.find(i => i.url === pathname)?.title || "overview")}
+              {t(navItems.find(i => i.url === pathname)?.title || adminItems.find(i => i.url === pathname)?.title || "overview")}
             </h2>
           </div>
           <div className="flex items-center gap-2">
@@ -134,9 +164,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             <button className="text-muted-foreground hover:text-foreground transition-colors p-2">
               <Settings className="h-5 w-5" />
             </button>
-            <button className="text-muted-foreground hover:text-destructive transition-colors p-2">
+            <Link href="/login" className="text-muted-foreground hover:text-destructive transition-colors p-2">
               <LogOut className="h-5 w-5" />
-            </button>
+            </Link>
           </div>
         </header>
         <main className="flex-1 overflow-y-auto p-6">
