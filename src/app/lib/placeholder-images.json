@@ -1,0 +1,29 @@
+
+{
+  "placeholderImages": [
+    {
+      "id": "project-1",
+      "description": "Mobile App Dashboard UI",
+      "imageUrl": "https://picsum.photos/seed/101/600/400",
+      "imageHint": "app dashboard"
+    },
+    {
+      "id": "project-2",
+      "description": "Web Platform Design",
+      "imageUrl": "https://picsum.photos/seed/102/600/400",
+      "imageHint": "website design"
+    },
+    {
+      "id": "project-3",
+      "description": "Android E-commerce App",
+      "imageUrl": "https://picsum.photos/seed/103/600/400",
+      "imageHint": "mobile shopping"
+    },
+    {
+      "id": "avatar-client",
+      "description": "Client Profile Picture",
+      "imageUrl": "https://picsum.photos/seed/avatar1/100/100",
+      "imageHint": "business person"
+    }
+  ]
+}
