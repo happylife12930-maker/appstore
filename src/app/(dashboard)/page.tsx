@@ -1,7 +1,6 @@
 /**
- * تم إبطال هذا الملف نهائياً لمنع تعارض المسارات (Routing Conflict).
- * الكود النشط موجود في src/app/page.tsx
+ * ملف مهمل - تم تعطيل المسار لمنع التعارض مع src/app/page.tsx
  */
-export default function ObsoleteHome() {
+export default function Obsolete() {
   return null;
 }

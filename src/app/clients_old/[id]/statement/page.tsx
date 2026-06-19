@@ -22,11 +22,13 @@ export default function ClientStatementPage() {
     async function fetchData() {
       if (!db || !params.id) return;
       try {
+        // جلب بيانات العميل
         const docRef = doc(db, "clients", params.id as string);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           setClient({ id: docSnap.id, ...docSnap.data() });
           
+          // البحث عن المشروع المرتبط بهذا العميل
           const projectsRef = collection(db, "projects");
           const q = query(projectsRef, where("clientId", "==", params.id));
           const querySnapshot = await getDocs(q);
@@ -35,7 +37,7 @@ export default function ClientStatementPage() {
           }
         }
       } catch (err) {
-        console.error("Error fetching client statement:", err);
+        console.error("Error fetching client for statement:", err);
       } finally {
         setLoading(false);
       }
@@ -78,6 +80,20 @@ export default function ClientStatementPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 pb-20" dir="rtl" style={{ fontFamily: "'Cairo', sans-serif" }}>
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          .no-print { display: none !important; }
+          body { background: white !important; margin: 0 !important; padding: 0 !important; }
+          .max-w-4xl { max-width: 100% !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
+          .shadow-2xl { shadow: none !important; box-shadow: none !important; }
+          .rounded-[2.5rem] { border-radius: 0 !important; }
+          .print-border { border: 1px solid #e2e8f0 !important; }
+          main { padding: 0 !important; }
+          .bg-primary { background-color: #1e293b !important; -webkit-print-color-adjust: exact; }
+          .text-primary-foreground { color: white !important; }
+        }
+      `}} />
+
       <header className="flex justify-between items-center no-print px-4 md:px-0">
         <Button variant="ghost" onClick={() => router.push("/clients")} className="gap-2 font-bold">
           <ArrowRight className="h-4 w-4" /> العودة للعملاء
@@ -94,7 +110,7 @@ export default function ClientStatementPage() {
         </div>
       </header>
 
-      <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden bg-white">
+      <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden bg-white print-border">
         <div className="bg-primary p-10 text-primary-foreground text-center relative">
           <div className="bg-white/20 w-16 h-16 rounded-3xl flex items-center justify-center mx-auto mb-4 no-print">
             <Building2 className="h-8 w-8" />
@@ -151,6 +167,9 @@ export default function ClientStatementPage() {
                     <span className="font-bold text-slate-500">الإنجاز:</span>
                     <span className="font-black text-slate-800">{project.progress}%</span>
                   </div>
+                  <Button onClick={handleOpenProject} variant="link" className="p-0 h-auto text-primary font-black text-xs no-print">
+                    الانتقال لصفحة المشاريع <ExternalLink className="h-3 w-3 mr-1" />
+                  </Button>
                 </div>
               ) : (
                 <div className="flex items-center gap-3">
@@ -193,6 +212,7 @@ export default function ClientStatementPage() {
                 {balance <= 0 ? "حساب مُغلق / مدفوع بالكامل" : `متبقي مبلغ ${balance.toLocaleString('ar-EG')} ج.م`}
               </Badge>
             </div>
+            <p className="text-center text-xs text-slate-400 mt-10 italic">شكراً لتعاملكم مع وكالة APP STORE - نعتز بثقتكم دوماً.</p>
           </div>
         </CardContent>
       </Card>

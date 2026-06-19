@@ -10,6 +10,7 @@ import {
   ChevronRight,
   Eye,
   Loader2,
+  Calendar,
   Check,
   X
 } from "lucide-react";
@@ -46,6 +47,7 @@ function ProjectsContent() {
       let list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       list.sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0));
       
+      // الخصوصية: العميل يرى مشروعه فقط
       if (profile?.role === 'client') {
         list = list.filter(p => p.clientEmail === profile.email || p.clientId === profile.uid);
       }
@@ -67,6 +69,7 @@ function ProjectsContent() {
     const currentProject = projects.find(p => p.id === projectId);
     if (!currentProject) return;
 
+    // Optimistic UI للتحديث اللحظي
     const updatedSteps = currentProject.steps?.map((s: any) => 
       s.id === stepId ? { ...s, completed: !s.completed } : s
     ) || [];
@@ -74,7 +77,7 @@ function ProjectsContent() {
     const doneCount = updatedSteps.filter((s: any) => s.completed).length;
     const prog = Math.round((doneCount / updatedSteps.length) * 100);
 
-    // Optimistic UI for instant feedback
+    // تحديث الحالة محلياً فوراً
     setSelectedProject((prev: any) => ({ ...prev, steps: updatedSteps, progress: prog }));
 
     try {
@@ -89,10 +92,9 @@ function ProjectsContent() {
   };
 
   const filtered = useMemo(() => {
-    const s = searchQuery.toLowerCase();
     return projects.filter(p => 
-      (p.name || "").toLowerCase().includes(s) || 
-      (p.clientName || "").toLowerCase().includes(s)
+      p.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      p.clientName?.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [projects, searchQuery]);
 
@@ -101,43 +103,41 @@ function ProjectsContent() {
   return (
     <div className="max-w-7xl mx-auto space-y-6 pb-20" dir="rtl">
       <header>
-        <h1 className="text-3xl font-black text-slate-800 flex items-center gap-3">
-          <Briefcase className="h-8 w-8 text-primary" /> خارطة المشروعات
-        </h1>
-        <p className="text-slate-500 font-bold">متابعة مراحل التنفيذ والإنجاز اللحظي</p>
+        <h1 className="text-3xl font-black text-slate-800">خارطة المشروعات</h1>
+        <p className="text-slate-500 font-bold">متابعة مراحل التنفيذ والإنجاز</p>
       </header>
 
       <div className="relative">
         <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5" />
         <input 
           placeholder="ابحث باسم المشروع أو العميل..." 
-          className="w-full pr-12 h-16 rounded-[1.5rem] border-none shadow-sm bg-white font-bold text-xl focus:ring-2 focus:ring-primary/20 outline-none"
+          className="w-full pr-12 h-14 rounded-2xl border-none shadow-sm bg-white font-bold text-lg focus:ring-2 focus:ring-primary/20 outline-none"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filtered.map((project) => (
-          <Card key={project.id} className="rounded-[2.5rem] border-none shadow-sm hover:shadow-2xl transition-all bg-white overflow-hidden group">
-            <CardHeader className="pb-4">
+          <Card key={project.id} className="rounded-[2.5rem] border-none shadow-sm hover:shadow-xl transition-all bg-white group">
+            <CardHeader className="pb-2">
               <div className="flex justify-between items-start mb-2">
-                <Badge className={project.status === "مكتمل" ? "bg-green-600 font-black px-4" : "bg-primary font-black px-4"}>
+                <Badge className={project.status === "مكتمل" ? "bg-green-600 font-black" : "bg-primary font-black"}>
                   {project.status}
                 </Badge>
               </div>
-              <CardTitle className="text-xl font-black text-slate-800 group-hover:text-primary transition-colors">{project.name}</CardTitle>
-              <CardDescription className="font-bold text-slate-400">العميل: {project.clientName}</CardDescription>
+              <CardTitle className="text-xl font-black text-slate-800 group-hover:text-primary">{project.name}</CardTitle>
+              <CardDescription className="font-bold">العميل: {project.clientName}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-2">
-                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400">
-                  <span>نسبة الإنجاز</span>
+                <div className="flex justify-between items-center text-xs font-black">
+                  <span className="text-slate-400 uppercase">الإنجاز</span>
                   <span className="text-primary">{project.progress}%</span>
                 </div>
-                <Progress value={project.progress} className="h-3 rounded-full bg-slate-100" />
+                <Progress value={project.progress} className="h-2.5 rounded-full" />
               </div>
-              <Button onClick={() => { setSelectedProject(project); setIsViewModalOpen(true); }} className="w-full rounded-2xl h-14 font-black gap-2 shadow-lg hover:shadow-primary/20 transition-all">
+              <Button onClick={() => { setSelectedProject(project); setIsViewModalOpen(true); }} className="w-full rounded-2xl h-14 font-black gap-2 shadow-md">
                 <Eye className="h-5 w-5" /> عرض مراحل التنفيذ
               </Button>
             </CardContent>
@@ -149,46 +149,46 @@ function ProjectsContent() {
         <DialogContent className="sm:max-w-[700px] rounded-[3.5rem] p-0 overflow-hidden border-none shadow-2xl bg-white" dir="rtl">
           <div className="bg-primary p-10 text-primary-foreground relative">
              <Button variant="ghost" size="icon" onClick={() => setIsViewModalOpen(false)} className="absolute left-6 top-6 text-white hover:bg-white/20 rounded-full h-10 w-10">
-              <X className="h-6 w-6 text-rose-200" />
+              <X className="h-6 w-6" />
             </Button>
             <DialogHeader>
               <DialogTitle className="text-3xl font-black">{selectedProject?.name}</DialogTitle>
-              <p className="opacity-80 font-bold mt-2">خطة العمل والخطوات التنفيذية</p>
+              <p className="opacity-80 font-bold mt-2">خطة العمل والخطوات المتبقية</p>
             </DialogHeader>
           </div>
 
           <ScrollArea className="max-h-[60vh] p-8">
             <div className="space-y-6">
-              <div className="grid grid-cols-1 gap-4">
+              <div className="grid grid-cols-1 gap-3">
                 {selectedProject?.steps?.map((step: any) => (
                   <div 
                     key={step.id} 
                     onClick={() => toggleStep(selectedProject.id, step.id)}
-                    className={`flex items-center justify-between p-6 rounded-[2rem] border-2 transition-all ${
+                    className={`flex items-center justify-between p-5 rounded-[2rem] border-2 transition-all ${
                       step.completed ? 'bg-green-50 border-green-200' : 'bg-slate-50 border-slate-100'
-                    } ${profile?.role === 'admin' ? 'cursor-pointer hover:border-primary/40' : 'cursor-default'}`}
+                    } ${profile?.role === 'admin' ? 'cursor-pointer hover:border-primary/30' : 'cursor-default'}`}
                   >
                     <span className={`text-lg font-black ${step.completed ? 'text-green-700' : 'text-slate-600'}`}>
                       {step.title}
                     </span>
                     {step.completed ? (
-                      <div className="h-10 w-10 bg-green-500 rounded-full flex items-center justify-center text-white shadow-lg">
-                        <Check className="h-6 w-6" />
+                      <div className="h-8 w-8 bg-green-500 rounded-full flex items-center justify-center text-white">
+                        <Check className="h-5 w-5" />
                       </div>
                     ) : (
-                      <div className="h-10 w-10 bg-slate-200 rounded-full flex items-center justify-center text-slate-400">
-                        <Clock className="h-5 w-5" />
+                      <div className="h-8 w-8 bg-slate-200 rounded-full flex items-center justify-center text-slate-400">
+                        <Clock className="h-4 w-4" />
                       </div>
                     )}
                   </div>
                 ))}
               </div>
 
-              {/* زر الإغلاق الموحد أسفل قائمة المراحل مباشرة كما طلب العميل */}
-              <div className="pt-6">
+              {/* زر الإغلاق الموحد أسفل قائمة المراحل مباشرة */}
+              <div className="pt-4">
                 <Button 
                   onClick={() => setIsViewModalOpen(false)}
-                  className="w-full h-16 rounded-[2rem] bg-slate-900 hover:bg-slate-800 text-white font-black text-xl shadow-xl flex items-center justify-center gap-3 transition-all active:scale-95"
+                  className="w-full h-16 rounded-[2rem] bg-slate-900 hover:bg-slate-800 text-white font-black text-xl shadow-xl flex items-center justify-center gap-3"
                 >
                   <ChevronRight className="h-6 w-6" /> إغلاق ومعاودة العمل
                 </Button>
