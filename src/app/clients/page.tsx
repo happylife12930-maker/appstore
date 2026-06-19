@@ -9,9 +9,9 @@ import {
   Edit,
   Trash2,
   ExternalLink,
-  Phone,
   Building2,
-  Mail
+  Mail,
+  Users
 } from "lucide-react";
 import {
   Table,
@@ -68,7 +68,6 @@ export default function ClientsPage() {
       const balance = Number(clientData.totalInvoices || 0) - Number(clientData.totalPayments || 0);
       
       if (clientData.id) {
-        // Update existing client
         const clientRef = doc(db, "clients", clientData.id);
         const { id, ...dataToUpdate } = clientData;
         await updateDoc(clientRef, {
@@ -78,7 +77,6 @@ export default function ClientsPage() {
         });
         toast({ title: "تم التحديث", description: "تم تحديث بيانات العميل بنجاح." });
       } else {
-        // Add new client
         await addDoc(collection(db, "clients"), {
           ...clientData,
           balance: balance,
@@ -191,14 +189,14 @@ export default function ClientsPage() {
                           </div>
                         </TableCell>
                         <TableCell className="font-black text-slate-700 text-base">
-                          {(client.totalInvoices || 0).toLocaleString('ar-SA')} ر.س
+                          {(client.totalInvoices || 0).toLocaleString('ar-EG')} ج.م
                         </TableCell>
                         <TableCell className="font-black text-green-600 text-base">
-                          {(client.totalPayments || 0).toLocaleString('ar-SA')} ر.س
+                          {(client.totalPayments || 0).toLocaleString('ar-EG')} ج.م
                         </TableCell>
                         <TableCell>
                           <Badge variant={balance <= 0 ? "default" : "destructive"} className="rounded-xl px-4 py-2 text-sm font-black shadow-sm min-w-[100px] justify-center">
-                            {balance.toLocaleString('ar-SA')} ر.س
+                            {balance.toLocaleString('ar-EG')} ج.م
                           </Badge>
                         </TableCell>
                         <TableCell className="text-center">

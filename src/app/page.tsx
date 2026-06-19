@@ -25,20 +25,18 @@ export default function DashboardPage() {
     totalClients: 0,
     activeProjects: 0,
     finishedProjects: 0,
-    monthlyRevenue: "0 ر.س",
+    monthlyRevenue: "0 ج.م",
   });
   const [recentProjects, setRecentProjects] = useState<any[]>([]);
 
   useEffect(() => {
     if (!db) return;
 
-    // جلب عدد العملاء الحقيقي
     const unsubClients = onSnapshot(collection(db, "clients"), (snap) => {
       setStats(prev => ({ ...prev, totalClients: snap.size }));
       setLoading(false);
     });
 
-    // جلب المشاريع الحالية النشطة
     const activeProjectsQuery = query(
       collection(db, "projects"), 
       where("status", "!=", "مكتمل"),
@@ -49,7 +47,6 @@ export default function DashboardPage() {
       setRecentProjects(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
 
-    // جلب المشاريع المنتهية
     const finishedProjectsQuery = query(collection(db, "projects"), where("status", "==", "مكتمل"));
     const unsubFinished = onSnapshot(finishedProjectsQuery, (snap) => {
       setStats(prev => ({ ...prev, finishedProjects: snap.size }));
@@ -72,7 +69,6 @@ export default function DashboardPage() {
         <Button onClick={() => router.push('/projects')} className="rounded-xl shadow-lg font-bold">إدارة المشاريع</Button>
       </header>
 
-      {/* بطاقات الإحصائيات */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="rounded-3xl border-none shadow-sm hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push('/clients')}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -120,7 +116,6 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* تقدم المشاريع */}
         <Card className="lg:col-span-2 rounded-3xl border-none shadow-sm">
           <CardHeader>
             <CardTitle className="text-xl font-bold">حالة المشاريع النشطة</CardTitle>
@@ -148,7 +143,6 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* إحصائيات سريعة */}
         <div className="space-y-6">
           <Card className="rounded-3xl border-none shadow-sm bg-primary text-primary-foreground">
             <CardHeader>

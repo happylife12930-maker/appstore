@@ -128,7 +128,7 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
               <Label htmlFor="phone" className="text-right font-black flex items-center gap-2">
                 <Phone className="h-4 w-4 text-primary" /> رقم الجوال
               </Label>
-              <Input id="phone" value={formData.phone} onChange={handleChange} placeholder="+966 5..." className="rounded-2xl h-12 border-slate-200 font-bold" />
+              <Input id="phone" value={formData.phone} onChange={handleChange} placeholder="+20 1..." className="rounded-2xl h-12 border-slate-200 font-bold" />
             </div>
           </div>
 
@@ -139,13 +139,13 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="totalInvoices" className="text-right font-black flex items-center gap-2">
-                   المبلغ الإجمالي (ر.س)
+                   المبلغ الإجمالي (ج.م)
                 </Label>
                 <Input id="totalInvoices" type="number" value={formData.totalInvoices} onChange={handleChange} className="rounded-2xl h-12 border-slate-200 font-black text-lg" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="totalPayments" className="text-right font-black flex items-center gap-2 text-green-600">
-                   المبلغ المدفوع (ر.س)
+                   المبلغ المدفوع (ج.م)
                 </Label>
                 <Input id="totalPayments" type="number" value={formData.totalPayments} onChange={handleChange} className="rounded-2xl h-12 border-green-200 font-black text-lg text-green-700 bg-green-50/30" />
               </div>
@@ -154,7 +154,7 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
             <div className="pt-4 border-t flex justify-between items-center">
               <span className="font-black text-slate-500">الرصيد المتبقي:</span>
               <span className={`text-2xl font-black ${formData.totalInvoices - formData.totalPayments > 0 ? 'text-rose-600' : 'text-green-600'}`}>
-                {(formData.totalInvoices - formData.totalPayments).toLocaleString('ar-SA')} ر.س
+                {(formData.totalInvoices - formData.totalPayments).toLocaleString('ar-EG')} ج.م
               </span>
             </div>
           </div>
