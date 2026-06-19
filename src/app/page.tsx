@@ -8,9 +8,8 @@ import {
   Users, 
   Briefcase, 
   LayoutDashboard,
-  ArrowLeft,
-  ShieldCheck,
-  ChevronLeft
+  ChevronLeft,
+  ShieldCheck
 } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { useAuth as useFirebaseAuth } from "@/firebase";
@@ -22,7 +21,7 @@ export default function HomePage() {
   const auth = useFirebaseAuth();
   const router = useRouter();
 
-  if (loading) return <div className="p-20 text-center font-bold">جاري تحميل النظام...</div>;
+  if (loading) return <div className="p-20 text-center font-bold">جاري التحميل...</div>;
   if (!profile) return null;
 
   const handleLogout = async () => {
@@ -33,7 +32,7 @@ export default function HomePage() {
   };
 
   const menuItems = [
-    { title: "إدارة المشاريع", icon: Briefcase, color: "text-blue-600", path: "/projects", desc: "متابعة تقدم المشاريع والصور" },
+    { title: "إدارة المشاريع", icon: Briefcase, color: "text-blue-600", path: "/projects", desc: "متابعة الصور والتقدم" },
     { title: "إدارة الفريق", icon: Users, color: "text-emerald-600", path: "/users", desc: "الموظفين والصلاحيات" },
     { title: "حالات الاختبار", icon: ShieldCheck, color: "text-indigo-600", path: "/test-cases", desc: "فحص جودة التطبيقات" },
   ];
@@ -47,7 +46,7 @@ export default function HomePage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold font-headline">أهلاً، {profile.name}</h1>
-            <p className="text-muted-foreground text-sm">أنت مسجل كـ {profile.role === 'admin' ? 'مدير عام' : 'مختبر'}</p>
+            <p className="text-muted-foreground text-sm">نظام APP STORE - الإدارة العامة</p>
           </div>
         </div>
         <Button variant="ghost" onClick={handleLogout} className="text-rose-500 font-bold hover:bg-rose-50 rounded-xl">
@@ -75,14 +74,6 @@ export default function HomePage() {
           </Card>
         ))}
       </div>
-      
-      <Card className="bg-blue-50 border-none shadow-sm rounded-2xl">
-        <CardContent className="p-6 text-center">
-          <p className="text-blue-700 font-bold text-sm">
-            تم حل مشكلة المسارات وتطبيق القواعد الأمنية الجديدة. النظام الآن يعمل ببساطة واستقرار.
-          </p>
-        </CardContent>
-      </Card>
     </div>
   );
 }
