@@ -52,7 +52,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogClose,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -106,23 +105,22 @@ export default function ProjectsPage() {
     ]
   });
 
-  // دالة قوية لفك تجميد الموقع
+  // دالة قوية لفك تجميد الموقع وإعادة التمرير
   const forceEnableScroll = useCallback(() => {
     if (typeof document !== 'undefined') {
       document.body.style.pointerEvents = 'auto';
       document.body.style.overflow = 'auto';
-      // إزالة أي طبقات متبقية من Radix
-      const overlays = document.querySelectorAll('[data-radix-focus-guard], [data-radix-portal]');
-      // لا نحذف البورتال نفسه بل نتأكد من حالة الجسم
       document.body.removeAttribute('data-scroll-locked');
+      // إزالة الطبقات العالقة
+      const overlays = document.querySelectorAll('[data-radix-focus-guard]');
+      overlays.forEach(el => el.remove());
     }
   }, []);
 
-  // مراقبة حالات الإغلاق بشكل مستمر
+  // مراقبة حالات الإغلاق لضمان عدم حدوث فريز
   useEffect(() => {
     if (!isModalOpen && !isPreviewOpen) {
-      const timer = setTimeout(forceEnableScroll, 100);
-      return () => clearTimeout(timer);
+      forceEnableScroll();
     }
   }, [isModalOpen, isPreviewOpen, forceEnableScroll]);
 
@@ -303,7 +301,7 @@ export default function ProjectsPage() {
     const completedSteps = newSteps.filter((s: any) => s.completed).length;
     const progress = Math.round((completedSteps / newSteps.length) * 100);
 
-    // تحديث الحالة المحلية فوراً
+    // تحديث الحالة المحلية فوراً لسرعة الاستجابة
     setPreviewProject((prev: any) => ({
       ...prev,
       steps: newSteps,
@@ -595,24 +593,8 @@ export default function ProjectsPage() {
                         </CarouselItem>
                       ))}
                     </CarouselContent>
-                    
-                    {/* أدوات التحكم في الصور وزر الإغلاق بجانبها */}
                     <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-between px-6 z-50">
                       <CarouselPrevious className="relative h-14 w-14 bg-white/90 text-slate-900 border-none shadow-2xl hover:bg-white active:scale-90 transition-transform" />
-                      
-                      {/* زر الإغلاق X الموضع بجانب أدوات التحكم (في المنتصف العلوي ليكون واضحاً) */}
-                      <div className="absolute top-[-150px] left-1/2 -translate-x-1/2 flex items-center gap-4">
-                        <Button 
-                          variant="destructive"
-                          size="lg"
-                          className="h-16 px-8 rounded-full shadow-2xl border-4 border-white font-black text-xl hover:scale-110 active:scale-90 transition-all flex gap-3"
-                          onClick={closePreview}
-                        >
-                          <X className="h-8 w-8 stroke-[4px]" />
-                          إغلاق المعاينة
-                        </Button>
-                      </div>
-
                       <CarouselNext className="relative h-14 w-14 bg-white/90 text-slate-900 border-none shadow-2xl hover:bg-white active:scale-90 transition-transform" />
                     </div>
                   </Carousel>
@@ -620,13 +602,12 @@ export default function ProjectsPage() {
                   <div className="flex items-center justify-center h-full text-slate-300 flex-col gap-4">
                     <ImagePlus className="h-24 w-24" />
                     <p className="font-black text-2xl text-slate-400">لا توجد صور لهذا المشروع</p>
-                    <Button onClick={closePreview} variant="outline" className="rounded-xl font-black mt-4">إغلاق</Button>
                   </div>
                 )}
               </div>
 
               <ScrollArea className="max-h-[50vh] p-10 bg-white">
-                <div className="space-y-12">
+                <div className="space-y-12 pb-10">
                   <div className="flex flex-col md:flex-row justify-between items-start gap-4">
                     <div className="space-y-3">
                       <h2 className="text-4xl font-black text-slate-900 leading-tight">{previewProject.name}</h2>
@@ -663,7 +644,7 @@ export default function ProjectsPage() {
                     </div>
                   </div>
 
-                  <div className="space-y-8 pb-10">
+                  <div className="space-y-8">
                     <h3 className="font-black text-2xl text-slate-900">مراحل التنفيذ</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {previewProject.steps?.map((step: any) => (
@@ -678,6 +659,18 @@ export default function ProjectsPage() {
                       ))}
                     </div>
                   </div>
+
+                  {/* زر إغلاق المشروع أسفل مراحل التنفيذ مباشرة كما طلبت */}
+                  <div className="pt-8">
+                    <Button 
+                      onClick={closePreview} 
+                      variant="destructive" 
+                      className="w-full rounded-[2rem] font-black h-20 text-2xl bg-slate-900 hover:bg-black text-white shadow-2xl transition-all active:scale-95 flex gap-4"
+                    >
+                      <LogOut className="h-8 w-8 rotate-180" />
+                      إغلاق ومعاودة العمل
+                    </Button>
+                  </div>
                 </div>
               </ScrollArea>
               
@@ -687,13 +680,6 @@ export default function ProjectsPage() {
                 </Button>
                 <Button onClick={() => { closePreview(); handleEditProject(previewProject); }} className="rounded-2xl font-black h-14 flex-1 shadow-xl text-lg bg-blue-600 hover:bg-blue-700 text-white">
                   <Edit className="ml-2 h-6 w-6" /> تعديل المشروع
-                </Button>
-                <Button 
-                  onClick={closePreview} 
-                  variant="destructive" 
-                  className="rounded-2xl font-black h-14 px-10 text-lg bg-slate-800 hover:bg-slate-900 text-white shadow-xl"
-                >
-                  <LogOut className="ml-2 h-6 w-6 rotate-180" /> خروج
                 </Button>
               </div>
             </>
