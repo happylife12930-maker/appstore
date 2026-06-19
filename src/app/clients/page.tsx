@@ -5,7 +5,10 @@ import {
   MoreHorizontal,
   Home,
   PlusCircle,
-  Loader2
+  Loader2,
+  Edit,
+  Trash2,
+  ExternalLink
 } from "lucide-react";
 import {
   Table,
@@ -28,13 +31,14 @@ import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { AddClientModal, ClientData } from "@/components/modals/add-client-modal";
 import { db } from "@/lib/firebase";
-import { collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, deleteDoc, doc } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 
 export default function ClientsPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<ClientData | null>(null);
   const [clients, setClients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -58,27 +62,42 @@ export default function ClientsPage() {
   const handleSaveClient = async (clientData: ClientData) => {
     setIsSaving(true);
     try {
-      await addDoc(collection(db, "clients"), {
-        ...clientData,
-        projects: 0,
-        totalInvoices: 0,
-        totalPayments: 0,
-        balance: 0,
-        startDate: new Date().toISOString().split('T')[0],
-        createdAt: serverTimestamp()
-      });
-      toast({ title: "نجاح", description: "تمت إضافة العميل بنجاح." });
+      if (clientData.id) {
+        // Update existing client
+        const clientRef = doc(db, "clients", clientData.id);
+        const { id, ...dataToUpdate } = clientData;
+        await updateDoc(clientRef, {
+          ...dataToUpdate,
+          updatedAt: serverTimestamp()
+        });
+        toast({ title: "تم التحديث", description: "تم تحديث بيانات العميل بنجاح." });
+      } else {
+        // Add new client
+        await addDoc(collection(db, "clients"), {
+          ...clientData,
+          projects: 1, // Start with one project
+          startDate: new Date().toISOString().split('T')[0],
+          createdAt: serverTimestamp()
+        });
+        toast({ title: "نجاح", description: "تمت إضافة العميل بنجاح." });
+      }
       setIsModalOpen(false);
+      setSelectedClient(null);
     } catch (error) {
-      console.error("Error adding client: ", error);
-      toast({ title: "خطأ", description: "حدث خطأ أثناء إضافة العميل.", variant: "destructive" });
+      console.error("Error saving client: ", error);
+      toast({ title: "خطأ", description: "حدث خطأ أثناء حفظ البيانات.", variant: "destructive" });
     } finally {
       setIsSaving(false);
     }
   };
 
+  const handleEditClient = (client: any) => {
+    setSelectedClient(client);
+    setIsModalOpen(true);
+  };
+
   const handleDeleteClient = async (id: string) => {
-    if (!confirm("هل أنت متأكد من حذف هذا العميل؟")) return;
+    if (!confirm("هل أنت متأكد من حذف هذا العميل؟ لا يمكن التراجع عن هذا الإجراء.")) return;
     try {
       await deleteDoc(doc(db, "clients", id));
       toast({ title: "تم الحذف", description: "تم حذف العميل بنجاح." });
@@ -87,85 +106,112 @@ export default function ClientsPage() {
     }
   };
 
+  const openAddModal = () => {
+    setSelectedClient(null);
+    setIsModalOpen(true);
+  };
+
   return (
     <>
       <AddClientModal 
         isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedClient(null);
+        }} 
         onSave={handleSaveClient}
         isLoading={isSaving}
+        initialData={selectedClient}
       />
       <div className="max-w-7xl mx-auto space-y-8" dir="rtl" style={{ fontFamily: "'Cairo', sans-serif" }}>
-        <header className="flex justify-between items-center">
+        <header className="flex justify-between items-center bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
           <div className="flex items-center gap-4">
-            <Button variant="outline" size="icon" onClick={() => router.push("/")} className="rounded-xl">
-              <Home className="h-4 w-4" />
+            <Button variant="outline" size="icon" onClick={() => router.push("/")} className="rounded-xl hover:bg-primary hover:text-white transition-colors">
+              <Home className="h-5 w-5" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold">إدارة العملاء</h1>
-              <p className="text-muted-foreground font-medium">قائمة العملاء والتفاصيل المالية الخاصة بهم</p>
+              <h1 className="text-3xl font-black text-slate-900">إدارة العملاء</h1>
+              <p className="text-muted-foreground font-medium">قائمة العملاء والتفاصيل المالية الشاملة</p>
             </div>
           </div>
-          <Button onClick={() => setIsModalOpen(true)} className="rounded-xl font-bold shadow-lg">
-            <PlusCircle className="ml-2 h-4 w-4" />
+          <Button onClick={openAddModal} className="rounded-xl font-bold shadow-lg h-12 px-6 text-lg">
+            <PlusCircle className="ml-2 h-5 w-5" />
             إضافة عميل جديد
           </Button>
         </header>
 
-        <Card className="rounded-3xl border-none shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-xl font-bold">قائمة العملاء</CardTitle>
-            <CardDescription className="font-medium">{loading ? "جاري التحميل..." : `إجمالي ${clients.length} عملاء`}</CardDescription>
+        <Card className="rounded-3xl border-none shadow-xl bg-white overflow-hidden">
+          <CardHeader className="bg-slate-50 border-b">
+            <CardTitle className="text-xl font-bold text-slate-800">سجل العملاء المالي</CardTitle>
+            <CardDescription className="font-medium text-slate-500">
+              {loading ? "جاري مزامنة البيانات..." : `يوجد حالياً ${clients.length} عملاء مسجلين`}
+            </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0">
             <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-right">العميل</TableHead>
-                  <TableHead className="text-right">المشاريع</TableHead>
-                  <TableHead className="text-right">إجمالي الفواتير</TableHead>
-                  <TableHead className="text-right">المدفوعات</TableHead>
-                  <TableHead className="text-right">الرصيد المتبقي</TableHead>
-                  <TableHead className="text-center">الإجراءات</TableHead>
+              <TableHeader className="bg-slate-50/50">
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="text-right font-black text-slate-900 py-6">العميل والمشروع</TableHead>
+                  <TableHead className="text-right font-black text-slate-900">المبلغ الكلي</TableHead>
+                  <TableHead className="text-right font-black text-slate-900">المدفوع</TableHead>
+                  <TableHead className="text-right font-black text-slate-900">المتبقي</TableHead>
+                  <TableHead className="text-center font-black text-slate-900">الإجراءات</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-10"><Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" /></TableCell></TableRow>
+                  <TableRow><TableCell colSpan={5} className="text-center py-20"><Loader2 className="h-12 w-12 animate-spin mx-auto text-primary" /></TableCell></TableRow>
                 ) : clients.length > 0 ? (
                   clients.map((client) => (
-                    <TableRow key={client.id}>
-                      <TableCell>
-                        <div className="font-bold">{client.name}</div>
-                        <div className="text-xs text-muted-foreground font-medium">{client.email}</div>
+                    <TableRow key={client.id} className="hover:bg-slate-50/80 transition-colors">
+                      <TableCell className="py-4">
+                        <div className="font-black text-slate-900 text-lg">{client.name}</div>
+                        <div className="text-sm text-primary font-bold">{client.projectName || "بدون مشروع"}</div>
+                        <div className="text-xs text-slate-400 font-medium">{client.email}</div>
                       </TableCell>
-                      <TableCell className="font-bold">{client.projects || 0}</TableCell>
-                      <TableCell className="font-bold">{(client.totalInvoices || 0).toLocaleString('ar-SA')} ر.س</TableCell>
-                      <TableCell className="font-bold">{(client.totalPayments || 0).toLocaleString('ar-SA')} ر.س</TableCell>
+                      <TableCell className="font-black text-slate-700 text-base">
+                        {(client.totalInvoices || 0).toLocaleString('ar-SA')} ر.س
+                      </TableCell>
+                      <TableCell className="font-black text-green-600 text-base">
+                        {(client.totalPayments || 0).toLocaleString('ar-SA')} ر.س
+                      </TableCell>
                       <TableCell>
-                        <Badge variant={(client.balance || 0) === 0 ? "default" : "destructive"} className="rounded-lg">
+                        <Badge variant={(client.balance || 0) === 0 ? "default" : "destructive"} className="rounded-xl px-4 py-1 text-sm font-black shadow-sm">
                           {(client.balance || 0).toLocaleString('ar-SA')} ر.س
                         </Badge>
                       </TableCell>
                       <TableCell className="text-center">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <MoreHorizontal className="h-4 w-4" />
+                            <Button variant="ghost" className="h-10 w-10 p-0 rounded-full hover:bg-slate-200">
+                              <MoreHorizontal className="h-5 w-5" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" dir="rtl" className="font-medium">
-                            <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
-                            <DropdownMenuItem>تعديل العميل</DropdownMenuItem>
-                            <DropdownMenuItem>عرض التفاصيل</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDeleteClient(client.id)} className="text-red-500">حذف العميل</DropdownMenuItem>
+                          <DropdownMenuContent align="end" dir="rtl" className="font-bold rounded-2xl p-2 shadow-2xl border-none">
+                            <DropdownMenuLabel className="text-slate-400 text-xs px-2">إدارة البيانات</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => handleEditClient(client)} className="rounded-xl cursor-pointer py-3 gap-3">
+                              <Edit className="h-4 w-4 text-blue-500" /> تعديل البيانات
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="rounded-xl cursor-pointer py-3 gap-3">
+                              <ExternalLink className="h-4 w-4 text-slate-500" /> عرض السجل المالي
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDeleteClient(client.id)} className="rounded-xl cursor-pointer py-3 gap-3 text-red-600 focus:bg-red-50 focus:text-red-600">
+                              <Trash2 className="h-4 w-4" /> حذف العميل نهائياً
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))
                 ) : (
-                  <TableRow><TableCell colSpan={6} className="text-center py-10 font-medium text-muted-foreground">لم يتم إضافة أي عملاء بعد.</TableCell></TableRow>
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-32">
+                      <div className="space-y-4">
+                        <p className="text-2xl font-bold text-slate-300">لا يوجد عملاء حالياً</p>
+                        <Button onClick={openAddModal} variant="outline" className="rounded-xl font-bold">إضافة أول عميل</Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
                 )}
               </TableBody>
             </Table>
