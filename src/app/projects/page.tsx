@@ -106,17 +106,22 @@ export default function ProjectsPage() {
     ]
   });
 
+  // دالة قوية لفك تجميد الموقع
   const forceEnableScroll = useCallback(() => {
     if (typeof document !== 'undefined') {
       document.body.style.pointerEvents = 'auto';
       document.body.style.overflow = 'auto';
+      // إزالة أي طبقات متبقية من Radix
+      const overlays = document.querySelectorAll('[data-radix-focus-guard]');
+      overlays.forEach(el => (el as HTMLElement).style.display = 'none');
     }
   }, []);
 
-  // مراقبة حالات الإغلاق لضمان عدم حدوث Freeze
+  // مراقبة حالات الإغلاق بشكل مستمر
   useEffect(() => {
     if (!isModalOpen && !isPreviewOpen) {
-      forceEnableScroll();
+      const timer = setTimeout(forceEnableScroll, 300);
+      return () => clearTimeout(timer);
     }
   }, [isModalOpen, isPreviewOpen, forceEnableScroll]);
 
@@ -251,14 +256,14 @@ export default function ProjectsPage() {
     });
     setTimeout(() => {
       setIsModalOpen(true);
-    }, 100);
+    }, 150);
   };
 
   const handlePreviewProject = (project: any) => {
     setPreviewProject(project);
     setTimeout(() => {
       setIsPreviewOpen(true);
-    }, 100);
+    }, 150);
   };
 
   const closeModal = () => {
@@ -276,16 +281,16 @@ export default function ProjectsPage() {
         { id: 5, title: "التسليم النهائي", completed: false },
       ]
     });
+    setTimeout(forceEnableScroll, 300);
   };
 
   const closePreview = () => {
     setIsPreviewOpen(false);
     setPreviewProject(null);
-    forceEnableScroll();
+    setTimeout(forceEnableScroll, 300);
   };
 
   const toggleStep = async (projectId: string, stepId: number) => {
-    // تحديث محلي فوري للسرعة (Optimistic Update)
     const project = projects.find(p => p.id === projectId);
     if (!project) return;
 
@@ -296,7 +301,6 @@ export default function ProjectsPage() {
     const completedSteps = newSteps.filter((s: any) => s.completed).length;
     const progress = Math.round((completedSteps / newSteps.length) * 100);
 
-    // تحديث الحالة المحلية فوراً
     setPreviewProject((prev: any) => ({
       ...prev,
       steps: newSteps,
@@ -427,7 +431,7 @@ export default function ProjectsPage() {
       {/* مودال الإضافة والتعديل */}
       <Dialog open={isModalOpen} onOpenChange={(open) => !open && closeModal()}>
         <DialogContent className="sm:max-w-[700px] rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl bg-white" dir="rtl">
-          <div className="bg-primary p-8 text-primary-foreground">
+          <div className="bg-primary p-8 text-primary-foreground relative">
             <DialogHeader>
               <DialogTitle className="text-2xl font-black">{selectedProject ? 'تعديل بيانات المشروع' : 'إضافة مشروع جديد للوكالة'}</DialogTitle>
               <DialogDescription className="text-primary-foreground/80 font-bold mt-1">قم بتحديث بيانات المشروع والصور والخطوات.</DialogDescription>
@@ -571,17 +575,15 @@ export default function ProjectsPage() {
               </DialogHeader>
               
               <div className="relative w-full aspect-video bg-slate-100 flex items-center justify-center overflow-hidden border-b">
-                {/* زر الإغلاق X العلوي الضخم والبارز جداً بلون أحمر */}
-                <DialogClose asChild>
-                  <Button 
-                    variant="destructive"
-                    size="icon"
-                    className="absolute top-6 right-6 z-[999] h-16 w-16 rounded-full shadow-2xl border-4 border-white hover:scale-110 active:scale-90 transition-all duration-300 group bg-red-600 hover:bg-red-700"
-                    onClick={closePreview}
-                  >
-                    <X className="h-10 w-10 stroke-[4px] group-hover:rotate-90 transition-transform" />
-                  </Button>
-                </DialogClose>
+                {/* زر الإغلاق X العلوي الضخم والبارز جداً */}
+                <Button 
+                  variant="destructive"
+                  size="icon"
+                  className="absolute top-6 right-6 z-[999] h-16 w-16 rounded-full shadow-2xl border-4 border-white hover:scale-110 active:scale-90 transition-all duration-300 group"
+                  onClick={closePreview}
+                >
+                  <X className="h-10 w-10 stroke-[4px] group-hover:rotate-90 transition-transform" />
+                </Button>
 
                 {previewProject.images && previewProject.images.length > 0 ? (
                   <Carousel className="w-full h-full" opts={{ direction: 'rtl' }}>
@@ -677,7 +679,7 @@ export default function ProjectsPage() {
                 <Button onClick={() => { closePreview(); handleEditProject(previewProject); }} className="rounded-2xl font-black h-16 flex-1 shadow-xl text-xl bg-blue-600 hover:bg-blue-700 transition-all active:scale-95 text-white">
                   <Edit className="ml-2 h-7 w-7" /> تعديل المشروع
                 </Button>
-                {/* زر الخروج الضخم والواضح في أسفل المعاينة */}
+                {/* زر الخروج الضخم والمضمون */}
                 <Button 
                   onClick={closePreview} 
                   variant="destructive" 
