@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -33,10 +32,10 @@ export default function LoginPage() {
       let userCredential;
       
       try {
-        // محاولة تسجيل الدخول أولاً
+        // محاولة تسجيل الدخول
         userCredential = await signInWithEmailAndPassword(auth, email, password);
       } catch (loginError: any) {
-        // إذا كان المستخدم هو المدير المحدد ولم يكن موجوداً، نقوم بإنشائه تلقائياً
+        // إذا كان المستخدم هو المدير ولم يكن موجوداً، نقوم بإنشائه تلقائياً
         if (
           (loginError.code === 'auth/user-not-found' || loginError.code === 'auth/invalid-credential') &&
           email === "islam_nader@appstore.com" && 
@@ -52,8 +51,17 @@ export default function LoginPage() {
         const user = userCredential.user;
         const userDocRef = doc(db, "users", user.uid);
         
-        // التحقق من وجود ملف المستخدم في Firestore
-        const userDocSnap = await getDoc(userDocRef);
+        // التحقق من وجود ملف المستخدم مع معالجة أخطاء الصلاحيات
+        let userDocSnap;
+        try {
+          userDocSnap = await getDoc(userDocRef);
+        } catch (err: any) {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: userDocRef.path,
+            operation: 'get'
+          }));
+          throw err;
+        }
         
         if (!userDocSnap.exists()) {
           const userData = {
@@ -66,7 +74,7 @@ export default function LoginPage() {
             lastLogin: new Date().toLocaleString('ar-EG')
           };
           
-          // حفظ بيانات المدير في Firestore
+          // حفظ بيانات المدير مع معالجة أخطاء الصلاحيات
           await setDoc(userDocRef, userData).catch(err => {
             errorEmitter.emit('permission-error', new FirestorePermissionError({
               path: userDocRef.path,
