@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -23,7 +22,7 @@ import { useFirestore, useCollection } from "@/firebase";
 import { useRouter } from "next/navigation";
 
 /**
- * صفحة إدارة المشاريع - المسار الرئيسي الموحد
+ * صفحة إدارة المشاريع الرئيسية الموحدة - تعمل من المسار الرئيسي المباشر
  */
 export default function ProjectsPage() {
   const { toast } = useToast();
@@ -31,7 +30,6 @@ export default function ProjectsPage() {
   const router = useRouter();
   const [uploading, setUploading] = useState(false);
 
-  // استعلام لجلب المشاريع مرتبة حسب تاريخ الإنشاء
   const projectsQuery = useMemo(() => {
     if (!db) return null;
     return query(collection(db, "projects"), orderBy("createdAt", "desc"));
@@ -39,7 +37,6 @@ export default function ProjectsPage() {
 
   const { data: projects, loading, error } = useCollection(projectsQuery);
 
-  // معالجة رفع الصور وإضافة مشروع جديد
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !db) return;
@@ -70,7 +67,6 @@ export default function ProjectsPage() {
     }
   };
 
-  // حذف مشروع
   const handleDeleteProject = async (id: string) => {
     if (!db) return;
     deleteDoc(doc(db, "projects", id));
@@ -81,7 +77,7 @@ export default function ProjectsPage() {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center space-y-4" dir="rtl">
         <ShieldAlert className="h-12 w-12 text-rose-500 opacity-50" />
-        <h3 className="text-xl font-bold font-headline">مشكلة في الوصول للبيانات</h3>
+        <h3 className="text-xl font-bold">مشكلة في الوصول للبيانات</h3>
         <p className="text-muted-foreground">تأكد من صلاحيات Firebase.</p>
         <Button onClick={() => router.push("/")} className="rounded-xl">العودة للرئيسية</Button>
       </div>
@@ -96,7 +92,7 @@ export default function ProjectsPage() {
             <Home className="h-4 w-4" />
           </Button>
           <div>
-            <h2 className="text-3xl font-bold font-headline">إدارة المشاريع</h2>
+            <h2 className="text-3xl font-bold">إدارة المشاريع</h2>
             <p className="text-muted-foreground text-sm">مكتبة الأعمال وتقدم التنفيذ.</p>
           </div>
         </div>
@@ -150,7 +146,7 @@ export default function ProjectsPage() {
               </div>
               
               <CardHeader className="p-6 pb-2">
-                <CardTitle className="text-xl font-bold font-headline">{project.name}</CardTitle>
+                <CardTitle className="text-xl font-bold">{project.name}</CardTitle>
                 <p className="text-xs text-muted-foreground">{project.type} • {project.client}</p>
               </CardHeader>
 

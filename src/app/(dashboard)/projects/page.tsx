@@ -1,8 +1,7 @@
-
 /**
- * هذا الملف تم إفراغه تماماً لحل مشكلة تعارض المسارات (Parallel Pages).
- * الكود الوظيفي موجود الآن في src/app/projects/page.tsx ليكون هو المسار الرئيسي.
+ * تم تفريغ هذا الملف لإنهاء تعارض المسارات.
+ * يرجى مسح هذا المجلد يدوياً إذا استمر الخطأ.
  */
-export default function ObsoletePage() {
+export default function ConflictFix() {
   return null;
 }
