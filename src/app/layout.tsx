@@ -6,7 +6,7 @@ import { AuthProvider } from '@/components/auth-provider';
 
 export const metadata: Metadata = {
   title: 'APP STORE | نظام الوكالة',
-  description: 'نظام إدارة الوكالة والعملاء بشكل مبسط.',
+  description: 'نظام إدارة الوكالة والعملاء بشكل مبسط باللغة العربية.',
 };
 
 export default function RootLayout({
@@ -21,7 +21,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet" />
       </head>
-      <body className="antialiased bg-background text-foreground font-body">
+      <body className="antialiased bg-background text-foreground font-body" style={{ fontFamily: "'Cairo', sans-serif" }}>
         <FirebaseClientProvider>
           <AuthProvider>
             <div className="min-h-screen">

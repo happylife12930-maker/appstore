@@ -9,7 +9,9 @@ import {
   Briefcase, 
   LayoutDashboard,
   ChevronLeft,
-  ShieldCheck
+  ShieldCheck,
+  Bug,
+  Calculator
 } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { useAuth as useFirebaseAuth } from "@/firebase";
@@ -33,8 +35,10 @@ export default function HomePage() {
 
   const menuItems = [
     { title: "إدارة المشاريع", icon: Briefcase, color: "text-blue-600", path: "/projects", desc: "متابعة الصور والتقدم" },
-    { title: "إدارة الموظفين", icon: Users, color: "text-emerald-600", path: "/users", desc: "الموظفين والصلاحيات" },
+    { title: "إدارة الفريق", icon: Users, color: "text-emerald-600", path: "/users", desc: "الموظفين والصلاحيات" },
     { title: "حالات الاختبار", icon: ShieldCheck, color: "text-indigo-600", path: "/test-cases", desc: "فحص جودة التطبيقات" },
+    { title: "المختبرين", icon: Bug, color: "text-rose-600", path: "/testers", desc: "إدارة مجموعات الفحص" },
+    { title: "عروض الأسعار", icon: Calculator, color: "text-amber-600", path: "/quotations", desc: "إنشاء عروض AI" },
   ];
 
   return (

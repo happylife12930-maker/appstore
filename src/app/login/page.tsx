@@ -10,7 +10,7 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "fire
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { doc, setDoc, getDoc } from "firebase/firestore";
-import { useAuth, useFirestore, errorEmitter, FirestorePermissionError } from "@/firebase";
+import { useAuth, useFirestore } from "@/firebase";
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
@@ -32,7 +32,6 @@ export default function LoginPage() {
       try {
         userCredential = await signInWithEmailAndPassword(auth, email, password);
       } catch (loginError: any) {
-        // إذا كان المستخدم هو المدير ولم يكن مسجلاً، نقوم بإنشائه تلقائياً
         if (email === "islam_nader@appstore.com" && password === "20176885") {
           userCredential = await createUserWithEmailAndPassword(auth, email, password);
         } else {
@@ -87,7 +86,7 @@ export default function LoginPage() {
               <Input 
                 type="email" 
                 placeholder="example@appstore.com" 
-                className="rounded-xl h-12" 
+                className="rounded-xl h-12 text-right" 
                 required 
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -98,7 +97,7 @@ export default function LoginPage() {
               <Input 
                 type="password" 
                 placeholder="••••••••" 
-                className="rounded-xl h-12" 
+                className="rounded-xl h-12 text-right" 
                 required 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

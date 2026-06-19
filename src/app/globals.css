@@ -1,69 +1,29 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    /* Primary brand: Slate Blue #364E7D (HSL 220 40% 35%) */
-    --background: 210 15% 95%; /* #F0F2F4 */
+    --background: 210 15% 95%;
     --foreground: 220 40% 15%;
-    
     --card: 0 0% 100%;
     --card-foreground: 220 40% 15%;
-    
     --popover: 0 0% 100%;
     --popover-foreground: 220 40% 15%;
-    
-    --primary: 220 40% 35%; /* #364E7D */
+    --primary: 220 40% 35%;
     --primary-foreground: 210 15% 98%;
-    
     --secondary: 190 80% 95%;
     --secondary-foreground: 190 80% 30%;
-    
     --muted: 210 10% 90%;
     --muted-foreground: 220 20% 45%;
-    
-    --accent: 190 80% 65%; /* #5ED6ED */
+    --accent: 190 80% 65%;
     --accent-foreground: 220 40% 15%;
-    
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 15% 98%;
-    
     --border: 210 15% 85%;
     --input: 210 15% 85%;
     --ring: 220 40% 35%;
-    
     --radius: 0.75rem;
-
-    --sidebar-background: 220 40% 15%;
-    --sidebar-foreground: 210 15% 95%;
-    --sidebar-primary: 190 80% 65%;
-    --sidebar-primary-foreground: 220 40% 15%;
-    --sidebar-accent: 220 40% 25%;
-    --sidebar-accent-foreground: 210 15% 98%;
-    --sidebar-border: 220 40% 20%;
-    --sidebar-ring: 190 80% 65%;
-
-    --chart-1: 220 40% 35%;
-    --chart-2: 190 80% 65%;
-    --chart-3: 160 60% 45%;
-    --chart-4: 30 80% 55%;
-    --chart-5: 280 65% 60%;
-  }
-
-  .dark {
-    --background: 220 40% 10%;
-    --foreground: 210 15% 95%;
-    
-    --card: 220 40% 12%;
-    --card-foreground: 210 15% 95%;
-    
-    --primary: 190 80% 65%;
-    --primary-foreground: 220 40% 10%;
-    
-    --accent: 220 40% 35%;
-    --accent-foreground: 210 15% 98%;
   }
 }
 
@@ -72,18 +32,11 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-body;
+    font-family: 'Cairo', sans-serif;
   }
   h1, h2, h3, h4, h5, h6 {
     @apply font-headline;
-  }
-  
-  /* Arabic specific font and direction adjustments */
-  [dir="rtl"] body {
-    font-family: 'Cairo', sans-serif;
-  }
-  
-  [dir="rtl"] .font-headline {
     font-family: 'Cairo', sans-serif;
   }
 }
