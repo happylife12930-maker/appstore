@@ -1,4 +1,3 @@
-
 "use client";
 import * as React from "react";
 import { useState, useEffect, useCallback } from "react";
@@ -47,7 +46,6 @@ export default function ClientsPage() {
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
-  // دالة لجلب البيانات
   useEffect(() => {
     if (!db) return;
     const q = query(collection(db, "clients"), orderBy("createdAt", "desc"));
@@ -64,7 +62,6 @@ export default function ClientsPage() {
     return () => unsubscribe();
   }, [toast]);
 
-  // دالة وقائية لضمان عودة التفاعل مع الصفحة
   const forceEnableScroll = useCallback(() => {
     document.body.style.pointerEvents = 'auto';
     document.body.style.overflow = 'auto';
@@ -95,10 +92,8 @@ export default function ClientsPage() {
         toast({ title: "نجاح", description: "تمت إضافة العميل بنجاح." });
       }
       
-      // إغلاق النافذة وتصفير الحالة
       setIsModalOpen(false);
       setSelectedClient(null);
-      // التأكد من عودة التفاعل
       setTimeout(forceEnableScroll, 100);
     } catch (error) {
       console.error("Error saving client: ", error);
@@ -109,7 +104,6 @@ export default function ClientsPage() {
   };
 
   const handleEditClient = (client: any) => {
-    // نستخدم setTimeout للسماح للقائمة المنسدلة بالإغلاق أولاً قبل فتح النافذة
     setSelectedClient(client);
     setTimeout(() => {
       setIsModalOpen(true);
@@ -230,7 +224,7 @@ export default function ClientsPage() {
                               <DropdownMenuItem onSelect={() => handleEditClient(client)} className="rounded-xl cursor-pointer py-3 gap-3 hover:bg-blue-50">
                                 <Edit className="h-5 w-5 text-blue-500" /> تعديل البيانات المالية
                               </DropdownMenuItem>
-                              <DropdownMenuItem className="rounded-xl cursor-pointer py-3 gap-3 hover:bg-slate-50">
+                              <DropdownMenuItem onSelect={() => router.push(`/clients/${client.id}/statement`)} className="rounded-xl cursor-pointer py-3 gap-3 hover:bg-slate-50">
                                 <ExternalLink className="h-5 w-5 text-slate-500" /> كشف حساب تفصيلي
                               </DropdownMenuItem>
                               <DropdownMenuItem onSelect={() => handleDeleteClient(client.id)} className="rounded-xl cursor-pointer py-3 gap-3 text-red-600 focus:bg-red-50 focus:text-red-600">
