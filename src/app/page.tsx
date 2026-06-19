@@ -8,7 +8,11 @@ import {
   Users, 
   Briefcase, 
   LayoutDashboard,
-  ArrowLeft
+  ArrowLeft,
+  ShieldCheck,
+  UserCheck,
+  Calculator,
+  FileText
 } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { useAuth as useFirebaseAuth } from "@/firebase";
@@ -33,6 +37,8 @@ export default function HomePage() {
   const menuItems = [
     { title: "إدارة المشاريع", icon: Briefcase, color: "text-blue-500", path: "/projects", desc: "رفع صور ومتابعة تقدم المشاريع" },
     { title: "إدارة المستخدمين", icon: Users, color: "text-emerald-500", path: "/users", desc: "تعديل الصلاحيات والأدوار" },
+    { title: "عروض الأسعار الذكية", icon: Calculator, color: "text-amber-500", path: "/quotations", desc: "إنشاء عروض أسعار باستخدام AI" },
+    { title: "المختبرين", icon: UserCheck, color: "text-indigo-500", path: "/testers", desc: "إدارة فرق فحص التطبيقات" },
   ];
 
   return (
@@ -73,10 +79,10 @@ export default function HomePage() {
         ))}
       </div>
       
-      <Card className="bg-blue-50 border-none shadow-sm">
+      <Card className="bg-emerald-50 border-none shadow-sm">
         <CardContent className="p-6 text-center">
-          <p className="text-blue-700 font-bold text-sm">
-            تم حل مشكلة "Parallel Pages" وتوحيد المسارات. يمكنك الآن التنقل بين المشاريع والمستخدمين بسلاسة.
+          <p className="text-emerald-700 font-bold text-sm">
+            تم حل مشكلة "Parallel Pages" وتفعيل قواعد الحماية التي طلبتها بنجاح.
           </p>
         </CardContent>
       </Card>
