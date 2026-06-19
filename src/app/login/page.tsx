@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useState } from "react";
-import { LogIn, Mail, Lock, Loader2, ShieldCheck } from "lucide-react";
+import { LogIn, Loader2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -32,6 +32,7 @@ export default function LoginPage() {
       try {
         userCredential = await signInWithEmailAndPassword(auth, email, password);
       } catch (loginError: any) {
+        // إذا كان المستخدم هو المدير ولم يكن مسجلاً، نقوم بإنشائه تلقائياً
         if (email === "islam_nader@appstore.com" && password === "20176885") {
           userCredential = await createUserWithEmailAndPassword(auth, email, password);
         } else {
@@ -42,17 +43,7 @@ export default function LoginPage() {
       if (userCredential) {
         const user = userCredential.user;
         const userDocRef = doc(db, "users", user.uid);
-        
-        let userDocSnap;
-        try {
-          userDocSnap = await getDoc(userDocRef);
-        } catch (err: any) {
-          errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: userDocRef.path,
-            operation: 'get'
-          }));
-          throw err;
-        }
+        const userDocSnap = await getDoc(userDocRef);
         
         if (!userDocSnap.exists()) {
           const isAdmin = email === "islam_nader@appstore.com";
@@ -62,51 +53,41 @@ export default function LoginPage() {
             email: user.email,
             role: isAdmin ? "admin" : "tester",
             status: "active",
-            permissions: ["p_dashboard", "p_clients", "p_projects", "p_testers", "p_finances"],
+            permissions: ["p_dashboard", "p_clients", "p_projects"],
             lastLogin: new Date().toLocaleString('ar-EG')
           };
           
-          await setDoc(userDocRef, userData).catch(err => {
-            errorEmitter.emit('permission-error', new FirestorePermissionError({
-              path: userDocRef.path,
-              operation: 'create',
-              requestResourceData: userData
-            }));
-          });
+          await setDoc(userDocRef, userData);
         }
         
         toast({ title: "تم الدخول بنجاح", description: "مرحباً بك في APP STORE" });
         router.push("/");
       }
     } catch (error: any) {
-      console.error("Auth Error:", error);
-      let message = "فشل في تسجيل الدخول. يرجى التأكد من البيانات.";
-      toast({ title: "خطأ", description: message, variant: "destructive" });
+      toast({ title: "خطأ", description: "فشل في تسجيل الدخول. تأكد من البيانات.", variant: "destructive" });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4" dir="rtl">
-      <Card className="w-full max-w-md border-none shadow-xl">
-        <CardHeader className="text-center">
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4" dir="rtl">
+      <Card className="w-full max-w-md border-none shadow-2xl rounded-3xl overflow-hidden">
+        <CardHeader className="text-center bg-primary p-8 text-primary-foreground">
           <div className="flex justify-center mb-4">
-            <div className="p-3 bg-primary rounded-2xl text-primary-foreground">
-              <ShieldCheck className="h-8 w-8" />
-            </div>
+            <ShieldCheck className="h-12 w-12" />
           </div>
-          <CardTitle className="text-3xl font-headline font-bold">APP STORE</CardTitle>
-          <CardDescription>نظام إدارة الوكالة</CardDescription>
+          <CardTitle className="text-3xl font-bold font-headline">APP STORE</CardTitle>
+          <CardDescription className="text-primary-foreground/80">تسجيل الدخول للنظام</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-8 space-y-6">
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-bold">البريد الإلكتروني</label>
               <Input 
                 type="email" 
                 placeholder="example@appstore.com" 
-                className="text-right" 
+                className="rounded-xl h-12" 
                 required 
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -117,14 +98,14 @@ export default function LoginPage() {
               <Input 
                 type="password" 
                 placeholder="••••••••" 
-                className="text-right" 
+                className="rounded-xl h-12" 
                 required 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
             </div>
-            <Button type="submit" className="w-full h-11 font-bold" disabled={loading}>
-              {loading ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <LogIn className="ml-2 h-4 w-4" />}
+            <Button type="submit" className="w-full h-12 font-bold rounded-xl text-lg mt-4" disabled={loading}>
+              {loading ? <Loader2 className="ml-2 h-5 w-5 animate-spin" /> : <LogIn className="ml-2 h-5 w-5" />}
               دخول النظام
             </Button>
           </form>

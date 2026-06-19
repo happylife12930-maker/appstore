@@ -33,7 +33,7 @@ export default function HomePage() {
 
   const menuItems = [
     { title: "إدارة المشاريع", icon: Briefcase, color: "text-blue-600", path: "/projects", desc: "متابعة الصور والتقدم" },
-    { title: "إدارة الفريق", icon: Users, color: "text-emerald-600", path: "/users", desc: "الموظفين والصلاحيات" },
+    { title: "إدارة الموظفين", icon: Users, color: "text-emerald-600", path: "/users", desc: "الموظفين والصلاحيات" },
     { title: "حالات الاختبار", icon: ShieldCheck, color: "text-indigo-600", path: "/test-cases", desc: "فحص جودة التطبيقات" },
   ];
 
