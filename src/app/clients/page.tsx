@@ -1,301 +1,219 @@
-"use client";
-import * as React from "react";
-import { useState, useEffect, useCallback, useMemo } from "react";
-import {
-  MoreHorizontal,
-  Home,
-  PlusCircle,
-  Loader2,
-  Edit,
-  Trash2,
-  ExternalLink,
-  Building2,
-  Mail,
-  Users,
-  Search,
-  X
-} from "lucide-react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+
+'use client';
+
+import * as React from 'react';
+import { useState, useEffect } from 'react';
+import { 
+  Users, 
+  Plus, 
+  Search, 
+  Phone, 
+  Mail, 
+  Building, 
+  CreditCard, 
+  MoreVertical, 
+  Trash2, 
+  Edit, 
+  FileText,
+  X,
+  Loader2
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useRouter } from "next/navigation";
-import { AddClientModal, ClientData } from "@/components/modals/add-client-modal";
-import { db } from "@/lib/firebase";
-import { collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc } from "firebase/firestore";
-import { useToast } from "@/hooks/use-toast";
+} from '@/components/ui/dropdown-menu';
+import { db } from '@/lib/firebase';
+import { collection, onSnapshot, query, orderBy, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
+import { AddClientModal, ClientData } from '@/components/modals/add-client-modal';
+import { useRouter } from 'next/navigation';
 
 export default function ClientsPage() {
-  const router = useRouter();
-  const { toast } = useToast();
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedClient, setSelectedClient] = useState<ClientData | null>(null);
   const [clients, setClients] = useState<any[]>([]);
+  const [filteredClients, setFilteredClients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingClient, setEditingClient] = useState<ClientData | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
+  const { toast } = useToast();
+  const router = useRouter();
 
   useEffect(() => {
     if (!db) return;
-    const q = query(collection(db, "clients"), orderBy("createdAt", "desc"));
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const clientsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setClients(clientsData);
-      setLoading(false);
-    }, (error) => {
-      console.error("Error fetching clients: ", error);
-      toast({ title: "خطأ", description: "فشل في جلب بيانات العملاء.", variant: "destructive" });
+    const q = query(collection(db, 'clients'), orderBy('name', 'asc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setClients(data);
+      setFilteredClients(data);
       setLoading(false);
     });
-
     return () => unsubscribe();
-  }, [toast]);
-
-  const forceEnableScroll = useCallback(() => {
-    document.body.style.pointerEvents = 'auto';
-    document.body.style.overflow = 'auto';
-    document.body.removeAttribute('data-scroll-locked');
   }, []);
 
-  const handleSaveClient = async (clientData: ClientData) => {
+  useEffect(() => {
+    const filtered = clients.filter(client => 
+      client.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      client.phone?.includes(searchTerm) ||
+      client.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      client.projectName?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    setFilteredClients(filtered);
+  }, [searchTerm, clients]);
+
+  const handleSaveClient = async (data: ClientData) => {
     setIsSaving(true);
     try {
-      const balance = Number(clientData.totalInvoices || 0) - Number(clientData.totalPayments || 0);
-      
-      if (clientData.id) {
-        const clientRef = doc(db, "clients", clientData.id);
-        const { id, ...dataToUpdate } = clientData;
-        await updateDoc(clientRef, {
-          ...dataToUpdate,
-          balance: balance,
+      if (data.id) {
+        await updateDoc(doc(db, 'clients', data.id), {
+          ...data,
           updatedAt: serverTimestamp()
         });
-        toast({ title: "تم التحديث", description: "تم تحديث بيانات العميل بنجاح." });
+        toast({ title: 'تم التحديث', description: 'تم تحديث بيانات العميل بنجاح.' });
       } else {
-        const { id, ...dataToAdd } = clientData;
-        await addDoc(collection(db, "clients"), {
-          ...dataToAdd,
-          balance: balance,
-          projects: 1,
-          startDate: new Date().toISOString().split('T')[0],
+        await addDoc(collection(db, 'clients'), {
+          ...data,
           createdAt: serverTimestamp()
         });
-        toast({ title: "نجاح", description: "تمت إضافة العميل بنجاح." });
+        toast({ title: 'تمت الإضافة', description: 'تم إضافة العميل الجديد للنظام.' });
       }
-      
       setIsModalOpen(false);
-      setSelectedClient(null);
-      setTimeout(forceEnableScroll, 100);
-    } catch (error) {
-      console.error("Error saving client: ", error);
-      toast({ title: "خطأ", description: "حدث خطأ أثناء حفظ البيانات.", variant: "destructive" });
+    } catch (err) {
+      toast({ title: 'خطأ', description: 'فشل في حفظ البيانات.', variant: 'destructive' });
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleEditClient = (client: any) => {
-    setSelectedClient(client);
-    setTimeout(() => {
-      setIsModalOpen(true);
-    }, 100);
-  };
-
   const handleDeleteClient = async (id: string) => {
-    if (!confirm("هل أنت متأكد من حذف هذا العميل؟ لا يمكن التراجع عن هذا الإجراء.")) return;
+    if (!confirm('هل أنت متأكد من حذف هذا العميل؟ سيتم حذف كافة بياناته المالية.')) return;
     try {
-      await deleteDoc(doc(db, "clients", id));
-      toast({ title: "تم الحذف", description: "تم حذف العميل بنجاح." });
-      setTimeout(forceEnableScroll, 100);
-    } catch (error) {
-      toast({ title: "خطأ", description: "فشل في حذف العميل.", variant: "destructive" });
+      await deleteDoc(doc(db, 'clients', id));
+      toast({ title: 'تم الحذف', description: 'تم إزالة العميل من النظام.' });
+    } catch (err) {
+      toast({ title: 'خطأ', description: 'فشل في حذف العميل.', variant: 'destructive' });
     }
   };
 
-  const openAddModal = () => {
-    setSelectedClient(null);
-    setIsModalOpen(true);
-  };
-
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setSelectedClient(null);
-    setTimeout(forceEnableScroll, 100);
-  };
-
-  // تصفية العملاء بناءً على نص البحث
-  const filteredClients = useMemo(() => {
-    if (!searchTerm.trim()) return clients;
-    const term = searchTerm.toLowerCase();
-    return clients.filter(client => 
-      (client.name?.toLowerCase().includes(term)) ||
-      (client.phone?.includes(term)) ||
-      (client.projectName?.toLowerCase().includes(term)) ||
-      (client.email?.toLowerCase().includes(term))
-    );
-  }, [clients, searchTerm]);
-
   return (
-    <>
+    <div className="max-w-7xl mx-auto space-y-8" dir="rtl" style={{ fontFamily: "'Cairo', sans-serif" }}>
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-[2rem] shadow-sm border">
+        <div>
+          <h1 className="text-3xl font-black text-slate-800 flex items-center gap-3">
+            <Users className="h-8 w-8 text-primary" /> قائمة العملاء
+          </h1>
+          <p className="text-muted-foreground font-bold">إدارة بيانات العملاء والربط المالي</p>
+        </div>
+        <Button onClick={() => { setEditingClient(null); setIsModalOpen(true); }} className="rounded-2xl font-black h-14 px-8 text-lg shadow-lg">
+          <Plus className="ml-2 h-6 w-6" /> إضافة عميل جديد
+        </Button>
+      </header>
+
+      <Card className="rounded-3xl border-none shadow-sm overflow-hidden bg-white">
+        <CardContent className="p-6">
+          <div className="relative">
+            <Search className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+            <Input 
+              placeholder="ابحث بالاسم، رقم الهاتف، أو اسم المشروع..." 
+              className="pr-12 h-14 rounded-2xl border-slate-200 font-bold text-lg focus:ring-primary"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            {searchTerm && (
+              <button onClick={() => setSearchTerm('')} className="absolute left-4 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-100 rounded-full transition-colors">
+                <X className="h-5 w-5 text-slate-400" />
+              </button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {loading ? (
+        <div className="flex justify-center py-20"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredClients.map((client) => {
+            const balance = (client.totalInvoices || 0) - (client.totalPayments || 0);
+            return (
+              <Card key={client.id} className="rounded-[2.5rem] border-none shadow-xl hover:shadow-2xl transition-all group overflow-hidden bg-white">
+                <div className="bg-slate-50 p-6 flex justify-between items-start">
+                  <div className="flex items-center gap-4">
+                    <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                      <Users className="h-7 w-7" />
+                    </div>
+                    <div>
+                      <h3 className="font-black text-xl text-slate-800">{client.name}</h3>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{client.projectName || 'بدون مشروع نشط'}</p>
+                    </div>
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="rounded-full h-10 w-10">
+                        <MoreVertical className="h-6 w-6" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" dir="rtl" className="font-bold rounded-xl border-none shadow-2xl p-2 min-w-[180px]">
+                      <DropdownMenuItem onClick={() => router.push(`/clients/${client.id}/statement`)} className="gap-3 py-3 cursor-pointer rounded-lg hover:bg-slate-50">
+                        <FileText className="h-4 w-4 text-primary" /> كشف حساب تفصيلي
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => { setEditingClient(client); setIsModalOpen(true); }} className="gap-3 py-3 cursor-pointer rounded-lg hover:bg-blue-50 text-blue-600">
+                        <Edit className="h-4 w-4" /> تعديل البيانات
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleDeleteClient(client.id)} className="gap-3 py-3 cursor-pointer rounded-lg hover:bg-rose-50 text-rose-600">
+                        <Trash2 className="h-4 w-4" /> حذف العميل
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+
+                <CardContent className="p-8 space-y-6">
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3 text-slate-600 font-bold">
+                      <Phone className="h-4 w-4 text-primary" /> <span dir="ltr">{client.phone || 'غير مسجل'}</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-slate-600 font-bold">
+                      <Mail className="h-4 w-4 text-primary" /> {client.email || 'بدون بريد'}
+                    </div>
+                  </div>
+
+                  <div className="pt-6 border-t border-dashed flex justify-between items-center">
+                    <div>
+                      <p className="text-xs font-black text-slate-400 uppercase mb-1">الرصيد المتبقي</p>
+                      <p className={`text-2xl font-black ${balance > 0 ? 'text-rose-600' : 'text-green-600'}`}>
+                        {balance.toLocaleString('ar-EG')} <span className="text-sm">ج.م</span>
+                      </p>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => router.push(`/clients/${client.id}/statement`)} className="rounded-xl font-black border-2 border-primary/20 hover:bg-primary hover:text-white transition-all">
+                      التفاصيل <CreditCard className="mr-2 h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {filteredClients.length === 0 && !loading && (
+        <div className="text-center py-20 bg-white rounded-[3rem] shadow-sm border border-dashed border-slate-200">
+          <Users className="h-16 w-16 mx-auto text-slate-200 mb-4" />
+          <h3 className="text-xl font-black text-slate-400">لم يتم العثور على نتائج للبحث</h3>
+        </div>
+      )}
+
       <AddClientModal 
         isOpen={isModalOpen} 
-        onClose={closeModal} 
-        onSave={handleSaveClient}
-        isLoading={isSaving}
-        initialData={selectedClient}
+        onClose={() => setIsModalOpen(false)} 
+        onSave={handleSaveClient} 
+        isLoading={isSaving} 
+        initialData={editingClient} 
       />
-      <div className="max-w-7xl mx-auto space-y-8" dir="rtl" style={{ fontFamily: "'Cairo', sans-serif" }}>
-        <header className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-3xl shadow-sm border border-slate-100 gap-4">
-          <div className="flex items-center gap-4">
-            <Button variant="outline" size="icon" onClick={() => router.push("/")} className="rounded-xl hover:bg-primary hover:text-white transition-colors h-12 w-12">
-              <Home className="h-6 w-6" />
-            </Button>
-            <div>
-              <h1 className="text-3xl font-black text-slate-900">إدارة العملاء</h1>
-              <p className="text-muted-foreground font-medium">قائمة العملاء والتفاصيل المالية الشاملة (ج.م)</p>
-            </div>
-          </div>
-          <Button onClick={openAddModal} className="rounded-xl font-black shadow-lg h-14 px-8 text-lg w-full md:w-auto">
-            <PlusCircle className="ml-2 h-6 w-6" />
-            إضافة عميل جديد
-          </Button>
-        </header>
-
-        {/* شريط البحث المطور */}
-        <Card className="rounded-3xl border-none shadow-md bg-white overflow-hidden">
-          <CardContent className="p-4 md:p-6">
-            <div className="relative group">
-              <Search className="absolute right-4 top-1/2 -translate-y-1/2 h-6 w-6 text-slate-400 group-focus-within:text-primary transition-colors" />
-              <Input 
-                placeholder="ابحث عن عميل بالاسم أو رقم الهاتف أو اسم المشروع..." 
-                className="pr-12 h-14 rounded-2xl border-slate-200 focus:border-primary focus:ring-primary font-bold text-lg"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              {searchTerm && (
-                <button 
-                  onClick={() => setSearchTerm("")}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 p-2 hover:bg-slate-100 rounded-full transition-colors"
-                >
-                  <X className="h-5 w-5 text-slate-400" />
-                </button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-3xl border-none shadow-xl bg-white overflow-hidden">
-          <CardHeader className="bg-slate-50 border-b p-6">
-            <div className="flex justify-between items-center">
-              <div>
-                <CardTitle className="text-xl font-black text-slate-800">سجل العملاء المالي</CardTitle>
-                <CardDescription className="font-bold text-slate-500 mt-1">
-                  {loading ? "جاري مزامنة البيانات..." : searchTerm.trim() ? `نتائج البحث: ${filteredClients.length} عملاء` : `يوجد حالياً ${clients.length} عملاء مسجلين`}
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader className="bg-slate-50/50">
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="text-right font-black text-slate-900 py-6 text-base">العميل والمشروع</TableHead>
-                  <TableHead className="text-right font-black text-slate-900 text-base">المبلغ الكلي</TableHead>
-                  <TableHead className="text-right font-black text-slate-900 text-base">المدفوع</TableHead>
-                  <TableHead className="text-right font-black text-slate-900 text-base">المتبقي</TableHead>
-                  <TableHead className="text-center font-black text-slate-900 text-base">الإجراءات</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableRow><TableCell colSpan={5} className="text-center py-20"><Loader2 className="h-12 w-12 animate-spin mx-auto text-primary" /></TableCell></TableRow>
-                ) : filteredClients.length > 0 ? (
-                  filteredClients.map((client) => {
-                    const balance = Number(client.totalInvoices || 0) - Number(client.totalPayments || 0);
-                    return (
-                      <TableRow key={client.id} className="hover:bg-slate-50/80 transition-colors border-b">
-                        <TableCell className="py-6">
-                          <div className="font-black text-slate-900 text-lg mb-1">{client.name}</div>
-                          <div className="flex flex-col gap-1">
-                            <div className="flex items-center gap-2 text-primary font-black text-sm">
-                              <Building2 className="h-3 w-3" />
-                              {client.projectName || "بدون مشروع"}
-                            </div>
-                            <div className="flex items-center gap-2 text-slate-400 font-bold text-xs" dir="ltr">
-                              <span className="text-right block w-full">{client.phone}</span>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="font-black text-slate-700 text-base">
-                          {(client.totalInvoices || 0).toLocaleString('ar-EG')} ج.م
-                        </TableCell>
-                        <TableCell className="font-black text-green-600 text-base">
-                          {(client.totalPayments || 0).toLocaleString('ar-EG')} ج.م
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={balance <= 0 ? "default" : "destructive"} className="rounded-xl px-4 py-2 text-sm font-black shadow-sm min-w-[100px] justify-center">
-                            {balance.toLocaleString('ar-EG')} ج.م
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <DropdownMenu onOpenChange={(open) => !open && forceEnableScroll()}>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" className="h-10 w-10 p-0 rounded-full hover:bg-slate-200">
-                                <MoreHorizontal className="h-6 w-6" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" dir="rtl" className="font-black rounded-2xl p-2 shadow-2xl border-none min-w-[180px]">
-                              <DropdownMenuLabel className="text-slate-400 text-xs px-2 mb-1">إدارة بيانات العميل</DropdownMenuLabel>
-                              <DropdownMenuItem onSelect={() => handleEditClient(client)} className="rounded-xl cursor-pointer py-3 gap-3 hover:bg-blue-50">
-                                <Edit className="h-5 w-5 text-blue-500" /> تعديل البيانات المالية
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onSelect={() => router.push(`/clients/${client.id}/statement`)} className="rounded-xl cursor-pointer py-3 gap-3 hover:bg-slate-50">
-                                <ExternalLink className="h-5 w-5 text-slate-500" /> كشف حساب تفصيلي
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onSelect={() => handleDeleteClient(client.id)} className="rounded-xl cursor-pointer py-3 gap-3 text-red-600 focus:bg-red-50 focus:text-red-600">
-                                <Trash2 className="h-5 w-5" /> حذف السجل نهائياً
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center py-32">
-                      <div className="space-y-4 flex flex-col items-center">
-                        <div className="p-6 bg-slate-50 rounded-full">
-                           <Users className="h-16 w-16 text-slate-200" />
-                        </div>
-                        <p className="text-2xl font-black text-slate-300">
-                          {searchTerm ? "لا توجد نتائج تطابق بحثك" : "لا يوجد عملاء حالياً"}
-                        </p>
-                        {!searchTerm && <Button onClick={openAddModal} variant="outline" className="rounded-xl font-black h-12 px-6">إضافة أول عميل للنظام</Button>}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      </div>
-    </>
+    </div>
   );
 }

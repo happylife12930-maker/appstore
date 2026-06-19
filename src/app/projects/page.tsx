@@ -119,12 +119,10 @@ function ProjectsContent() {
   useEffect(() => {
     if (!db || !profile) return;
     
-    // فلترة المشاريع بناءً على دور المستخدم
     let projectsQuery;
     if (profile.role === 'admin') {
       projectsQuery = query(collection(db, "projects"), orderBy("createdAt", "desc"));
     } else {
-      // إذا كان عميل، يرى فقط مشاريعه المرتبطة بـ clientId الخاص به
       projectsQuery = query(
         collection(db, "projects"), 
         where("clientId", "==", profile.clientId || ""),
@@ -309,7 +307,6 @@ function ProjectsContent() {
   };
 
   const toggleStep = async (projectId: string, stepId: number) => {
-    // العملاء لا يستطيعون تعديل الخطوات، فقط الأدمن والمختبرين
     if (profile?.role === 'client') {
       toast({ title: "تنبيه", description: "لا تملك صلاحية تعديل مراحل التنفيذ." });
       return;
@@ -461,10 +458,10 @@ function ProjectsContent() {
       {/* مودال الإضافة والتعديل */}
       <Dialog open={isModalOpen} onOpenChange={(open) => !open && closeModal()}>
         <DialogContent className="sm:max-w-[750px] rounded-[3rem] p-0 overflow-hidden border-none shadow-2xl bg-white" dir="rtl">
-          <div className="bg-primary p-10 text-primary-foreground">
+          <DialogHeader className="bg-primary p-10 text-primary-foreground">
             <DialogTitle className="text-3xl font-black">{selectedProject ? 'تعديل بيانات المشروع' : 'إضافة مشروع جديد'}</DialogTitle>
             <DialogDescription className="text-primary-foreground/80 font-bold text-lg mt-2">قم بتحديث بيانات المشروع والصور والخطوات.</DialogDescription>
-          </div>
+          </DialogHeader>
 
           <ScrollArea className="max-h-[70vh] p-10">
             <div className="space-y-8">
@@ -597,6 +594,10 @@ function ProjectsContent() {
         <DialogContent className="sm:max-w-[1000px] rounded-[3.5rem] p-0 overflow-hidden border-none shadow-2xl bg-white" dir="rtl">
           {previewProject && (
             <>
+             <DialogHeader className="sr-only">
+                <DialogTitle>{previewProject.name}</DialogTitle>
+                <DialogDescription>تفاصيل المشروع للعميل {previewProject.clientName}</DialogDescription>
+              </DialogHeader>
               <div className="relative w-full aspect-video bg-slate-50 flex items-center justify-center overflow-hidden border-b">
                 {previewProject.images && previewProject.images.length > 0 ? (
                   <Carousel className="w-full h-full" opts={{ direction: 'rtl' }}>
@@ -630,7 +631,7 @@ function ProjectsContent() {
                 </button>
               </div>
 
-              <ScrollArea className="max-h-[50vh] p-12 bg-white">
+              <ScrollArea className="max-h-[70vh] p-12 bg-white">
                 <div className="space-y-12 pb-10">
                   <div className="flex flex-col md:flex-row justify-between items-start gap-6">
                     <div className="space-y-4">
