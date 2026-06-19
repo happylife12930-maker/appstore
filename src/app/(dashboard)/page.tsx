@@ -6,7 +6,6 @@ import {
   Users, 
   Briefcase, 
   CheckCircle2, 
-  TrendingUp, 
   DollarSign, 
   Bug, 
   Clock, 
@@ -20,34 +19,16 @@ import {
   CardDescription 
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import {
-  ChartConfig,
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart";
 import { 
-  Bar, 
-  BarChart, 
   CartesianGrid, 
   XAxis, 
   ResponsiveContainer,
-  Line,
-  LineChart,
-  YAxis,
   Tooltip,
   AreaChart,
-  Area
+  Area,
+  YAxis
 } from "recharts";
-
-const stats = [
-  { label: "Total Clients", value: "48", icon: Users, trend: "+12%", color: "text-blue-500" },
-  { label: "Active Projects", value: "14", icon: Briefcase, trend: "+2", color: "text-amber-500" },
-  { label: "Finished Projects", value: "128", icon: CheckCircle2, trend: "+8", color: "text-emerald-500" },
-  { label: "Open Bugs", value: "24", icon: Bug, trend: "-4", color: "text-rose-500" },
-  { label: "Delayed Tasks", value: "7", icon: Clock, trend: "+1", color: "text-orange-500" },
-  { label: "Monthly Revenue", value: "$12,450", icon: DollarSign, trend: "+18%", color: "text-indigo-500" },
-];
+import { useTranslation } from "@/components/language-provider";
 
 const revenueData = [
   { month: "Jan", revenue: 4500, profit: 2400 },
@@ -66,6 +47,17 @@ const projectProgress = [
 ];
 
 export default function Dashboard() {
+  const { t } = useTranslation();
+
+  const stats = [
+    { label: "totalClients", value: "48", icon: Users, trend: "+12%", color: "text-blue-500" },
+    { label: "activeProjects", value: "14", icon: Briefcase, trend: "+2", color: "text-amber-500" },
+    { label: "finishedProjects", value: "128", icon: CheckCircle2, trend: "+8", color: "text-emerald-500" },
+    { label: "openBugs", value: "24", icon: Bug, trend: "-4", color: "text-rose-500" },
+    { label: "delayedTasks", value: "7", icon: Clock, trend: "+1", color: "text-orange-500" },
+    { label: "monthlyRevenue", value: "$12,450", icon: DollarSign, trend: "+18%", color: "text-indigo-500" },
+  ];
+
   return (
     <div className="flex flex-col gap-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
@@ -81,7 +73,7 @@ export default function Dashboard() {
                 </span>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">{stat.label}</p>
+                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">{t(stat.label)}</p>
                 <h3 className="text-2xl font-bold font-headline">{stat.value}</h3>
               </div>
             </CardContent>
@@ -92,8 +84,8 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2 shadow-sm border-none">
           <CardHeader>
-            <CardTitle className="font-headline text-xl">Revenue Growth</CardTitle>
-            <CardDescription>Monthly revenue vs profit overview</CardDescription>
+            <CardTitle className="font-headline text-xl">{t('revenueGrowth')}</CardTitle>
+            <CardDescription>{t('overview')}</CardDescription>
           </CardHeader>
           <CardContent className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -113,9 +105,9 @@ export default function Dashboard() {
                   dy={10}
                 />
                 <YAxis 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{fill: 'hsl(var(--muted-foreground))', fontSize: 12}}
+                   axisLine={false} 
+                   tickLine={false} 
+                   tick={{fill: 'hsl(var(--muted-foreground))', fontSize: 12}}
                 />
                 <Tooltip 
                   contentStyle={{ 
@@ -140,8 +132,8 @@ export default function Dashboard() {
 
         <Card className="shadow-sm border-none">
           <CardHeader>
-            <CardTitle className="font-headline text-xl">Project Progress</CardTitle>
-            <CardDescription>Real-time delivery status</CardDescription>
+            <CardTitle className="font-headline text-xl">{t('projectProgress')}</CardTitle>
+            <CardDescription>{t('overview')}</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-6">
             {projectProgress.map((project) => (
@@ -155,7 +147,7 @@ export default function Dashboard() {
             ))}
             <div className="mt-4 pt-4 border-t">
               <button className="w-full flex items-center justify-center gap-2 text-sm text-primary font-semibold hover:underline">
-                View All Projects <ArrowUpRight className="h-4 w-4" />
+                {t('viewAllProjects')} <ArrowUpRight className="h-4 w-4" />
               </button>
             </div>
           </CardContent>

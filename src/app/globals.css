@@ -77,4 +77,13 @@
   h1, h2, h3, h4, h5, h6 {
     @apply font-headline;
   }
+  
+  /* Arabic specific font and direction adjustments */
+  [dir="rtl"] body {
+    font-family: 'Cairo', sans-serif;
+  }
+  
+  [dir="rtl"] .font-headline {
+    font-family: 'Cairo', sans-serif;
+  }
 }
