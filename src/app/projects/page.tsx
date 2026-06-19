@@ -52,6 +52,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogClose,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -111,6 +112,13 @@ export default function ProjectsPage() {
       document.body.style.overflow = 'auto';
     }
   }, []);
+
+  // مراقبة حالات الإغلاق لضمان عدم حدوث Freeze
+  useEffect(() => {
+    if (!isModalOpen && !isPreviewOpen) {
+      forceEnableScroll();
+    }
+  }, [isModalOpen, isPreviewOpen, forceEnableScroll]);
 
   useEffect(() => {
     if (!db) return;
@@ -219,7 +227,6 @@ export default function ProjectsPage() {
       toast({ title: "خطأ", description: "فشل في حفظ المشروع.", variant: "destructive" });
     } finally {
       setIsSaving(false);
-      forceEnableScroll();
     }
   };
 
@@ -269,13 +276,11 @@ export default function ProjectsPage() {
         { id: 5, title: "التسليم النهائي", completed: false },
       ]
     });
-    forceEnableScroll();
   };
 
   const closePreview = () => {
     setIsPreviewOpen(false);
     setPreviewProject(null);
-    forceEnableScroll();
   };
 
   const toggleStep = async (projectId: string, stepId: number) => {
@@ -305,7 +310,6 @@ export default function ProjectsPage() {
     try {
       await deleteDoc(doc(db, "projects", id));
       toast({ title: "تم الحذف", description: "تم حذف المشروع بنجاح." });
-      forceEnableScroll();
     } catch (err) {
       toast({ title: "خطأ", description: "فشل في الحذف.", variant: "destructive" });
     }
@@ -556,16 +560,17 @@ export default function ProjectsPage() {
                 <DialogDescription>تفاصيل المشروع الكاملة والصور</DialogDescription>
               </DialogHeader>
               
-              <div className="relative w-full aspect-video bg-slate-50 flex items-center justify-center overflow-hidden border-b">
-                {/* زر الإغلاق X العلوي المطور */}
-                <Button 
-                  onClick={closePreview} 
-                  variant="secondary"
-                  size="icon"
-                  className="absolute top-4 right-4 z-[100] h-12 w-12 rounded-full bg-white/80 text-primary shadow-2xl border-2 border-primary/20 hover:bg-white hover:scale-110 active:scale-90 transition-all duration-300"
-                >
-                  <X className="h-7 w-7 stroke-[3px]" />
-                </Button>
+              <div className="relative w-full aspect-video bg-slate-100 flex items-center justify-center overflow-hidden border-b">
+                {/* زر الإغلاق X العلوي المطور والواضح جداً */}
+                <DialogClose asChild>
+                  <Button 
+                    variant="destructive"
+                    size="icon"
+                    className="absolute top-4 right-4 z-[999] h-14 w-14 rounded-full shadow-2xl border-4 border-white hover:scale-110 active:scale-90 transition-all duration-300 group"
+                  >
+                    <X className="h-8 w-8 stroke-[4px] group-hover:rotate-90 transition-transform" />
+                  </Button>
+                </DialogClose>
 
                 {previewProject.images && previewProject.images.length > 0 ? (
                   <Carousel className="w-full h-full" opts={{ direction: 'rtl' }}>
@@ -593,7 +598,7 @@ export default function ProjectsPage() {
                 ) : (
                   <div className="flex items-center justify-center h-full text-slate-300 flex-col gap-4">
                     <ImagePlus className="h-20 w-20" />
-                    <p className="font-black text-xl">لا توجد صور لهذا المشروع</p>
+                    <p className="font-black text-xl text-slate-400">لا توجد صور لهذا المشروع</p>
                   </div>
                 )}
               </div>
@@ -602,7 +607,7 @@ export default function ProjectsPage() {
                 <div className="space-y-10">
                   <div className="flex flex-col md:flex-row justify-between items-start gap-4">
                     <div className="space-y-2">
-                      <DialogTitle className="text-3xl font-black text-slate-900 leading-tight">{previewProject.name}</DialogTitle>
+                      <h2 className="text-3xl font-black text-slate-900 leading-tight">{previewProject.name}</h2>
                       <div className="flex items-center gap-2 text-primary font-black text-lg">
                         <User className="h-6 w-6" /> العميل: {previewProject.clientName}
                       </div>
@@ -661,9 +666,11 @@ export default function ProjectsPage() {
                 <Button onClick={() => { closePreview(); handleEditProject(previewProject); }} className="rounded-2xl font-black h-14 flex-1 shadow-lg text-lg bg-primary hover:bg-primary/90 transition-all active:scale-95">
                   <Edit className="ml-2 h-6 w-6" /> تعديل المشروع
                 </Button>
-                <Button onClick={closePreview} variant="secondary" className="rounded-2xl font-black h-14 px-10 text-lg bg-slate-200 hover:bg-slate-300 text-slate-700 shadow-sm transition-all active:scale-95">
-                  <LogOut className="ml-2 h-6 w-6 rotate-180" /> خروج
-                </Button>
+                <DialogClose asChild>
+                  <Button variant="secondary" className="rounded-2xl font-black h-14 px-10 text-lg bg-slate-200 hover:bg-slate-300 text-slate-700 shadow-sm transition-all active:scale-95">
+                    <LogOut className="ml-2 h-6 w-6 rotate-180" /> خروج
+                  </Button>
+                </DialogClose>
               </div>
             </>
           )}
