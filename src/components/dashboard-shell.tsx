@@ -41,36 +41,45 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useTranslation } from "@/components/language-provider";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/components/auth-provider";
+import { signOut } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
 const navItems = [
-  { title: "dashboard", url: "/", icon: LayoutDashboard },
-  { title: "clients", url: "/clients", icon: Users },
-  { title: "projects", url: "/projects", icon: Briefcase },
-  { title: "testers", url: "/testers", icon: UserCheck },
-  { title: "quotations", url: "/quotations", icon: Calculator },
-  { title: "invoices", url: "/invoices", icon: FileText },
-  { title: "payments", url: "/payments", icon: CreditCard },
-  { title: "testCases", url: "/test-cases", icon: ShieldCheck },
-  { title: "chat", url: "/chat", icon: MessageSquare },
-  { title: "support", url: "/support", icon: LifeBuoy },
-  { title: "reviews", url: "/reviews", icon: Star },
-  { title: "analytics", url: "/analytics", icon: BarChart3 },
-];
-
-const adminItems = [
-  { title: "userManagement", url: "/users", icon: ShieldAlert },
+  { title: "dashboard", url: "/", icon: LayoutDashboard, permission: "p_dashboard" },
+  { title: "clients", url: "/clients", icon: Users, permission: "p_clients" },
+  { title: "projects", url: "/projects", icon: Briefcase, permission: "p_projects" },
+  { title: "testers", url: "/testers", icon: UserCheck, permission: "p_testers" },
+  { title: "quotations", url: "/quotations", icon: Calculator, permission: "p_projects" },
+  { title: "invoices", url: "/invoices", icon: FileText, permission: "p_finances" },
+  { title: "payments", url: "/payments", icon: CreditCard, permission: "p_finances" },
+  { title: "testCases", url: "/test-cases", icon: ShieldCheck, permission: "p_testers" },
+  { title: "chat", url: "/chat", icon: MessageSquare, permission: "p_dashboard" },
+  { title: "support", url: "/support", icon: LifeBuoy, permission: "p_dashboard" },
+  { title: "reviews", url: "/reviews", icon: Star, permission: "p_dashboard" },
+  { title: "analytics", url: "/analytics", icon: BarChart3, permission: "p_finances" },
 ];
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { t, language, setLanguage, dir } = useTranslation();
+  const { profile, loading } = useAuth();
 
-  // لا نعرض الـ Sidebar في صفحة تسجيل الدخول
   if (pathname === '/login') return <>{children}</>;
+  if (loading) return null;
 
   const toggleLanguage = () => {
     setLanguage(language === 'en' ? 'ar' : 'en');
   };
+
+  const handleLogout = async () => {
+    await signOut(auth);
+  };
+
+  // تصفية القائمة بناءً على صلاحيات المستخدم
+  const filteredNavItems = navItems.filter(item => 
+    profile?.role === 'admin' || profile?.permissions?.includes(item.permission)
+  );
 
   return (
     <SidebarProvider>
@@ -91,7 +100,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             <SidebarGroupLabel>{t('management')}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {navItems.map((item) => (
+                {filteredNavItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton 
                       asChild 
@@ -109,39 +118,39 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             </SidebarGroupContent>
           </SidebarGroup>
 
-          <SidebarGroup>
-            <SidebarGroupLabel>الإدارة العليا</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {adminItems.map((item) => (
-                  <SidebarMenuItem key={item.title}>
+          {profile?.role === 'admin' && (
+            <SidebarGroup>
+              <SidebarGroupLabel>الإدارة العليا</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
                     <SidebarMenuButton 
                       asChild 
-                      isActive={pathname === item.url}
-                      tooltip={t(item.title)}
+                      isActive={pathname === "/users"}
+                      tooltip={t('userManagement')}
                     >
-                      <Link href={item.url}>
-                        <item.icon className="text-rose-500" />
-                        <span>{t(item.title)}</span>
+                      <Link href="/users">
+                        <ShieldAlert className="text-rose-500" />
+                        <span>{t('userManagement')}</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          )}
         </SidebarContent>
         <SidebarFooter className="border-t border-sidebar-border/50 p-4">
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton size="lg">
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src="https://picsum.photos/seed/user1/100/100" />
-                  <AvatarFallback>JD</AvatarFallback>
+                  <AvatarImage src={`https://picsum.photos/seed/${profile?.uid}/100/100`} />
+                  <AvatarFallback>{profile?.name?.[0] || 'U'}</AvatarFallback>
                 </Avatar>
                 <div className="flex flex-col items-start transition-all group-data-[collapsible=icon]:hidden overflow-hidden">
-                  <span className="font-medium text-sm">أحمد خليل</span>
-                  <span className="text-xs text-sidebar-foreground/50">{t('admin')}</span>
+                  <span className="font-medium text-sm">{profile?.name || 'مستخدم'}</span>
+                  <span className="text-xs text-sidebar-foreground/50">{t(profile?.role || 'admin')}</span>
                 </div>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -154,7 +163,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             <SidebarTrigger />
             <div className="h-4 w-px bg-border" />
             <h2 className="font-headline text-lg font-bold">
-              {t(navItems.find(i => i.url === pathname)?.title || adminItems.find(i => i.url === pathname)?.title || "overview")}
+              {t(navItems.find(i => i.url === pathname)?.title || "overview")}
             </h2>
           </div>
           <div className="flex items-center gap-2">
@@ -164,9 +173,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             <button className="text-muted-foreground hover:text-foreground transition-colors p-2">
               <Settings className="h-5 w-5" />
             </button>
-            <Link href="/login" className="text-muted-foreground hover:text-destructive transition-colors p-2">
+            <Button variant="ghost" size="icon" onClick={handleLogout} className="text-muted-foreground hover:text-destructive">
               <LogOut className="h-5 w-5" />
-            </Link>
+            </Button>
           </div>
         </header>
         <main className="flex-1 overflow-y-auto p-6">

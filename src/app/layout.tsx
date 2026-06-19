@@ -4,6 +4,7 @@ import './globals.css';
 import {Toaster} from '@/components/ui/toaster';
 import {LanguageProvider} from '@/components/language-provider';
 import {DashboardShell} from '@/components/dashboard-shell';
+import {AuthProvider} from '@/components/auth-provider';
 
 export const metadata: Metadata = {
   title: 'APP STORE | مدير الوكالة',
@@ -24,10 +25,12 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <LanguageProvider>
-          <DashboardShell>
-            {children}
-          </DashboardShell>
-          <Toaster />
+          <AuthProvider>
+            <DashboardShell>
+              {children}
+            </DashboardShell>
+            <Toaster />
+          </AuthProvider>
         </LanguageProvider>
       </body>
     </html>
