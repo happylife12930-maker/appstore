@@ -1,7 +1,7 @@
+
 /**
- * DEACTIVATED: This file was causing a routing conflict with src/app/clients/page.tsx.
- * The functional code has been moved to the root /clients route.
+ * تم تعطيل هذا الملف لمنع تعارض المسارات مع src/app/clients/page.tsx
  */
-export default function DeactivatedPage() {
+export default function ObsoleteClientsPage() {
   return null;
 }

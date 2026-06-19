@@ -1,7 +1,7 @@
+
 /**
- * DEACTIVATED: This file was causing a routing conflict with src/app/projects/page.tsx.
- * The functional code has been moved to the root /projects route.
+ * تم تعطيل هذا الملف لمنع تعارض المسارات مع src/app/projects/page.tsx
  */
-export default function DeactivatedPage() {
+export default function ObsoleteProjectsPage() {
   return null;
 }

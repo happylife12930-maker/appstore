@@ -1,6 +1,7 @@
+
 /**
- * DEACTIVATED: This file was causing a routing conflict with src/app/page.tsx.
+ * تم تعطيل هذا الملف لمنع تعارض المسارات مع src/app/page.tsx
  */
-export default function DeactivatedPage() {
+export default function ObsoleteDashboardPage() {
   return null;
 }
