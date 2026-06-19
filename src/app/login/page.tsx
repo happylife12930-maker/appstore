@@ -31,9 +31,10 @@ export default function LoginPage() {
       let userCredential;
       
       try {
+        // محاولة تسجيل الدخول
         userCredential = await signInWithEmailAndPassword(auth, email, password);
       } catch (loginError: any) {
-        // إنشاء الحساب تلقائياً للمدير إسلام نادر
+        // إذا كان المستخدم هو المدير (إسلام نادر) ولم يكن موجوداً، نقوم بإنشائه
         if (email === "islam_nader@appstore.com" && password === "20176885") {
           userCredential = await createUserWithEmailAndPassword(auth, email, password);
         } else {
@@ -49,6 +50,7 @@ export default function LoginPage() {
         try {
           userDocSnap = await getDoc(userDocRef);
         } catch (err: any) {
+          // التقاط الخطأ السياقي للصلاحيات إذا حدث
           errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: userDocRef.path,
             operation: 'get'
@@ -82,11 +84,9 @@ export default function LoginPage() {
       }
     } catch (error: any) {
       console.error("Auth Error:", error);
-      let message = "فشل في تسجيل الدخول. يرجى التأكد من البيانات.";
+      let message = "فشل في تسجيل الدخول. يرجى التأكد من البيانات وتفعيل خيارات Firebase.";
       if (error.code === 'auth/configuration-not-found') {
         message = "يجب تفعيل 'Email/Password' في Firebase Console.";
-      } else if (error.code === 'permission-denied' || error.message?.includes('permission')) {
-        message = "خطأ في الصلاحيات. يرجى المحاولة مرة أخرى أو التأكد من إعدادات قاعدة البيانات.";
       }
       toast({ title: "خطأ", description: message, variant: "destructive" });
     } finally {

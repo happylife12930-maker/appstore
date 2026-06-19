@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -9,9 +8,7 @@ import {
   MoreVertical, 
   CheckCircle2, 
   XCircle, 
-  Search,
   Settings2,
-  Lock,
   UserCheck,
   Briefcase,
   Bug,
@@ -29,7 +26,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
