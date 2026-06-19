@@ -2,7 +2,7 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // تم فتح القواعد بالكامل لضمان الدخول وحل مشكلة الصلاحيات أثناء التطوير
+    // فتح الوصول الكامل لجميع المستندات لضمان تخطي مشكلة الصلاحيات أثناء الإعداد
     match /{document=**} {
       allow read, write: if true;
     }
