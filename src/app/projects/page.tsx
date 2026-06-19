@@ -1,6 +1,6 @@
 "use client";
 import * as React from "react";
-import { useState, useEffect, Suspense, useMemo } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { 
   Briefcase, 
@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -44,18 +43,11 @@ function ProjectsContent() {
 
   useEffect(() => {
     if (!db) return;
-    
     const unsub = onSnapshot(collection(db, "projects"), (snapshot) => {
       let list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      list.sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0));
       
-      // ترتيب زمني في الذاكرة لتجنب خطأ الـ Index
-      list.sort((a: any, b: any) => {
-        const tA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const tB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        return tB - tA;
-      });
-      
-      // تصفية الخصوصية: العميل يرى حاجته فقط
+      // الخصوصية: العميل يرى مشروعه فقط
       if (profile?.role === 'client') {
         list = list.filter(p => p.clientEmail === profile.email || p.clientId === profile.uid);
       }
@@ -65,14 +57,11 @@ function ProjectsContent() {
 
       if (projectIdFromUrl && !isViewModalOpen) {
         const p = list.find(p => p.id === projectIdFromUrl);
-        if (p) {
-          setSelectedProject(p);
-          setIsViewModalOpen(true);
-        }
+        if (p) { setSelectedProject(p); setIsViewModalOpen(true); }
       }
     });
     return () => unsub();
-  }, [profile, projectIdFromUrl, isViewModalOpen]);
+  }, [profile, projectIdFromUrl]);
 
   const toggleStep = async (projectId: string, stepId: number) => {
     if (profile?.role !== 'admin') return;
@@ -80,6 +69,7 @@ function ProjectsContent() {
     const currentProject = projects.find(p => p.id === projectId);
     if (!currentProject) return;
 
+    // Optimistic UI للتحديث اللحظي
     const updatedSteps = currentProject.steps?.map((s: any) => 
       s.id === stepId ? { ...s, completed: !s.completed } : s
     ) || [];
@@ -87,15 +77,8 @@ function ProjectsContent() {
     const doneCount = updatedSteps.filter((s: any) => s.completed).length;
     const prog = Math.round((doneCount / updatedSteps.length) * 100);
 
-    const updated = {
-      ...currentProject,
-      steps: updatedSteps,
-      progress: prog,
-      status: prog === 100 ? "مكتمل" : "قيد التنفيذ"
-    };
-    
-    // التحديث اللحظي (Optimistic UI)
-    setSelectedProject(updated);
+    // تحديث الحالة محلياً فوراً
+    setSelectedProject((prev: any) => ({ ...prev, steps: updatedSteps, progress: prog }));
 
     try {
       await updateDoc(doc(db!, "projects", projectId), {
@@ -121,7 +104,7 @@ function ProjectsContent() {
     <div className="max-w-7xl mx-auto space-y-6 pb-20" dir="rtl">
       <header>
         <h1 className="text-3xl font-black text-slate-800">خارطة المشروعات</h1>
-        <p className="text-slate-500 font-bold">متابعة دقيقة لكل مراحل التنفيذ والإنجاز</p>
+        <p className="text-slate-500 font-bold">متابعة مراحل التنفيذ والإنجاز</p>
       </header>
 
       <div className="relative">
@@ -142,9 +125,6 @@ function ProjectsContent() {
                 <Badge className={project.status === "مكتمل" ? "bg-green-600 font-black" : "bg-primary font-black"}>
                   {project.status}
                 </Badge>
-                <span className="text-[10px] font-black text-slate-400 flex items-center gap-1">
-                  <Calendar className="h-3 w-3" /> {project.createdAt ? new Date(project.createdAt).toLocaleDateString('ar-EG') : '---'}
-                </span>
               </div>
               <CardTitle className="text-xl font-black text-slate-800 group-hover:text-primary">{project.name}</CardTitle>
               <CardDescription className="font-bold">العميل: {project.clientName}</CardDescription>
@@ -157,11 +137,8 @@ function ProjectsContent() {
                 </div>
                 <Progress value={project.progress} className="h-2.5 rounded-full" />
               </div>
-              <Button 
-                onClick={() => { setSelectedProject(project); setIsViewModalOpen(true); }}
-                className="w-full rounded-2xl h-14 font-black gap-2 shadow-md"
-              >
-                <Eye className="h-5 w-5" /> تفاصيل المراحل
+              <Button onClick={() => { setSelectedProject(project); setIsViewModalOpen(true); }} className="w-full rounded-2xl h-14 font-black gap-2 shadow-md">
+                <Eye className="h-5 w-5" /> عرض مراحل التنفيذ
               </Button>
             </CardContent>
           </Card>
@@ -170,51 +147,41 @@ function ProjectsContent() {
 
       <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>
         <DialogContent className="sm:max-w-[700px] rounded-[3.5rem] p-0 overflow-hidden border-none shadow-2xl bg-white" dir="rtl">
-          <div className="bg-primary p-12 text-primary-foreground relative">
-             <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => setIsViewModalOpen(false)}
-              className="absolute left-6 top-6 text-white hover:bg-white/20 rounded-full h-12 w-12"
-            >
-              <X className="h-8 w-8" />
+          <div className="bg-primary p-10 text-primary-foreground relative">
+             <Button variant="ghost" size="icon" onClick={() => setIsViewModalOpen(false)} className="absolute left-6 top-6 text-white hover:bg-white/20 rounded-full h-10 w-10">
+              <X className="h-6 w-6" />
             </Button>
             <DialogHeader>
               <DialogTitle className="text-3xl font-black">{selectedProject?.name}</DialogTitle>
-              <p className="opacity-80 font-bold mt-2">خطة العمل وجدول التنفيذ الزمني</p>
+              <p className="opacity-80 font-bold mt-2">خطة العمل والخطوات المتبقية</p>
             </DialogHeader>
           </div>
 
-          <ScrollArea className="max-h-[60vh] p-10">
-            <div className="space-y-8">
-              <div className="space-y-4">
-                <h3 className="text-xl font-black text-slate-800 flex items-center gap-2">
-                  <CheckCircle2 className="h-6 w-6 text-primary" /> مراحل التنفيذ الحالية
-                </h3>
-                <div className="grid grid-cols-1 gap-3">
-                  {selectedProject?.steps?.map((step: any) => (
-                    <div 
-                      key={step.id} 
-                      onClick={() => toggleStep(selectedProject.id, step.id)}
-                      className={`flex items-center justify-between p-5 rounded-[2rem] border-2 transition-all ${
-                        step.completed ? 'bg-green-50 border-green-200' : 'bg-slate-50 border-slate-100'
-                      } ${profile?.role === 'admin' ? 'cursor-pointer hover:border-primary/30' : 'cursor-default'}`}
-                    >
-                      <span className={`text-lg font-black ${step.completed ? 'text-green-700' : 'text-slate-600'}`}>
-                        {step.title}
-                      </span>
-                      {step.completed ? (
-                        <div className="h-8 w-8 bg-green-500 rounded-full flex items-center justify-center text-white">
-                          <Check className="h-5 w-5" />
-                        </div>
-                      ) : (
-                        <div className="h-8 w-8 bg-slate-200 rounded-full flex items-center justify-center text-slate-400">
-                          <Clock className="h-4 w-4" />
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+          <ScrollArea className="max-h-[60vh] p-8">
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 gap-3">
+                {selectedProject?.steps?.map((step: any) => (
+                  <div 
+                    key={step.id} 
+                    onClick={() => toggleStep(selectedProject.id, step.id)}
+                    className={`flex items-center justify-between p-5 rounded-[2rem] border-2 transition-all ${
+                      step.completed ? 'bg-green-50 border-green-200' : 'bg-slate-50 border-slate-100'
+                    } ${profile?.role === 'admin' ? 'cursor-pointer hover:border-primary/30' : 'cursor-default'}`}
+                  >
+                    <span className={`text-lg font-black ${step.completed ? 'text-green-700' : 'text-slate-600'}`}>
+                      {step.title}
+                    </span>
+                    {step.completed ? (
+                      <div className="h-8 w-8 bg-green-500 rounded-full flex items-center justify-center text-white">
+                        <Check className="h-5 w-5" />
+                      </div>
+                    ) : (
+                      <div className="h-8 w-8 bg-slate-200 rounded-full flex items-center justify-center text-slate-400">
+                        <Clock className="h-4 w-4" />
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
 
               {/* زر الإغلاق الموحد أسفل قائمة المراحل مباشرة */}

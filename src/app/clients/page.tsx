@@ -10,7 +10,8 @@ import {
   Trash2, 
   Edit3, 
   FileText,
-  Loader2
+  Loader2,
+  Users
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -51,18 +52,18 @@ export default function ClientsPage() {
     try {
       if (editingClient) {
         await updateDoc(doc(db!, "clients", editingClient.id), { ...data });
-        toast({ title: "تم التحديث", description: "تم تحديث البيانات بنجاح." });
+        toast({ title: "تم التحديث", description: "تم تحديث البيانات." });
       } else {
         await addDoc(collection(db!, "clients"), { 
           ...data, 
           startDate: new Date().toLocaleDateString('ar-EG')
         });
-        toast({ title: "تمت الإضافة", description: "تم إضافة العميل بنجاح." });
+        toast({ title: "تمت الإضافة", description: "تم إضافة العميل." });
       }
       setIsModalOpen(false);
       setEditingClient(null);
     } catch (error) {
-      toast({ title: "خطأ", description: "فشل حفظ البيانات.", variant: "destructive" });
+      toast({ title: "خطأ", variant: "destructive" });
     }
   };
 
@@ -81,7 +82,9 @@ export default function ClientsPage() {
     <div className="max-w-7xl mx-auto space-y-6 pb-20" dir="rtl">
       <header className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-black text-slate-800">سجل العملاء</h1>
+          <h1 className="text-3xl font-black text-slate-800 flex items-center gap-3">
+            <Users className="h-8 w-8 text-primary" /> سجل العملاء
+          </h1>
           <p className="text-slate-500 font-bold">إدارة البيانات والمستحقات المالية</p>
         </div>
         <Button onClick={() => { setEditingClient(null); setIsModalOpen(true); }} className="rounded-2xl h-14 font-black shadow-lg gap-2 px-8">
