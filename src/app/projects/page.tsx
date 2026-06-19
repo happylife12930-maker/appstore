@@ -105,10 +105,11 @@ export default function ProjectsPage() {
     ]
   });
 
-  // وظيفة لاستعادة التفاعل مع الصفحة ومنع الفريز
   const forceEnableScroll = useCallback(() => {
-    document.body.style.pointerEvents = 'auto';
-    document.body.style.overflow = 'auto';
+    if (typeof document !== 'undefined') {
+      document.body.style.pointerEvents = 'auto';
+      document.body.style.overflow = 'auto';
+    }
   }, []);
 
   useEffect(() => {
@@ -218,7 +219,7 @@ export default function ProjectsPage() {
       toast({ title: "خطأ", description: "فشل في حفظ المشروع.", variant: "destructive" });
     } finally {
       setIsSaving(false);
-      setTimeout(forceEnableScroll, 100);
+      forceEnableScroll();
     }
   };
 
@@ -241,7 +242,6 @@ export default function ProjectsPage() {
         { id: 5, title: "التسليم النهائي", completed: false },
       ]
     });
-    // تأخير بسيط لمنع الفريز
     setTimeout(() => {
       setIsModalOpen(true);
     }, 100);
@@ -269,13 +269,13 @@ export default function ProjectsPage() {
         { id: 5, title: "التسليم النهائي", completed: false },
       ]
     });
-    setTimeout(forceEnableScroll, 100);
+    forceEnableScroll();
   };
 
   const closePreview = () => {
     setIsPreviewOpen(false);
     setPreviewProject(null);
-    setTimeout(forceEnableScroll, 100);
+    forceEnableScroll();
   };
 
   const toggleStep = async (projectId: string, stepId: number) => {
@@ -305,7 +305,7 @@ export default function ProjectsPage() {
     try {
       await deleteDoc(doc(db, "projects", id));
       toast({ title: "تم الحذف", description: "تم حذف المشروع بنجاح." });
-      setTimeout(forceEnableScroll, 100);
+      forceEnableScroll();
     } catch (err) {
       toast({ title: "خطأ", description: "فشل في الحذف.", variant: "destructive" });
     }
@@ -557,6 +557,16 @@ export default function ProjectsPage() {
               </DialogHeader>
               
               <div className="relative w-full aspect-video bg-slate-50 flex items-center justify-center overflow-hidden border-b">
+                {/* زر الإغلاق X العلوي المطور */}
+                <Button 
+                  onClick={closePreview} 
+                  variant="secondary"
+                  size="icon"
+                  className="absolute top-4 right-4 z-[100] h-12 w-12 rounded-full bg-white/80 text-primary shadow-2xl border-2 border-primary/20 hover:bg-white hover:scale-110 active:scale-90 transition-all duration-300"
+                >
+                  <X className="h-7 w-7 stroke-[3px]" />
+                </Button>
+
                 {previewProject.images && previewProject.images.length > 0 ? (
                   <Carousel className="w-full h-full" opts={{ direction: 'rtl' }}>
                     <CarouselContent className="h-full">
@@ -586,9 +596,6 @@ export default function ProjectsPage() {
                     <p className="font-black text-xl">لا توجد صور لهذا المشروع</p>
                   </div>
                 )}
-                <Button variant="ghost" size="icon" onClick={closePreview} className="absolute top-4 right-4 z-50 bg-white/50 hover:bg-white/80 text-slate-900 rounded-full h-10 w-10 backdrop-blur-md shadow-lg transition-transform active:scale-90">
-                  <X className="h-6 w-6" />
-                </Button>
               </div>
 
               <ScrollArea className="max-h-[50vh] p-10 bg-white">
@@ -648,13 +655,13 @@ export default function ProjectsPage() {
               </ScrollArea>
               
               <div className="p-8 bg-slate-50 border-t flex flex-col md:flex-row gap-4">
-                <Button onClick={() => router.push(`/clients/${previewProject.clientId}/statement`)} variant="outline" className="rounded-2xl font-black h-14 flex-1 shadow-sm text-lg hover:bg-white">
+                <Button onClick={() => router.push(`/clients/${previewProject.clientId}/statement`)} variant="outline" className="rounded-2xl font-black h-14 flex-1 shadow-sm text-lg hover:bg-white transition-all active:scale-95">
                   <User className="ml-2 h-6 w-6" /> بروفايل العميل
                 </Button>
-                <Button onClick={() => { closePreview(); handleEditProject(previewProject); }} className="rounded-2xl font-black h-14 flex-1 shadow-lg text-lg bg-primary hover:bg-primary/90 transition-transform active:scale-95">
+                <Button onClick={() => { closePreview(); handleEditProject(previewProject); }} className="rounded-2xl font-black h-14 flex-1 shadow-lg text-lg bg-primary hover:bg-primary/90 transition-all active:scale-95">
                   <Edit className="ml-2 h-6 w-6" /> تعديل المشروع
                 </Button>
-                <Button onClick={closePreview} variant="secondary" className="rounded-2xl font-black h-14 px-8 text-lg bg-slate-200 hover:bg-slate-300 text-slate-700">
+                <Button onClick={closePreview} variant="secondary" className="rounded-2xl font-black h-14 px-10 text-lg bg-slate-200 hover:bg-slate-300 text-slate-700 shadow-sm transition-all active:scale-95">
                   <LogOut className="ml-2 h-6 w-6 rotate-180" /> خروج
                 </Button>
               </div>
