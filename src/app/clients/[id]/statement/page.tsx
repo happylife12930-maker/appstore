@@ -5,9 +5,9 @@ import { useParams, useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, Printer, Download, Building2, User, Phone, Mail, Calendar, Calculator } from "lucide-react";
+import { ArrowRight, Printer, Building2, User, Phone, Mail, Calendar, Calculator } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 export default function ClientStatementPage() {
@@ -34,6 +34,12 @@ export default function ClientStatementPage() {
     fetchClient();
   }, [params.id]);
 
+  const handlePrint = () => {
+    if (typeof window !== 'undefined') {
+      window.print();
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
@@ -55,20 +61,35 @@ export default function ClientStatementPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 pb-20" dir="rtl" style={{ fontFamily: "'Cairo', sans-serif" }}>
+      {/* CSS مخصص للطباعة لضمان إخفاء العناصر غير الضرورية وتنسيق الصفحة */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          .no-print { display: none !important; }
+          body { background: white !important; margin: 0 !important; padding: 0 !important; }
+          .max-w-4xl { max-width: 100% !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
+          .shadow-2xl { shadow: none !important; box-shadow: none !important; }
+          .rounded-[2.5rem] { border-radius: 0 !important; }
+          .print-border { border: 1px solid #e2e8f0 !important; }
+          main { padding: 0 !important; }
+          .bg-primary { background-color: #1e293b !important; -webkit-print-color-adjust: exact; }
+          .text-primary-foreground { color: white !important; }
+        }
+      `}} />
+
       <header className="flex justify-between items-center no-print">
         <Button variant="ghost" onClick={() => router.push("/clients")} className="gap-2 font-bold">
           <ArrowRight className="h-4 w-4" /> العودة للعملاء
         </Button>
         <div className="flex gap-2">
-          <Button onClick={() => window.print()} className="gap-2 rounded-xl font-bold bg-slate-800">
-            <Printer className="h-4 w-4" /> طباعة الكشف
+          <Button onClick={handlePrint} className="gap-2 rounded-xl font-bold bg-slate-800 hover:bg-slate-700 text-white shadow-lg h-12 px-6">
+            <Printer className="h-5 w-5" /> طباعة الكشف
           </Button>
         </div>
       </header>
 
-      <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden bg-white print:shadow-none print:border">
+      <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden bg-white print-border">
         <div className="bg-primary p-10 text-primary-foreground text-center">
-          <div className="bg-white/20 w-16 h-16 rounded-3xl flex items-center justify-center mx-auto mb-4">
+          <div className="bg-white/20 w-16 h-16 rounded-3xl flex items-center justify-center mx-auto mb-4 no-print">
             <Building2 className="h-8 w-8" />
           </div>
           <h1 className="text-3xl font-black mb-2">كشف حساب مالي تفصيلي</h1>
@@ -158,15 +179,6 @@ export default function ClientStatementPage() {
           </div>
         </CardContent>
       </Card>
-      
-      <style jsx global>{`
-        @media print {
-          .no-print { display: none !important; }
-          body { background: white !important; padding: 0 !important; }
-          .max-w-4xl { max-width: 100% !important; margin: 0 !important; }
-          main { padding: 0 !important; }
-        }
-      `}</style>
     </div>
   );
 }
