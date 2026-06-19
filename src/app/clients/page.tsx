@@ -1,6 +1,7 @@
+
 "use client";
 import * as React from "react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   MoreHorizontal,
   Home,
@@ -46,6 +47,7 @@ export default function ClientsPage() {
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
+  // دالة لجلب البيانات
   useEffect(() => {
     if (!db) return;
     const q = query(collection(db, "clients"), orderBy("createdAt", "desc"));
@@ -61,6 +63,12 @@ export default function ClientsPage() {
 
     return () => unsubscribe();
   }, [toast]);
+
+  // دالة وقائية لضمان عودة التفاعل مع الصفحة
+  const forceEnableScroll = useCallback(() => {
+    document.body.style.pointerEvents = 'auto';
+    document.body.style.overflow = 'auto';
+  }, []);
 
   const handleSaveClient = async (clientData: ClientData) => {
     setIsSaving(true);
@@ -86,8 +94,12 @@ export default function ClientsPage() {
         });
         toast({ title: "نجاح", description: "تمت إضافة العميل بنجاح." });
       }
+      
+      // إغلاق النافذة وتصفير الحالة
       setIsModalOpen(false);
       setSelectedClient(null);
+      // التأكد من عودة التفاعل
+      setTimeout(forceEnableScroll, 100);
     } catch (error) {
       console.error("Error saving client: ", error);
       toast({ title: "خطأ", description: "حدث خطأ أثناء حفظ البيانات.", variant: "destructive" });
@@ -97,8 +109,11 @@ export default function ClientsPage() {
   };
 
   const handleEditClient = (client: any) => {
+    // نستخدم setTimeout للسماح للقائمة المنسدلة بالإغلاق أولاً قبل فتح النافذة
     setSelectedClient(client);
-    setIsModalOpen(true);
+    setTimeout(() => {
+      setIsModalOpen(true);
+    }, 100);
   };
 
   const handleDeleteClient = async (id: string) => {
@@ -106,6 +121,7 @@ export default function ClientsPage() {
     try {
       await deleteDoc(doc(db, "clients", id));
       toast({ title: "تم الحذف", description: "تم حذف العميل بنجاح." });
+      setTimeout(forceEnableScroll, 100);
     } catch (error) {
       toast({ title: "خطأ", description: "فشل في حذف العميل.", variant: "destructive" });
     }
@@ -116,14 +132,17 @@ export default function ClientsPage() {
     setIsModalOpen(true);
   };
 
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedClient(null);
+    setTimeout(forceEnableScroll, 100);
+  };
+
   return (
     <>
       <AddClientModal 
         isOpen={isModalOpen} 
-        onClose={() => {
-          setIsModalOpen(false);
-          setSelectedClient(null);
-        }} 
+        onClose={closeModal} 
         onSave={handleSaveClient}
         isLoading={isSaving}
         initialData={selectedClient}
@@ -136,7 +155,7 @@ export default function ClientsPage() {
             </Button>
             <div>
               <h1 className="text-3xl font-black text-slate-900">إدارة العملاء</h1>
-              <p className="text-muted-foreground font-medium">قائمة العملاء والتفاصيل المالية الشاملة</p>
+              <p className="text-muted-foreground font-medium">قائمة العملاء والتفاصيل المالية الشاملة (ج.م)</p>
             </div>
           </div>
           <Button onClick={openAddModal} className="rounded-xl font-black shadow-lg h-14 px-8 text-lg w-full md:w-auto">
@@ -200,7 +219,7 @@ export default function ClientsPage() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-center">
-                          <DropdownMenu>
+                          <DropdownMenu onOpenChange={(open) => !open && forceEnableScroll()}>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" className="h-10 w-10 p-0 rounded-full hover:bg-slate-200">
                                 <MoreHorizontal className="h-6 w-6" />
@@ -208,13 +227,13 @@ export default function ClientsPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" dir="rtl" className="font-black rounded-2xl p-2 shadow-2xl border-none min-w-[180px]">
                               <DropdownMenuLabel className="text-slate-400 text-xs px-2 mb-1">إدارة بيانات العميل</DropdownMenuLabel>
-                              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); handleEditClient(client); }} className="rounded-xl cursor-pointer py-3 gap-3 hover:bg-blue-50">
+                              <DropdownMenuItem onSelect={() => handleEditClient(client)} className="rounded-xl cursor-pointer py-3 gap-3 hover:bg-blue-50">
                                 <Edit className="h-5 w-5 text-blue-500" /> تعديل البيانات المالية
                               </DropdownMenuItem>
                               <DropdownMenuItem className="rounded-xl cursor-pointer py-3 gap-3 hover:bg-slate-50">
                                 <ExternalLink className="h-5 w-5 text-slate-500" /> كشف حساب تفصيلي
                               </DropdownMenuItem>
-                              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); handleDeleteClient(client.id); }} className="rounded-xl cursor-pointer py-3 gap-3 text-red-600 focus:bg-red-50 focus:text-red-600">
+                              <DropdownMenuItem onSelect={() => handleDeleteClient(client.id)} className="rounded-xl cursor-pointer py-3 gap-3 text-red-600 focus:bg-red-50 focus:text-red-600">
                                 <Trash2 className="h-5 w-5" /> حذف السجل نهائياً
                               </DropdownMenuItem>
                             </DropdownMenuContent>
