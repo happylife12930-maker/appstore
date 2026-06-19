@@ -1,6 +1,6 @@
 "use client";
 import * as React from "react";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   MoreHorizontal,
   Home,
@@ -11,7 +11,9 @@ import {
   ExternalLink,
   Building2,
   Mail,
-  Users
+  Users,
+  Search,
+  X
 } from "lucide-react";
 import {
   Table,
@@ -31,6 +33,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
 import { AddClientModal, ClientData } from "@/components/modals/add-client-modal";
 import { db } from "@/lib/firebase";
@@ -45,6 +48,7 @@ export default function ClientsPage() {
   const [clients, setClients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     if (!db) return;
@@ -65,6 +69,7 @@ export default function ClientsPage() {
   const forceEnableScroll = useCallback(() => {
     document.body.style.pointerEvents = 'auto';
     document.body.style.overflow = 'auto';
+    document.body.removeAttribute('data-scroll-locked');
   }, []);
 
   const handleSaveClient = async (clientData: ClientData) => {
@@ -73,7 +78,6 @@ export default function ClientsPage() {
       const balance = Number(clientData.totalInvoices || 0) - Number(clientData.totalPayments || 0);
       
       if (clientData.id) {
-        // حالة التحديث: استخراج الـ id وتحديث بقية البيانات
         const clientRef = doc(db, "clients", clientData.id);
         const { id, ...dataToUpdate } = clientData;
         await updateDoc(clientRef, {
@@ -83,7 +87,6 @@ export default function ClientsPage() {
         });
         toast({ title: "تم التحديث", description: "تم تحديث بيانات العميل بنجاح." });
       } else {
-        // حالة الإضافة: استخراج الـ id (الذي يكون undefined) لضمان عدم إرساله للـ Firestore
         const { id, ...dataToAdd } = clientData;
         await addDoc(collection(db, "clients"), {
           ...dataToAdd,
@@ -135,6 +138,18 @@ export default function ClientsPage() {
     setTimeout(forceEnableScroll, 100);
   };
 
+  // تصفية العملاء بناءً على نص البحث
+  const filteredClients = useMemo(() => {
+    if (!searchTerm.trim()) return clients;
+    const term = searchTerm.toLowerCase();
+    return clients.filter(client => 
+      (client.name?.toLowerCase().includes(term)) ||
+      (client.phone?.includes(term)) ||
+      (client.projectName?.toLowerCase().includes(term)) ||
+      (client.email?.toLowerCase().includes(term))
+    );
+  }, [clients, searchTerm]);
+
   return (
     <>
       <AddClientModal 
@@ -161,13 +176,36 @@ export default function ClientsPage() {
           </Button>
         </header>
 
+        {/* شريط البحث المطور */}
+        <Card className="rounded-3xl border-none shadow-md bg-white overflow-hidden">
+          <CardContent className="p-4 md:p-6">
+            <div className="relative group">
+              <Search className="absolute right-4 top-1/2 -translate-y-1/2 h-6 w-6 text-slate-400 group-focus-within:text-primary transition-colors" />
+              <Input 
+                placeholder="ابحث عن عميل بالاسم أو رقم الهاتف أو اسم المشروع..." 
+                className="pr-12 h-14 rounded-2xl border-slate-200 focus:border-primary focus:ring-primary font-bold text-lg"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              {searchTerm && (
+                <button 
+                  onClick={() => setSearchTerm("")}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 p-2 hover:bg-slate-100 rounded-full transition-colors"
+                >
+                  <X className="h-5 w-5 text-slate-400" />
+                </button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
         <Card className="rounded-3xl border-none shadow-xl bg-white overflow-hidden">
           <CardHeader className="bg-slate-50 border-b p-6">
             <div className="flex justify-between items-center">
               <div>
                 <CardTitle className="text-xl font-black text-slate-800">سجل العملاء المالي</CardTitle>
                 <CardDescription className="font-bold text-slate-500 mt-1">
-                  {loading ? "جاري مزامنة البيانات..." : `يوجد حالياً ${clients.length} عملاء مسجلين`}
+                  {loading ? "جاري مزامنة البيانات..." : searchTerm.trim() ? `نتائج البحث: ${filteredClients.length} عملاء` : `يوجد حالياً ${clients.length} عملاء مسجلين`}
                 </CardDescription>
               </div>
             </div>
@@ -186,8 +224,8 @@ export default function ClientsPage() {
               <TableBody>
                 {loading ? (
                   <TableRow><TableCell colSpan={5} className="text-center py-20"><Loader2 className="h-12 w-12 animate-spin mx-auto text-primary" /></TableCell></TableRow>
-                ) : clients.length > 0 ? (
-                  clients.map((client) => {
+                ) : filteredClients.length > 0 ? (
+                  filteredClients.map((client) => {
                     const balance = Number(client.totalInvoices || 0) - Number(client.totalPayments || 0);
                     return (
                       <TableRow key={client.id} className="hover:bg-slate-50/80 transition-colors border-b">
@@ -198,9 +236,8 @@ export default function ClientsPage() {
                               <Building2 className="h-3 w-3" />
                               {client.projectName || "بدون مشروع"}
                             </div>
-                            <div className="flex items-center gap-2 text-slate-400 font-bold text-xs">
-                              <Mail className="h-3 w-3" />
-                              {client.email}
+                            <div className="flex items-center gap-2 text-slate-400 font-bold text-xs" dir="ltr">
+                              <span className="text-right block w-full">{client.phone}</span>
                             </div>
                           </div>
                         </TableCell>
@@ -246,8 +283,10 @@ export default function ClientsPage() {
                         <div className="p-6 bg-slate-50 rounded-full">
                            <Users className="h-16 w-16 text-slate-200" />
                         </div>
-                        <p className="text-2xl font-black text-slate-300">لا يوجد عملاء حالياً</p>
-                        <Button onClick={openAddModal} variant="outline" className="rounded-xl font-black h-12 px-6">إضافة أول عميل للنظام</Button>
+                        <p className="text-2xl font-black text-slate-300">
+                          {searchTerm ? "لا توجد نتائج تطابق بحثك" : "لا يوجد عملاء حالياً"}
+                        </p>
+                        {!searchTerm && <Button onClick={openAddModal} variant="outline" className="rounded-xl font-black h-12 px-6">إضافة أول عميل للنظام</Button>}
                       </div>
                     </TableCell>
                   </TableRow>
