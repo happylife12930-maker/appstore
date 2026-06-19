@@ -532,6 +532,10 @@ export default function ProjectsPage() {
         <DialogContent className="sm:max-w-[800px] rounded-[2rem] p-0 overflow-hidden border-none shadow-2xl" dir="rtl">
           {previewProject && (
             <>
+              <DialogHeader className="sr-only">
+                <DialogTitle>{previewProject.name}</DialogTitle>
+                <DialogDescription>تفاصيل المشروع الكاملة والصور</DialogDescription>
+              </DialogHeader>
               <div className="bg-slate-900 aspect-video relative">
                 {previewProject.images && previewProject.images.length > 0 ? (
                   <Carousel className="w-full h-full">
@@ -564,7 +568,7 @@ export default function ProjectsPage() {
                 <div className="space-y-8">
                   <div className="flex justify-between items-start">
                     <div>
-                      <h2 className="text-3xl font-black text-slate-900 mb-2">{previewProject.name}</h2>
+                      <DialogTitle className="text-3xl font-black text-slate-900 mb-2">{previewProject.name}</DialogTitle>
                       <div className="flex items-center gap-2 text-primary font-black">
                         <User className="h-5 w-5" /> العميل: {previewProject.clientName}
                       </div>
