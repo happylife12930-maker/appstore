@@ -9,8 +9,8 @@ import {
   Briefcase, 
   LayoutDashboard,
   ArrowLeft,
-  Settings,
-  ShieldCheck
+  ShieldCheck,
+  ChevronLeft
 } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { useAuth as useFirebaseAuth } from "@/firebase";
@@ -34,9 +34,8 @@ export default function HomePage() {
 
   const menuItems = [
     { title: "إدارة المشاريع", icon: Briefcase, color: "text-blue-600", path: "/projects", desc: "متابعة تقدم المشاريع والصور" },
-    { title: "إدارة المستخدمين", icon: Users, color: "text-emerald-600", path: "/users", desc: "الصلاحيات والأدوار" },
+    { title: "إدارة الفريق", icon: Users, color: "text-emerald-600", path: "/users", desc: "الموظفين والصلاحيات" },
     { title: "حالات الاختبار", icon: ShieldCheck, color: "text-indigo-600", path: "/test-cases", desc: "فحص جودة التطبيقات" },
-    { title: "الإعدادات", icon: Settings, color: "text-slate-600", path: "/settings", desc: "ضبط النظام العام" },
   ];
 
   return (
@@ -51,7 +50,7 @@ export default function HomePage() {
             <p className="text-muted-foreground text-sm">أنت مسجل كـ {profile.role === 'admin' ? 'مدير عام' : 'مختبر'}</p>
           </div>
         </div>
-        <Button variant="ghost" onClick={handleLogout} className="text-rose-500 font-bold hover:bg-rose-50">
+        <Button variant="ghost" onClick={handleLogout} className="text-rose-500 font-bold hover:bg-rose-50 rounded-xl">
           <LogOut className="ml-2 h-4 w-4" /> خروج
         </Button>
       </header>
@@ -60,7 +59,7 @@ export default function HomePage() {
         {menuItems.map((item) => (
           <Card 
             key={item.path} 
-            className="hover:shadow-lg transition-all cursor-pointer group border-none shadow-md bg-white"
+            className="hover:shadow-lg transition-all cursor-pointer group border-none shadow-md bg-white rounded-3xl"
             onClick={() => router.push(item.path)}
           >
             <CardContent className="p-8 flex items-center gap-6">
@@ -71,16 +70,16 @@ export default function HomePage() {
                 <h3 className="font-bold text-xl mb-1">{item.title}</h3>
                 <p className="text-muted-foreground text-xs">{item.desc}</p>
               </div>
-              <ArrowLeft className="h-5 w-5 text-muted-foreground group-hover:translate-x-[-5px] transition-transform" />
+              <ChevronLeft className="h-5 w-5 text-muted-foreground group-hover:translate-x-[-5px] transition-transform" />
             </CardContent>
           </Card>
         ))}
       </div>
       
-      <Card className="bg-blue-50 border-none shadow-sm">
+      <Card className="bg-blue-50 border-none shadow-sm rounded-2xl">
         <CardContent className="p-6 text-center">
           <p className="text-blue-700 font-bold text-sm">
-            تم حل مشكلة المسارات وفتح الصلاحيات. نحن الآن نعمل على نسخة الويب المستقرة.
+            تم حل مشكلة المسارات وتطبيق القواعد الأمنية الجديدة. النظام الآن يعمل ببساطة واستقرار.
           </p>
         </CardContent>
       </Card>

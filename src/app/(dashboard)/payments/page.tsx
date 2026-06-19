@@ -1,1 +1,1 @@
-export default function DashboardPaymentsPage() { return null; }
+export default function Page() { return null; }

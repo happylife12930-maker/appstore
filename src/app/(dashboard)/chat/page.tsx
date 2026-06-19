@@ -1,1 +1,1 @@
-export default function DashboardChatPage() { return null; }
+export default function Page() { return null; }

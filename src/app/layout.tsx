@@ -24,9 +24,9 @@ export default function RootLayout({
       <body className="antialiased bg-background text-foreground font-body">
         <FirebaseClientProvider>
           <AuthProvider>
-            <main className="min-h-screen">
+            <div className="min-h-screen">
               {children}
-            </main>
+            </div>
             <Toaster />
           </AuthProvider>
         </FirebaseClientProvider>

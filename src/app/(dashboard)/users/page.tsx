@@ -1,1 +1,1 @@
-export default function DashboardUsersPage() { return null; }
+export default function Page() { return null; }

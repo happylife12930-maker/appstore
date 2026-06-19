@@ -1,1 +1,1 @@
-export default function DashboardQuotationsPage() { return null; }
+export default function Page() { return null; }
