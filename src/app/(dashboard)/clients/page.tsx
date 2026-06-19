@@ -11,7 +11,9 @@ import {
   Building2, 
   Calendar,
   CreditCard,
-  History
+  History,
+  MessageCircle,
+  StickyNote
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,17 +25,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { useTranslation } from "@/components/language-provider";
 
 const clients = [
   {
@@ -42,11 +37,12 @@ const clients = [
     email: "ahmed@example.com",
     phone: "+20 123 456 7890",
     company: "Techno Nile",
-    projects: 3,
+    projects: ["Zenith CRM", "Bakery App"],
     totalBilled: 15400,
     paid: 12000,
     balance: 3400,
     since: "2023-05-12",
+    notes: "High priority client, prefers WhatsApp."
   },
   {
     id: 2,
@@ -54,33 +50,24 @@ const clients = [
     email: "sarah.j@global.com",
     phone: "+1 555 987 6543",
     company: "Global Solutions",
-    projects: 1,
+    projects: ["Eco-Ecomm"],
     totalBilled: 4500,
     paid: 4500,
     balance: 0,
     since: "2024-01-05",
-  },
-  {
-    id: 3,
-    name: "Omar Zayed",
-    email: "omar@startuphub.ae",
-    phone: "+971 50 123 4567",
-    company: "Startup Hub",
-    projects: 5,
-    totalBilled: 32000,
-    paid: 25000,
-    balance: 7000,
-    since: "2022-11-20",
+    notes: "Paid in full, waiting for maintenance contract."
   },
 ];
 
 export default function ClientsPage() {
+  const { t } = useTranslation();
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="relative w-full max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search clients..." className="pl-10" />
+          <Input placeholder={t('search')} className="pl-10" />
         </div>
         <Button className="font-bold">
           <Plus className="mr-2 h-4 w-4" /> Add New Client
@@ -92,11 +79,11 @@ export default function ClientsPage() {
           <Table>
             <TableHeader className="bg-muted/50">
               <TableRow>
-                <TableHead>Client Details</TableHead>
-                <TableHead>Company</TableHead>
-                <TableHead>Projects</TableHead>
+                <TableHead>{t('clients')}</TableHead>
+                <TableHead>{t('company')}</TableHead>
+                <TableHead>{t('projects')}</TableHead>
                 <TableHead>Financials</TableHead>
-                <TableHead>Balance</TableHead>
+                <TableHead>{t('notes')}</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -107,65 +94,48 @@ export default function ClientsPage() {
                     <div className="flex items-center gap-3">
                       <Avatar className="h-10 w-10 border">
                         <AvatarImage src={`https://picsum.photos/seed/${client.id}/100/100`} />
-                        <AvatarFallback>{client.name.charAt(0)}</AvatarFallback>
+                        <AvatarFallback>{client.name[0]}</AvatarFallback>
                       </Avatar>
                       <div className="flex flex-col">
                         <span className="font-bold text-sm">{client.name}</span>
-                        <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Mail className="h-3 w-3" /> {client.email}
-                        </span>
-                        <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Phone className="h-3 w-3" /> {client.phone}
-                        </span>
+                        <span className="text-[10px] text-muted-foreground">{client.phone}</span>
+                        <span className="text-[10px] text-primary">{client.email}</span>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2 text-sm font-medium">
-                      <Building2 className="h-4 w-4 text-muted-foreground" />
-                      {client.company}
-                    </div>
-                    <div className="text-[10px] text-muted-foreground flex items-center gap-1 mt-1">
-                      <Calendar className="h-3 w-3" /> Since {client.since}
-                    </div>
+                    <div className="text-sm font-bold">{client.company}</div>
+                    <div className="text-[10px] text-muted-foreground italic">{t('since')} {client.since}</div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="secondary" className="font-bold">
-                      {client.projects} Active
-                    </Badge>
+                    <div className="flex flex-wrap gap-1">
+                      {client.projects.map(p => <Badge key={p} variant="secondary" className="text-[10px]">{p}</Badge>)}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col gap-1">
-                      <div className="text-xs flex justify-between">
-                        <span className="text-muted-foreground">Total:</span>
-                        <span className="font-bold">${client.totalBilled.toLocaleString()}</span>
+                      <div className="text-[10px] flex justify-between">
+                        <span>{t('totalBilled')}:</span> <span className="font-bold">${client.totalBilled.toLocaleString()}</span>
                       </div>
-                      <div className="text-xs flex justify-between">
-                        <span className="text-muted-foreground">Paid:</span>
-                        <span className="font-bold text-emerald-600">${client.paid.toLocaleString()}</span>
+                      <div className="text-[10px] flex justify-between text-emerald-600">
+                        <span>{t('paid')}:</span> <span className="font-bold">${client.paid.toLocaleString()}</span>
+                      </div>
+                      <div className="text-[10px] flex justify-between text-rose-500 font-bold border-t pt-1">
+                        <span>{t('balance')}:</span> <span>${client.balance.toLocaleString()}</span>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <span className={`font-headline font-bold ${client.balance > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
-                      ${client.balance.toLocaleString()}
-                    </span>
+                    <p className="text-[10px] text-muted-foreground italic w-[150px] truncate">
+                      <StickyNote className="inline h-3 w-3 mr-1" /> {client.notes}
+                    </p>
                   </TableCell>
                   <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem><History className="mr-2 h-4 w-4" /> View History</DropdownMenuItem>
-                        <DropdownMenuItem><CreditCard className="mr-2 h-4 w-4" /> Send Invoice</DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive">Archive Client</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <div className="flex justify-end gap-1">
+                      <Button variant="ghost" size="icon"><MessageCircle className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon"><History className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

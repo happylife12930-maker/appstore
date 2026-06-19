@@ -10,7 +10,8 @@ import {
   Eye, 
   Send,
   AlertCircle,
-  Filter
+  Filter,
+  Briefcase
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { 
@@ -24,6 +25,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "@/components/language-provider";
 
 const invoices = [
   {
@@ -60,11 +62,12 @@ const invoices = [
 
 export default function InvoicesPage() {
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   const handleDownload = (id: string) => {
     toast({
       title: "Generating PDF...",
-      description: `Invoice ${id} is being downloaded to your device.`,
+      description: `Invoice ${id} for project has been generated and downloaded.`,
     });
   };
 
@@ -78,7 +81,7 @@ export default function InvoicesPage() {
           </div>
         </div>
         <Button className="font-bold">
-          <Plus className="mr-2 h-4 w-4" /> Create Invoice
+          <Plus className="mr-2 h-4 w-4" /> {t('invoices')}
         </Button>
       </div>
 
@@ -88,10 +91,11 @@ export default function InvoicesPage() {
             <TableHeader className="bg-muted/50">
               <TableRow>
                 <TableHead>Invoice #</TableHead>
-                <TableHead>Client & Project</TableHead>
-                <TableHead>Dates</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{t('clients')}</TableHead>
+                <TableHead>{t('projects')}</TableHead>
+                <TableHead>{t('issued')} / {t('due')}</TableHead>
+                <TableHead>{t('amount')}</TableHead>
+                <TableHead>{t('status')}</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -101,18 +105,22 @@ export default function InvoicesPage() {
                   <TableCell className="font-mono font-bold text-primary">
                     {invoice.id}
                   </TableCell>
-                  <TableCell>
-                    <div className="font-bold text-sm">{invoice.client}</div>
-                    <div className="text-xs text-muted-foreground italic">{invoice.project}</div>
+                  <TableCell className="font-bold">
+                    {invoice.client}
                   </TableCell>
                   <TableCell>
-                    <div className="text-xs">Issued: {invoice.issued}</div>
-                    <div className="text-xs text-rose-500 font-medium">Due: {invoice.due}</div>
+                    <Badge variant="secondary" className="font-medium bg-primary/5 text-primary border-none">
+                      <Briefcase className="h-3 w-3 mr-1" /> {invoice.project}
+                    </Badge>
                   </TableCell>
                   <TableCell>
-                    <div className="font-headline font-bold">${invoice.amount.toLocaleString()}</div>
+                    <div className="text-[10px] uppercase font-bold text-muted-foreground">{invoice.issued}</div>
+                    <div className="text-xs text-rose-500 font-bold">{invoice.due}</div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="font-headline font-bold text-lg">${invoice.amount.toLocaleString()}</div>
                     {invoice.discount > 0 && (
-                      <div className="text-[10px] text-emerald-600">Saved ${invoice.discount}</div>
+                      <div className="text-[10px] text-emerald-600 font-bold">-{t('discount')}: ${invoice.discount}</div>
                     )}
                   </TableCell>
                   <TableCell>
