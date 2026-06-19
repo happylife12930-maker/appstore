@@ -189,7 +189,7 @@ export default function ClientsPage() {
                         {balance.toLocaleString('ar-EG')} <span className="text-sm">ج.م</span>
                       </p>
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => router.push(`/clients/${client.id}/statement`)} className="rounded-xl font-black border-2 border-primary/20 hover:bg-primary hover:text-white transition-all">
+                    <Button variant="outline" size="sm" onClick={() => router.push(`/clients/${client.id}/statement`)} className="rounded-xl font-black border-2 border-sidebar-border hover:bg-primary hover:text-white transition-all">
                       التفاصيل <CreditCard className="mr-2 h-4 w-4" />
                     </Button>
                   </div>

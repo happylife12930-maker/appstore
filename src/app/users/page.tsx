@@ -135,6 +135,7 @@ export default function UserManagementPage() {
         updatedAt: serverTimestamp()
       };
 
+      // حفظ في جدول تمهيدي ليقوم النظام بإنشاء الحساب عند أول دخول للعميل
       await setDoc(doc(db, "users_provision", formData.email), userData);
       
       toast({ 
@@ -278,7 +279,7 @@ export default function UserManagementPage() {
               <div className="space-y-2">
                 <label className="font-black text-slate-700 pr-2">الرتبة / الدور</label>
                 <Select value={formData.role} onValueChange={(val: any) => setFormData(prev => ({ ...prev, role: val }))}>
-                  <SelectTrigger className="rounded-2xl h-14 border-slate-200 font-black">
+                  <SelectTrigger className="rounded-2xl h-14 border-sidebar-border font-black">
                     <SelectValue placeholder="اختر الرتبة" />
                   </SelectTrigger>
                   <SelectContent className="font-black">

@@ -119,15 +119,17 @@ function ProjectsContent() {
     if (profile.role === 'admin') {
       projectsQuery = query(collection(db, "projects"));
     } else {
+      // إذا كان عميلاً، يرى فقط مشاريعه المرتبطة ببريده الإلكتروني أو الـ clientId الخاص به
       projectsQuery = query(
         collection(db, "projects"), 
-        where("clientId", "==", profile.clientId || "")
+        where("clientId", "==", profile.clientId || profile.uid)
       );
     }
 
     const unsubscribe = onSnapshot(projectsQuery, (snapshot) => {
       let data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
       
+      // الترتيب برمجياً لتجنب خطأ الفهرس
       data.sort((a: any, b: any) => {
         const dateA = a.createdAt?.toDate?.() || new Date(0);
         const dateB = b.createdAt?.toDate?.() || new Date(0);
@@ -173,8 +175,6 @@ function ProjectsContent() {
           setSelectedClient(results[0]);
         }
       } else {
-        setSearchResults([]);
-        setSelectedClient(null);
         toast({ title: "عذراً", description: "لم يتم العثور على أي عملاء بهذا الرقم.", variant: "destructive" });
       }
     } catch (err) {
@@ -271,16 +271,12 @@ function ProjectsContent() {
         { id: 5, title: "التسليم النهائي", completed: false },
       ]
     });
-    setTimeout(() => {
-      setIsModalOpen(true);
-    }, 150);
+    setTimeout(() => setIsModalOpen(true), 150);
   };
 
   const handlePreviewProject = (project: any) => {
     setPreviewProject(project);
-    setTimeout(() => {
-      setIsPreviewOpen(true);
-    }, 100);
+    setTimeout(() => setIsPreviewOpen(true), 100);
   };
 
   const closeModal = () => {
@@ -324,7 +320,7 @@ function ProjectsContent() {
     const completedSteps = newSteps.filter((s: any) => s.completed).length;
     const progress = Math.round((completedSteps / newSteps.length) * 100);
 
-    // تحديث لحظي للواجهة
+    // تحديث لحظي (Optimistic UI)
     setPreviewProject((prev: any) => ({
       ...prev,
       steps: newSteps,
@@ -446,6 +442,7 @@ function ProjectsContent() {
         </div>
       )}
 
+      {/* مودال الإضافة والتعديل */}
       <Dialog open={isModalOpen} onOpenChange={(open) => !open && closeModal()}>
         <DialogContent className="sm:max-w-[750px] rounded-[3rem] p-0 overflow-hidden border-none shadow-2xl bg-white" dir="rtl">
           <DialogHeader className="bg-primary p-10 text-primary-foreground">
@@ -548,6 +545,7 @@ function ProjectsContent() {
         </DialogContent>
       </Dialog>
 
+      {/* مودال العرض */}
       <Dialog open={isPreviewOpen} onOpenChange={(open) => !open && closePreview()}>
         <DialogContent className="sm:max-w-[1000px] rounded-[3.5rem] p-0 overflow-hidden border-none shadow-2xl bg-white" dir="rtl">
           {previewProject && (
@@ -585,7 +583,6 @@ function ProjectsContent() {
                     <p className="font-black text-2xl">لا توجد صور</p>
                   </div>
                 )}
-                {/* زر X في الأعلى كما طلب المستخدم */}
                 <button onClick={closePreview} className="absolute top-8 right-8 z-[60] bg-red-600 text-white p-4 rounded-full shadow-2xl hover:bg-red-700 transition-all border-4 border-white">
                   <X className="h-8 w-8" />
                 </button>
@@ -629,7 +626,6 @@ function ProjectsContent() {
                     </div>
                   </div>
 
-                  {/* زر خروج في أسفل مراحل التنفيذ كما طلب المستخدم */}
                   <div className="pt-8 pb-10">
                     <Button 
                       onClick={closePreview} 
