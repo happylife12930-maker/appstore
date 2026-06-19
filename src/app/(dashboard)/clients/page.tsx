@@ -1,5 +1,7 @@
 /**
- * تم تعطيل هذا الملف نهائياً لمنع تعارض المسارات.
+ * تم إبطال هذا الملف نهائياً لمنع تعارض المسارات (Routing Conflict).
  * الكود النشط موجود في src/app/clients/page.tsx
  */
-export default function Obsolete() { return null; }
+export default function ObsoleteClients() {
+  return null;
+}

@@ -1,6 +1,6 @@
 "use client";
 import * as React from "react";
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { 
   Briefcase, 
@@ -46,18 +46,25 @@ function ProjectsContent() {
     if (!db) return;
     
     const unsub = onSnapshot(collection(db, "projects"), (snapshot) => {
-      let projectList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      // ترتيب البيانات برمجياً لتجنب خطأ الفهرس في Firestore
-      projectList.sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      let list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       
+      // ترتيب زمني في الذاكرة لتجنب خطأ الـ Index
+      list.sort((a: any, b: any) => {
+        const tA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const tB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return tB - tA;
+      });
+      
+      // تصفية الخصوصية: العميل يرى حاجته فقط
       if (profile?.role === 'client') {
-        projectList = projectList.filter(p => p.clientEmail === profile.email || p.clientId === profile.uid);
+        list = list.filter(p => p.clientEmail === profile.email || p.clientId === profile.uid);
       }
-      setProjects(projectList);
+      
+      setProjects(list);
       setLoading(false);
 
       if (projectIdFromUrl && !isViewModalOpen) {
-        const p = projectList.find(p => p.id === projectIdFromUrl);
+        const p = list.find(p => p.id === projectIdFromUrl);
         if (p) {
           setSelectedProject(p);
           setIsViewModalOpen(true);
@@ -70,68 +77,66 @@ function ProjectsContent() {
   const toggleStep = async (projectId: string, stepId: number) => {
     if (profile?.role !== 'admin') return;
 
-    const projectIndex = projects.findIndex(p => p.id === projectId);
-    if (projectIndex === -1) return;
+    const currentProject = projects.find(p => p.id === projectId);
+    if (!currentProject) return;
 
-    const currentProject = projects[projectIndex];
     const updatedSteps = currentProject.steps?.map((s: any) => 
       s.id === stepId ? { ...s, completed: !s.completed } : s
     ) || [];
     
-    const completedSteps = updatedSteps.filter((s: any) => s.completed).length;
-    const progress = Math.round((completedSteps / updatedSteps.length) * 100);
+    const doneCount = updatedSteps.filter((s: any) => s.completed).length;
+    const prog = Math.round((doneCount / updatedSteps.length) * 100);
 
-    const updatedProject = {
+    const updated = {
       ...currentProject,
       steps: updatedSteps,
-      progress: progress,
-      status: progress === 100 ? "مكتمل" : "قيد التنفيذ"
+      progress: prog,
+      status: prog === 100 ? "مكتمل" : "قيد التنفيذ"
     };
     
-    // تحديث الواجهة فوراً (Optimistic UI)
-    const newProjects = [...projects];
-    newProjects[projectIndex] = updatedProject;
-    setProjects(newProjects);
-    setSelectedProject(updatedProject);
+    // التحديث اللحظي (Optimistic UI)
+    setSelectedProject(updated);
 
     try {
       await updateDoc(doc(db!, "projects", projectId), {
         steps: updatedSteps,
-        progress: progress,
-        status: progress === 100 ? "مكتمل" : "قيد التنفيذ"
+        progress: prog,
+        status: prog === 100 ? "مكتمل" : "قيد التنفيذ"
       });
     } catch (err) {
-      toast({ title: "خطأ", description: "فشل تحديث المرحلة.", variant: "destructive" });
+      toast({ title: "خطأ", description: "فشل تحديث البيانات.", variant: "destructive" });
     }
   };
 
-  const filteredProjects = projects.filter(p => 
-    p.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    p.clientName?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filtered = useMemo(() => {
+    return projects.filter(p => 
+      p.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      p.clientName?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [projects, searchQuery]);
+
+  if (loading) return <div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 pb-20" dir="rtl">
-      <header className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-black text-slate-800">سجل المشروعات</h1>
-          <p className="text-slate-500 font-bold">متابعة دقيقة لمراحل الإنجاز والخطوات</p>
-        </div>
+      <header>
+        <h1 className="text-3xl font-black text-slate-800">خارطة المشروعات</h1>
+        <p className="text-slate-500 font-bold">متابعة دقيقة لكل مراحل التنفيذ والإنجاز</p>
       </header>
 
       <div className="relative">
         <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5" />
-        <Input 
+        <input 
           placeholder="ابحث باسم المشروع أو العميل..." 
-          className="pr-12 h-14 rounded-2xl border-none shadow-sm bg-white font-bold text-lg"
+          className="w-full pr-12 h-14 rounded-2xl border-none shadow-sm bg-white font-bold text-lg focus:ring-2 focus:ring-primary/20 outline-none"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredProjects.map((project) => (
-          <Card key={project.id} className="rounded-[2.5rem] border-none shadow-sm hover:shadow-xl transition-all bg-white overflow-hidden group">
+        {filtered.map((project) => (
+          <Card key={project.id} className="rounded-[2.5rem] border-none shadow-sm hover:shadow-xl transition-all bg-white group">
             <CardHeader className="pb-2">
               <div className="flex justify-between items-start mb-2">
                 <Badge className={project.status === "مكتمل" ? "bg-green-600 font-black" : "bg-primary font-black"}>
@@ -141,22 +146,22 @@ function ProjectsContent() {
                   <Calendar className="h-3 w-3" /> {project.createdAt ? new Date(project.createdAt).toLocaleDateString('ar-EG') : '---'}
                 </span>
               </div>
-              <CardTitle className="text-xl font-black text-slate-800 group-hover:text-primary transition-colors">{project.name}</CardTitle>
-              <CardDescription className="font-bold flex items-center gap-1">العميل: {project.clientName}</CardDescription>
+              <CardTitle className="text-xl font-black text-slate-800 group-hover:text-primary">{project.name}</CardTitle>
+              <CardDescription className="font-bold">العميل: {project.clientName}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-2">
                 <div className="flex justify-between items-center text-xs font-black">
-                  <span className="text-slate-400 uppercase">نسبة الإنجاز</span>
+                  <span className="text-slate-400 uppercase">الإنجاز</span>
                   <span className="text-primary">{project.progress}%</span>
                 </div>
                 <Progress value={project.progress} className="h-2.5 rounded-full" />
               </div>
               <Button 
                 onClick={() => { setSelectedProject(project); setIsViewModalOpen(true); }}
-                className="w-full rounded-2xl h-14 font-black gap-2 shadow-md transition-all active:scale-95"
+                className="w-full rounded-2xl h-14 font-black gap-2 shadow-md"
               >
-                <Eye className="h-5 w-5" /> متابعة التنفيذ
+                <Eye className="h-5 w-5" /> تفاصيل المراحل
               </Button>
             </CardContent>
           </Card>
@@ -164,7 +169,7 @@ function ProjectsContent() {
       </div>
 
       <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>
-        <DialogContent className="sm:max-w-[750px] rounded-[3.5rem] p-0 overflow-hidden border-none shadow-2xl bg-white" dir="rtl">
+        <DialogContent className="sm:max-w-[700px] rounded-[3.5rem] p-0 overflow-hidden border-none shadow-2xl bg-white" dir="rtl">
           <div className="bg-primary p-12 text-primary-foreground relative">
              <Button 
               variant="ghost" 
@@ -175,36 +180,36 @@ function ProjectsContent() {
               <X className="h-8 w-8" />
             </Button>
             <DialogHeader>
-              <DialogTitle className="text-4xl font-black">{selectedProject?.name}</DialogTitle>
-              <p className="opacity-80 font-bold mt-3 text-lg">خارطة الطريق التقنية وجدول الإنجاز</p>
+              <DialogTitle className="text-3xl font-black">{selectedProject?.name}</DialogTitle>
+              <p className="opacity-80 font-bold mt-2">خطة العمل وجدول التنفيذ الزمني</p>
             </DialogHeader>
           </div>
 
-          <ScrollArea className="max-h-[65vh] p-10">
-            <div className="space-y-10">
+          <ScrollArea className="max-h-[60vh] p-10">
+            <div className="space-y-8">
               <div className="space-y-4">
-                <h3 className="text-2xl font-black text-slate-800 flex items-center gap-3">
-                  <CheckCircle2 className="h-7 w-7 text-primary" /> قائمة مراحل العمل
+                <h3 className="text-xl font-black text-slate-800 flex items-center gap-2">
+                  <CheckCircle2 className="h-6 w-6 text-primary" /> مراحل التنفيذ الحالية
                 </h3>
-                <div className="grid grid-cols-1 gap-4">
+                <div className="grid grid-cols-1 gap-3">
                   {selectedProject?.steps?.map((step: any) => (
                     <div 
                       key={step.id} 
                       onClick={() => toggleStep(selectedProject.id, step.id)}
-                      className={`flex items-center justify-between p-6 rounded-[2rem] border-2 transition-all cursor-pointer ${
+                      className={`flex items-center justify-between p-5 rounded-[2rem] border-2 transition-all ${
                         step.completed ? 'bg-green-50 border-green-200' : 'bg-slate-50 border-slate-100'
-                      } ${profile?.role === 'admin' ? 'hover:scale-[1.02] hover:border-primary/20' : 'cursor-default'}`}
+                      } ${profile?.role === 'admin' ? 'cursor-pointer hover:border-primary/30' : 'cursor-default'}`}
                     >
-                      <span className={`text-xl font-black ${step.completed ? 'text-green-700' : 'text-slate-600'}`}>
+                      <span className={`text-lg font-black ${step.completed ? 'text-green-700' : 'text-slate-600'}`}>
                         {step.title}
                       </span>
                       {step.completed ? (
-                        <div className="h-10 w-10 bg-green-500 rounded-full flex items-center justify-center text-white shadow-lg">
-                          <Check className="h-6 w-6" />
+                        <div className="h-8 w-8 bg-green-500 rounded-full flex items-center justify-center text-white">
+                          <Check className="h-5 w-5" />
                         </div>
                       ) : (
-                        <div className="h-10 w-10 bg-slate-200 rounded-full flex items-center justify-center text-slate-400">
-                          <Clock className="h-5 w-5" />
+                        <div className="h-8 w-8 bg-slate-200 rounded-full flex items-center justify-center text-slate-400">
+                          <Clock className="h-4 w-4" />
                         </div>
                       )}
                     </div>
@@ -212,13 +217,13 @@ function ProjectsContent() {
                 </div>
               </div>
 
-              {/* زر الخروج الموحد والبارز أسفل الخطوات مباشرة */}
-              <div className="pt-6 pb-2">
+              {/* زر الإغلاق الموحد أسفل قائمة المراحل مباشرة */}
+              <div className="pt-4">
                 <Button 
                   onClick={() => setIsViewModalOpen(false)}
-                  className="w-full h-20 rounded-[2.5rem] bg-slate-900 hover:bg-slate-800 text-white font-black text-2xl shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-4"
+                  className="w-full h-16 rounded-[2rem] bg-slate-900 hover:bg-slate-800 text-white font-black text-xl shadow-xl flex items-center justify-center gap-3"
                 >
-                  <ChevronRight className="h-8 w-8" /> إغلاق ومعاودة العمل
+                  <ChevronRight className="h-6 w-6" /> إغلاق ومعاودة العمل
                 </Button>
               </div>
             </div>
