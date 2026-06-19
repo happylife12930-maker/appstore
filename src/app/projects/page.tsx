@@ -115,8 +115,6 @@ function ProjectsContent() {
   useEffect(() => {
     if (!db || !profile) return;
     
-    // تم إزالة orderBy من الاستعلام لتجنب خطأ Index
-    // سيتم الترتيب برمجياً (Client-side) لضمان السرعة والتوافق
     let projectsQuery;
     if (profile.role === 'admin') {
       projectsQuery = query(collection(db, "projects"));
@@ -130,7 +128,6 @@ function ProjectsContent() {
     const unsubscribe = onSnapshot(projectsQuery, (snapshot) => {
       let data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
       
-      // الترتيب البرمجي حسب تاريخ الإنشاء (الأحدث أولاً)
       data.sort((a: any, b: any) => {
         const dateA = a.createdAt?.toDate?.() || new Date(0);
         const dateB = b.createdAt?.toDate?.() || new Date(0);
@@ -327,7 +324,7 @@ function ProjectsContent() {
     const completedSteps = newSteps.filter((s: any) => s.completed).length;
     const progress = Math.round((completedSteps / newSteps.length) * 100);
 
-    // تحديث لحظي (Optimistic UI)
+    // تحديث لحظي للواجهة
     setPreviewProject((prev: any) => ({
       ...prev,
       steps: newSteps,
@@ -449,7 +446,6 @@ function ProjectsContent() {
         </div>
       )}
 
-      {/* مودال الإضافة والتعديل */}
       <Dialog open={isModalOpen} onOpenChange={(open) => !open && closeModal()}>
         <DialogContent className="sm:max-w-[750px] rounded-[3rem] p-0 overflow-hidden border-none shadow-2xl bg-white" dir="rtl">
           <DialogHeader className="bg-primary p-10 text-primary-foreground">
@@ -552,7 +548,6 @@ function ProjectsContent() {
         </DialogContent>
       </Dialog>
 
-      {/* مودال عرض التفاصيل */}
       <Dialog open={isPreviewOpen} onOpenChange={(open) => !open && closePreview()}>
         <DialogContent className="sm:max-w-[1000px] rounded-[3.5rem] p-0 overflow-hidden border-none shadow-2xl bg-white" dir="rtl">
           {previewProject && (
@@ -590,6 +585,7 @@ function ProjectsContent() {
                     <p className="font-black text-2xl">لا توجد صور</p>
                   </div>
                 )}
+                {/* زر X في الأعلى كما طلب المستخدم */}
                 <button onClick={closePreview} className="absolute top-8 right-8 z-[60] bg-red-600 text-white p-4 rounded-full shadow-2xl hover:bg-red-700 transition-all border-4 border-white">
                   <X className="h-8 w-8" />
                 </button>
@@ -633,6 +629,7 @@ function ProjectsContent() {
                     </div>
                   </div>
 
+                  {/* زر خروج في أسفل مراحل التنفيذ كما طلب المستخدم */}
                   <div className="pt-8 pb-10">
                     <Button 
                       onClick={closePreview} 
