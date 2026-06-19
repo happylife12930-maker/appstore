@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -30,33 +29,33 @@ import { useTranslation } from "@/components/language-provider";
 const invoices = [
   {
     id: "INV-2024-001",
-    client: "Ahmed Khalil",
+    client: "أحمد خليل",
     project: "Zenith CRM Mobile",
-    amount: 5400,
-    discount: 400,
+    amount: 54000,
+    discount: 4000,
     issued: "2024-02-15",
     due: "2024-03-15",
-    status: "Paid",
+    status: "مدفوع",
   },
   {
     id: "INV-2024-002",
-    client: "Sarah Johnson",
+    client: "سارة جونسون",
     project: "Eco-Ecomm Platform",
-    amount: 4500,
+    amount: 45000,
     discount: 0,
     issued: "2024-02-20",
     due: "2024-03-20",
-    status: "Partial",
+    status: "جزئي",
   },
   {
     id: "INV-2024-003",
-    client: "Omar Zayed",
+    client: "عمر زايد",
     project: "Health Tracker Pro",
-    amount: 8000,
-    discount: 1000,
+    amount: 80000,
+    discount: 10000,
     issued: "2024-03-01",
     due: "2024-04-01",
-    status: "Unpaid",
+    status: "غير مدفوع",
   },
 ];
 
@@ -66,8 +65,8 @@ export default function InvoicesPage() {
 
   const handleDownload = (id: string) => {
     toast({
-      title: "Generating PDF...",
-      description: `Invoice ${id} for project has been generated and downloaded.`,
+      title: "جاري إنشاء PDF...",
+      description: `تم إنشاء وتحميل الفاتورة ${id} للمشروع بنجاح.`,
     });
   };
 
@@ -75,13 +74,13 @@ export default function InvoicesPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div className="flex gap-2">
-          <Button variant="outline"><Filter className="h-4 w-4 mr-2" /> Filter</Button>
+          <Button variant="outline"><Filter className="h-4 w-4 ml-2" /> تصفية</Button>
           <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground px-4 bg-muted rounded-lg">
-            <AlertCircle className="h-3 w-3 text-amber-500" /> 2 Overdue Invoices
+            <AlertCircle className="h-3 w-3 text-amber-500" /> فاتورتان متأخرتان
           </div>
         </div>
         <Button className="font-bold">
-          <Plus className="mr-2 h-4 w-4" /> {t('invoices')}
+          <Plus className="ml-2 h-4 w-4" /> {t('invoices')}
         </Button>
       </div>
 
@@ -90,13 +89,13 @@ export default function InvoicesPage() {
           <Table>
             <TableHeader className="bg-muted/50">
               <TableRow>
-                <TableHead>Invoice #</TableHead>
-                <TableHead>{t('clients')}</TableHead>
-                <TableHead>{t('projects')}</TableHead>
-                <TableHead>{t('issued')} / {t('due')}</TableHead>
-                <TableHead>{t('amount')}</TableHead>
-                <TableHead>{t('status')}</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="text-right">رقم الفاتورة</TableHead>
+                <TableHead className="text-right">{t('clients')}</TableHead>
+                <TableHead className="text-right">{t('projects')}</TableHead>
+                <TableHead className="text-right">{t('issued')} / {t('due')}</TableHead>
+                <TableHead className="text-right">{t('amount')}</TableHead>
+                <TableHead className="text-right">{t('status')}</TableHead>
+                <TableHead className="text-left">الإجراءات</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -110,7 +109,7 @@ export default function InvoicesPage() {
                   </TableCell>
                   <TableCell>
                     <Badge variant="secondary" className="font-medium bg-primary/5 text-primary border-none">
-                      <Briefcase className="h-3 w-3 mr-1" /> {invoice.project}
+                      <Briefcase className="h-3 w-3 ml-1" /> {invoice.project}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -118,17 +117,17 @@ export default function InvoicesPage() {
                     <div className="text-xs text-rose-500 font-bold">{invoice.due}</div>
                   </TableCell>
                   <TableCell>
-                    <div className="font-headline font-bold text-lg">${invoice.amount.toLocaleString()}</div>
+                    <div className="font-headline font-bold text-lg">{invoice.amount.toLocaleString()} ج.م</div>
                     {invoice.discount > 0 && (
-                      <div className="text-[10px] text-emerald-600 font-bold">-{t('discount')}: ${invoice.discount}</div>
+                      <div className="text-[10px] text-emerald-600 font-bold">-{t('discount')}: {invoice.discount.toLocaleString()} ج.م</div>
                     )}
                   </TableCell>
                   <TableCell>
                     <Badge 
                       className={`font-bold border-none ${
-                        invoice.status === "Paid" 
+                        invoice.status === "مدفوع" 
                           ? "bg-emerald-100 text-emerald-700" 
-                          : invoice.status === "Partial"
+                          : invoice.status === "جزئي"
                           ? "bg-amber-100 text-amber-700"
                           : "bg-rose-100 text-rose-700"
                       }`}
@@ -136,8 +135,8 @@ export default function InvoicesPage() {
                       {invoice.status}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
+                  <TableCell className="text-left">
+                    <div className="flex justify-start gap-1">
                       <Button variant="ghost" size="icon" onClick={() => handleDownload(invoice.id)}>
                         <Download className="h-4 w-4" />
                       </Button>

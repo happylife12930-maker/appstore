@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -28,9 +27,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useTranslation } from "@/components/language-provider";
 
 const payments = [
-  { id: "PAY-001", client: "Ahmed Khalil", amount: 2500, method: "Bank Transfer", date: "2024-03-10", status: "Paid", notes: "First milestone payment" },
-  { id: "PAY-002", client: "Sarah Johnson", amount: 1500, method: "Credit Card", date: "2024-03-12", status: "Partial", notes: "Down payment" },
-  { id: "PAY-003", client: "Omar Zayed", amount: 5000, method: "Cash", date: "2024-03-15", status: "Unpaid", notes: "Awaiting collection" },
+  { id: "PAY-001", client: "أحمد خليل", amount: 25000, method: "تحويل بنكي", date: "2024-03-10", status: "مدفوع", notes: "دفعة المرحلة الأولى" },
+  { id: "PAY-002", client: "سارة جونسون", amount: 15000, method: "بطاقة ائتمان", date: "2024-03-12", status: "جزئي", notes: "دفعة مقدمة" },
+  { id: "PAY-003", client: "عمر زايد", amount: 50000, method: "نقداً", date: "2024-03-15", status: "غير مدفوع", notes: "بانتظار التحصيل" },
 ];
 
 export default function PaymentsPage() {
@@ -40,11 +39,11 @@ export default function PaymentsPage() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="relative w-full max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder={t('search')} className="pl-10" />
+          <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input placeholder={t('search')} className="pr-10" />
         </div>
         <Button className="font-bold">
-          <Plus className="mr-2 h-4 w-4" /> {t('payments')}
+          <Plus className="ml-2 h-4 w-4" /> {t('payments')}
         </Button>
       </div>
 
@@ -57,7 +56,7 @@ export default function PaymentsPage() {
               </div>
               <div>
                 <p className="text-xs font-bold text-emerald-600 uppercase">{t('paid')}</p>
-                <h4 className="text-2xl font-bold font-headline">$12,400</h4>
+                <h4 className="text-xl font-bold font-headline">124,000 ج.م</h4>
               </div>
             </div>
           </CardContent>
@@ -69,8 +68,8 @@ export default function PaymentsPage() {
                 <Clock className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-xs font-bold text-amber-600 uppercase">Partially Paid</p>
-                <h4 className="text-2xl font-bold font-headline">$4,200</h4>
+                <p className="text-xs font-bold text-amber-600 uppercase">مدفوع جزئياً</p>
+                <h4 className="text-xl font-bold font-headline">42,000 ج.م</h4>
               </div>
             </div>
           </CardContent>
@@ -82,8 +81,8 @@ export default function PaymentsPage() {
                 <AlertCircle className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-xs font-bold text-rose-600 uppercase">Unpaid</p>
-                <h4 className="text-2xl font-bold font-headline">$8,500</h4>
+                <p className="text-xs font-bold text-rose-600 uppercase">غير مدفوع</p>
+                <h4 className="text-xl font-bold font-headline">85,000 ج.م</h4>
               </div>
             </div>
           </CardContent>
@@ -95,33 +94,33 @@ export default function PaymentsPage() {
           <Table>
             <TableHeader className="bg-muted/50">
               <TableRow>
-                <TableHead>{t('date')}</TableHead>
-                <TableHead>{t('clients')}</TableHead>
-                <TableHead>{t('amount')}</TableHead>
-                <TableHead>{t('method')}</TableHead>
-                <TableHead>{t('status')}</TableHead>
-                <TableHead>{t('notes')}</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="text-right">{t('date')}</TableHead>
+                <TableHead className="text-right">{t('clients')}</TableHead>
+                <TableHead className="text-right">{t('amount')}</TableHead>
+                <TableHead className="text-right">{t('method')}</TableHead>
+                <TableHead className="text-right">{t('status')}</TableHead>
+                <TableHead className="text-right">{t('notes')}</TableHead>
+                <TableHead className="text-left">الإجراءات</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {payments.map((p) => (
                 <TableRow key={p.id}>
-                  <TableCell className="text-xs"><Calendar className="inline h-3 w-3 mr-1" /> {p.date}</TableCell>
+                  <TableCell className="text-xs"><Calendar className="inline h-3 w-3 ml-1" /> {p.date}</TableCell>
                   <TableCell className="font-bold">{p.client}</TableCell>
-                  <TableCell className="font-headline font-bold text-primary">${p.amount.toLocaleString()}</TableCell>
+                  <TableCell className="font-headline font-bold text-primary">{p.amount.toLocaleString()} ج.م</TableCell>
                   <TableCell className="text-xs">{p.method}</TableCell>
                   <TableCell>
                     <Badge variant="outline" className={`border-none ${
-                      p.status === 'Paid' ? 'bg-emerald-100 text-emerald-700' :
-                      p.status === 'Partial' ? 'bg-amber-100 text-amber-700' :
+                      p.status === 'مدفوع' ? 'bg-emerald-100 text-emerald-700' :
+                      p.status === 'جزئي' ? 'bg-amber-100 text-amber-700' :
                       'bg-rose-100 text-rose-700'
                     }`}>
                       {p.status}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground italic max-w-[200px] truncate">{p.notes}</TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-left">
                     <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
                   </TableCell>
                 </TableRow>

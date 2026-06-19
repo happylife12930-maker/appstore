@@ -25,7 +25,7 @@ const GenerateProjectQuotationOutputSchema = z.object({
     .describe("A list of suggested requirements for the project."),
   estimatedCost: z
     .number()
-    .describe("The estimated cost of the project in USD."),
+    .describe("The estimated cost of the project in Egyptian Pounds (EGP)."),
   executionTimelineDays: z
     .number()
     .describe("The estimated duration of the project in days."),
@@ -49,7 +49,7 @@ const prompt = ai.definePrompt({
   output: {schema: GenerateProjectQuotationOutputSchema},
   prompt: `You are an expert project manager and an AI assistant specialized in creating detailed and accurate project quotations for web and Android application development.
 
-Based on the following high-level client request description, provide a comprehensive project quotation including suggested requirements, an estimated cost, an execution timeline in days, and any additional notes.
+Based on the following high-level client request description, provide a comprehensive project quotation including suggested requirements, an estimated cost in Egyptian Pounds (EGP), an execution timeline in days, and any additional notes.
 
 Client Request Description:
 {{{clientRequestDescription}}}

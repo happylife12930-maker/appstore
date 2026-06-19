@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -33,12 +32,12 @@ import {
 import { useTranslation } from "@/components/language-provider";
 
 const revenueData = [
-  { month: "Jan", revenue: 4500 },
-  { month: "Feb", revenue: 5200 },
-  { month: "Mar", revenue: 4800 },
-  { month: "Apr", revenue: 7800 },
-  { month: "May", revenue: 8900 },
-  { month: "Jun", revenue: 12450 },
+  { month: "يناير", revenue: 45000 },
+  { month: "فبراير", revenue: 52000 },
+  { month: "مارس", revenue: 48000 },
+  { month: "أبريل", revenue: 78000 },
+  { month: "مايو", revenue: 89000 },
+  { month: "يونيو", revenue: 124500 },
 ];
 
 export default function Dashboard() {
@@ -48,8 +47,8 @@ export default function Dashboard() {
     { label: "totalClients", value: "42", icon: Users, color: "text-blue-500", bg: "bg-blue-50" },
     { label: "activeProjects", value: "14", icon: Briefcase, color: "text-indigo-500", bg: "bg-indigo-50" },
     { label: "finishedProjects", value: "128", icon: CheckCircle2, color: "text-emerald-500", bg: "bg-emerald-50" },
-    { label: "monthlyRevenue", value: "$12,450", icon: DollarSign, color: "text-emerald-600", bg: "bg-emerald-50" },
-    { label: "yearlyRevenue", value: "$142,000", icon: TrendingUp, color: "text-blue-600", bg: "bg-blue-50" },
+    { label: "monthlyRevenue", value: "124,500 ج.م", icon: DollarSign, color: "text-emerald-600", bg: "bg-emerald-50" },
+    { label: "yearlyRevenue", value: "1,420,000 ج.م", icon: TrendingUp, color: "text-blue-600", bg: "bg-blue-50" },
     { label: "openBugs", value: "24", icon: Bug, color: "text-rose-500", bg: "bg-rose-50" },
     { label: "delayedTasks", value: "7", icon: Clock, color: "text-orange-500", bg: "bg-orange-50" },
   ];
@@ -64,7 +63,6 @@ export default function Dashboard() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* الإحصائيات العلوية */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {stats.map((stat) => (
           <Card key={stat.label} className="border-none shadow-sm overflow-hidden hover:shadow-md transition-all">
@@ -74,7 +72,7 @@ export default function Dashboard() {
               </div>
               <div>
                 <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider mb-1">{t(stat.label)}</p>
-                <h3 className="text-2xl font-bold font-headline">{stat.value}</h3>
+                <h3 className="text-xl font-bold font-headline">{stat.value}</h3>
               </div>
             </CardContent>
           </Card>
@@ -82,7 +80,6 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* رسم بياني للنمو */}
         <Card className="lg:col-span-2 shadow-sm border-none">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
@@ -116,7 +113,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* نسبة إنجاز المشاريع */}
         <Card className="shadow-sm border-none">
           <CardHeader>
             <div className="flex items-center gap-2">
