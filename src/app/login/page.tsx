@@ -3,21 +3,19 @@
 
 import * as React from "react";
 import { useState } from "react";
-import { LogIn, Mail, Lock, Loader2, ShieldCheck, Sparkles } from "lucide-react";
+import { LogIn, Mail, Lock, Loader2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { useTranslation } from "@/components/language-provider";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
-import { auth, db } from "@/lib/firebase";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
-import { doc, setDoc } from "firebase/firestore";
 
 export default function LoginPage() {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
-  const [initLoading, setInitLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const router = useRouter();
@@ -38,53 +36,6 @@ export default function LoginPage() {
       });
     } finally {
       setLoading(false);
-    }
-  };
-
-  // وظيفة لتهيئة أول حساب مدير للنظام
-  const initializeAdmin = async () => {
-    setInitLoading(true);
-    const adminEmail = "admin@appstore.com";
-    const adminPass = "password123";
-    
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, adminEmail, adminPass);
-      const user = userCredential.user;
-      
-      // إضافة بيانات المدير في Firestore مع كافة الصلاحيات
-      await setDoc(doc(db, "users", user.uid), {
-        uid: user.uid,
-        name: "مدير النظام الأساسي",
-        email: adminEmail,
-        role: "admin",
-        status: "active",
-        lastLogin: new Date().toLocaleString('ar-EG'),
-        permissions: [
-          "p_dashboard",
-          "p_clients",
-          "p_projects",
-          "p_testers",
-          "p_finances"
-        ]
-      });
-
-      toast({ 
-        title: "تم تهيئة النظام", 
-        description: "تم إنشاء حساب المدير بنجاح: admin@appstore.com",
-      });
-      
-      setEmail(adminEmail);
-      setPassword(adminPass);
-    } catch (error: any) {
-      if (error.code === 'auth/email-already-in-use') {
-        toast({ title: "النظام مهيأ بالفعل", description: "حساب المدير موجود مسبقاً." });
-        setEmail(adminEmail);
-        setPassword(adminPass);
-      } else {
-        toast({ title: "خطأ في التهيئة", description: error.message, variant: "destructive" });
-      }
-    } finally {
-      setInitLoading(false);
     }
   };
 
@@ -143,29 +94,9 @@ export default function LoginPage() {
               )}
             </Button>
           </form>
-
-          <div className="relative py-2">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground italic">لأول مرة؟</span>
-            </div>
-          </div>
-
-          <Button 
-            variant="outline" 
-            className="w-full border-dashed border-primary/50 text-primary hover:bg-primary/5"
-            onClick={initializeAdmin}
-            disabled={initLoading}
-          >
-            {initLoading ? <Loader2 className="h-4 w-4 animate-spin ml-2" /> : <Sparkles className="h-4 w-4 ml-2" />}
-            تهيئة حساب المدير الأول
-          </Button>
         </CardContent>
         <CardFooter className="flex flex-col space-y-2 text-center text-[10px] text-muted-foreground border-t pt-4">
           <p>جميع الحقوق محفوظة &copy; {new Date().getFullYear()} APP STORE</p>
-          <p className="opacity-50 italic">admin@appstore.com / password123</p>
         </CardFooter>
       </Card>
     </div>
