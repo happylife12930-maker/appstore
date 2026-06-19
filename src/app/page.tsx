@@ -49,9 +49,11 @@ export default function HomePage() {
             <p className="text-muted-foreground text-sm">نظام APP STORE - الإدارة العامة</p>
           </div>
         </div>
-        <Button variant="ghost" onClick={handleLogout} className="text-rose-500 font-bold hover:bg-rose-50 rounded-xl">
-          <LogOut className="ml-2 h-4 w-4" /> خروج
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="ghost" onClick={handleLogout} className="text-rose-500 font-bold hover:bg-rose-50 rounded-xl">
+            <LogOut className="ml-2 h-4 w-4" /> خروج
+          </Button>
+        </div>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
