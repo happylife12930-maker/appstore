@@ -8,19 +8,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updatePassword } from "firebase/auth";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
-import { doc, setDoc, getDoc, deleteDoc, updateDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc, deleteDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 
 const getFriendlyErrorMessage = (errorCode: string) => {
   switch (errorCode) {
     case "auth/invalid-email": return "البريد الإلكتروني غير صالح.";
-    case "auth/user-not-found": return "لم يتم العثور على حساب بهذا البريد.";
+    case "auth/user-not-found": return "لم يتم العثور على حساب. إذا كنت عميلاً جديداً، استخدم كلمة المرور المسلمة لك.";
     case "auth/wrong-password": return "كلمة المرور غير صحيحة.";
-    case "auth/email-already-in-use": return "البريد مُستخدم بالفعل. جرب الدخول بكلمة المرور الخاصة بك.";
-    default: return "حدث خطأ غير متوقع. يرجى التأكد من بياناتك والمحاولة مرة أخرى.";
+    case "auth/email-already-in-use": return "هذا البريد مسجل بالفعل، يرجى تسجيل الدخول مباشرة.";
+    default: return "حدث خطأ في الدخول. تأكد من بياناتك وحاول مرة أخرى.";
   }
 };
 
@@ -40,23 +40,24 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      // 1. فحص وجود بيانات تجهيز أولاً لضمان الربط (حتى لو الحساب موجود)
+      // 1. فحص وجود بيانات تجهيز (تفعيل)
       const provisionDocRef = doc(db, "users_provision", email);
       const provisionSnap = await getDoc(provisionDocRef);
       const provisionData = provisionSnap.exists() ? provisionSnap.data() : null;
 
       try {
+        // 2. محاولة تسجيل الدخول العادي أولاً
         const loginRes = await signInWithEmailAndPassword(auth, email, password);
         const user = loginRes.user;
 
-        // إذا كان هناك بيانات تجهيز، نقوم بتحديث ملف المستخدم لضمان وجود clientId
+        // إذا كان هناك بيانات تجهيز، نقوم بتحديث ملف المستخدم فوراً (لضمان وجود الـ clientId)
         if (provisionData && user) {
           await setDoc(doc(db, "users", user.uid), {
             uid: user.uid,
             name: provisionData.name || "مستفيد",
             email: email,
             phone: provisionData.phone || "",
-            clientId: provisionData.clientId || "", 
+            clientId: provisionData.clientId || "", // هذا هو المعرف (id) من جدول العملاء
             role: "client",
             status: "active",
             permissions: ["p_projects"],
@@ -70,43 +71,40 @@ export default function LoginPage() {
         router.push("/");
         return;
       } catch (loginError: any) {
-        // 2. إذا كان الحساب جديداً تماماً (لم يسجل من قبل)
-        if (provisionData && password === provisionData.tempPassword) {
-          try {
-            const createRes = await createUserWithEmailAndPassword(auth, email, password);
-            const user = createRes.user;
+        // 3. إذا فشل الدخول لأن الحساب غير موجود في Auth
+        if (loginError.code === "auth/user-not-found" && provisionData && password === provisionData.tempPassword) {
+          const createRes = await createUserWithEmailAndPassword(auth, email, password);
+          const user = createRes.user;
 
-            if (user) {
-              await setDoc(doc(db, "users", user.uid), {
-                uid: user.uid,
-                name: provisionData.name || "مستفيد",
-                email: email,
-                phone: provisionData.phone || "",
-                clientId: provisionData.clientId || "", 
-                role: "client",
-                status: "active",
-                permissions: ["p_projects"],
-                createdAt: new Date().toISOString(),
-                lastLogin: new Date().toLocaleString('ar-EG')
-              });
+          if (user) {
+            await setDoc(doc(db, "users", user.uid), {
+              uid: user.uid,
+              name: provisionData.name || "مستفيد",
+              email: email,
+              phone: provisionData.phone || "",
+              clientId: provisionData.clientId || "", 
+              role: "client",
+              status: "active",
+              permissions: ["p_projects"],
+              createdAt: new Date().toISOString(),
+              lastLogin: new Date().toLocaleString('ar-EG')
+            });
 
-              await deleteDoc(provisionDocRef);
-              
-              toast({ title: "تم تفعيل الحساب", description: "تم ربط بياناتك بنجاح، مرحباً بك!" });
-              router.push("/");
-              return;
-            }
-          } catch (createError: any) {
-            throw createError;
+            await deleteDoc(provisionDocRef);
+            
+            toast({ title: "تم تفعيل حسابك", description: "تم ربط بياناتك بنجاح، يمكنك الآن متابعة مشاريعك." });
+            router.push("/");
+            return;
           }
         } else {
+          // إذا كان الخطأ كلمة مرور خطأ أو بريد مستخدم (أو أي خطأ آخر)
           throw loginError;
         }
       }
     } catch (error: any) {
       const friendlyMessage = getFriendlyErrorMessage(error.code);
       setError(friendlyMessage);
-      toast({ title: "فشل الدخول", description: friendlyMessage, variant: "destructive" });
+      toast({ title: "فشل العملية", description: friendlyMessage, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -157,7 +155,7 @@ export default function LoginPage() {
               دخول البوابة
             </Button>
             <p className="text-center text-xs font-bold text-slate-400 mt-4 leading-relaxed px-4">
-              إذا لم يتم تفعيل حسابك بعد، يرجى استخدام كلمة المرور التي زودتك بها إدارة APP STORE.
+              إذا كنت تدخل لأول مرة، يرجى استخدام كلمة المرور التي زودتك بها إدارة الوكالة لتفعيل حسابك.
             </p>
           </form>
         </CardContent>
