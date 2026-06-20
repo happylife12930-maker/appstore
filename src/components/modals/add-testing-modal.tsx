@@ -80,7 +80,11 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
   useEffect(() => {
     if (!db) return;
     const unsub = onSnapshot(collection(db, "projects"), (snap) => {
-      setProjects(snap.docs.map(doc => ({ id: doc.id, name: doc.data().name })));
+      setProjects(snap.docs.map(doc => ({ 
+        id: doc.id, 
+        name: doc.data().name,
+        status: doc.data().status // جلب حالة المشروع للمقارنة
+      })));
     });
     return () => unsub();
   }, []);
@@ -100,7 +104,6 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
       });
       setProjectSearch('');
     }
-    // ريست لحالة التعديل عند فتح النافذة
     setEditingTesterIndex(null);
     setNewTesterEmail('');
     setNewTesterPhone('');
@@ -109,15 +112,23 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
 
   const filteredProjects = useMemo(() => {
     const s = projectSearch.toLowerCase().trim();
-    if (!s) return projects;
-    return projects.filter(p => p.name.toLowerCase().includes(s));
-  }, [projects, projectSearch]);
+    
+    // تصفية المشاريع: إظهار المشاريع غير المكتملة فقط
+    // مع السماح بإظهار المشروع الحالي المختار في حالة التعديل حتى لو كان مكتملاً
+    const availableProjects = projects.filter(p => {
+      const isNotCompleted = p.status !== 'مكتمل';
+      const isCurrentlySelected = p.id === formData.projectId;
+      return isNotCompleted || isCurrentlySelected;
+    });
+
+    if (!s) return availableProjects;
+    return availableProjects.filter(p => p.name.toLowerCase().includes(s));
+  }, [projects, projectSearch, formData.projectId]);
 
   const handleTesterAction = () => {
     if (!newTesterEmail.includes('@') || selectedDays.length === 0) return;
 
     if (editingTesterIndex !== null) {
-      // تحديث مختبر موجود
       const updatedTesters = [...formData.testers];
       updatedTesters[editingTesterIndex] = { 
         email: newTesterEmail, 
@@ -127,7 +138,6 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
       setFormData(prev => ({ ...prev, testers: updatedTesters }));
       setEditingTesterIndex(null);
     } else {
-      // إضافة مختبر جديد
       setFormData(prev => ({
         ...prev,
         testers: [...prev.testers, { email: newTesterEmail, phone: newTesterPhone, assignedDays: selectedDays }]
@@ -185,7 +195,7 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
               <Calendar className="h-6 w-6" /> {initialData ? 'تعديل مهمة الاختبار' : 'تعيين مشروع للاختبار'}
             </DialogTitle>
             <DialogDescription className="text-primary-foreground/80 font-bold mt-1">
-              اختر المشروع، حدد فريق الاختبار وجدول المواعيد
+              اختر المشروع (المشاريع الجارية فقط)، حدد فريق الاختبار وجدول المواعيد
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -195,13 +205,13 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-3">
                 <Label className="font-black text-slate-700 pr-2 flex items-center gap-2">
-                  <Briefcase className="h-4 w-4 text-primary" /> المشروع المستهدف (بحث)
+                  <Briefcase className="h-4 w-4 text-primary" /> المشروع المستهدف (المشاريع النشطة)
                 </Label>
                 <div className="space-y-2">
                   <div className="relative">
                     <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <Input 
-                      placeholder="اكتب اسم المشروع للبحث..." 
+                      placeholder="ابحث بالاسم عن المشاريع النشطة..." 
                       value={projectSearch}
                       onChange={(e) => setProjectSearch(e.target.value)}
                       className="rounded-2xl h-12 pr-10 border-slate-200 font-bold text-sm bg-slate-50/50"
@@ -215,14 +225,19 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
                     }}
                   >
                     <SelectTrigger className="rounded-2xl h-12 border-slate-200 font-black text-right">
-                      <SelectValue placeholder="اختر من النتائج..." />
+                      <SelectValue placeholder="اختر المشروع الجاري..." />
                     </SelectTrigger>
                     <SelectContent className="rounded-2xl font-bold max-h-[250px]">
                       {filteredProjects.map(p => (
-                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                        <SelectItem key={p.id} value={p.id}>
+                          <div className="flex justify-between items-center w-full">
+                            <span>{p.name}</span>
+                            {p.status === 'مكتمل' && <Badge className="mr-2 bg-green-500 scale-75">مكتمل</Badge>}
+                          </div>
+                        </SelectItem>
                       ))}
                       {filteredProjects.length === 0 && (
-                        <div className="p-4 text-center text-xs text-slate-400 font-bold">لا توجد مشاريع مطابقة</div>
+                        <div className="p-4 text-center text-xs text-slate-400 font-bold">لا توجد مشاريع جارية متاحة حالياً</div>
                       )}
                     </SelectContent>
                   </Select>
@@ -369,7 +384,7 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
                 <Textarea 
                   value={formData.notes} 
                   onChange={(e) => setFormData({...formData, notes: e.target.value})} 
-                  placeholder="اكتب هنا توضيحاً للمختبرين حول هذا الرابط أو أي تعليمات إضافية..." 
+                  placeholder="اكتب هنا توضيحاً للمختبرين..." 
                   className="rounded-2xl min-h-[100px] border-slate-200 font-bold leading-relaxed"
                 />
               </div>
