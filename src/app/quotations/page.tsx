@@ -2,25 +2,21 @@
 "use client";
 
 import * as React from "react";
-import { useState, useEffect, useMemo, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { 
   Calculator, 
   Plus, 
-  Search, 
   Edit3, 
   Trash2, 
   ExternalLink, 
   Image as ImageIcon,
   Loader2,
-  X,
-  Sparkles,
   FileText,
   DollarSign,
   Clock
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
@@ -32,7 +28,6 @@ import { useRouter } from "next/navigation";
 
 function QuotationsContent() {
   const [quotations, setQuotations] = useState<any[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingQuotation, setEditingQuotation] = useState<any | null>(null);
@@ -62,15 +57,6 @@ function QuotationsContent() {
     
     return () => unsub();
   }, [profile, authLoading, router]);
-
-  const filteredQuotations = useMemo(() => {
-    const s = searchQuery.toLowerCase().trim();
-    if (!s) return quotations;
-    return quotations.filter(q => 
-      q.projectName?.toLowerCase().includes(s) || 
-      q.clientName?.toLowerCase().includes(s)
-    );
-  }, [quotations, searchQuery]);
 
   const handleSaveQuotation = async (data: any) => {
     if (!db) return;
@@ -135,17 +121,7 @@ function QuotationsContent() {
         </Button>
       </header>
 
-      <div className="relative">
-        <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5" />
-        <Input 
-          placeholder="ابحث باسم المشروع أو اسم العميل..." 
-          className="pr-12 h-16 rounded-2xl font-bold text-lg border-none shadow-sm bg-white focus-visible:ring-primary/20"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-      </div>
-
-      {filteredQuotations.length === 0 ? (
+      {quotations.length === 0 ? (
         <Card className="rounded-[2.5rem] border-none shadow-sm py-20 text-center bg-white">
           <div className="flex flex-col items-center gap-4 opacity-40">
             <FileText className="h-20 w-20" />
@@ -154,7 +130,7 @@ function QuotationsContent() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredQuotations.map((q) => (
+          {quotations.map((q) => (
             <Card key={q.id} className="rounded-[2.5rem] border-none shadow-sm hover:shadow-xl transition-all bg-white overflow-hidden flex flex-col border border-slate-50 group">
               <div className="relative h-48 bg-slate-100 overflow-hidden">
                 {q.images?.[0] ? (
