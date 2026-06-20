@@ -19,25 +19,27 @@ service cloud.firestore {
     // --- Security Rules ---
 
     match /users/{userId} {
-      // يسمح للمستخدم برؤية وتحديث بياناته، وللمدير بالتحكم الكامل بما في ذلك الحذف
       allow get, create, update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
       allow list, delete: if isAdmin();
     }
 
     match /users_provision/{email} {
-      // التحقق من التفعيل متاح بالبريد، والمدير يتحكم في الطلبات وحذفها
       allow get: if true;
       allow list, write, delete: if isAdmin();
     }
 
     match /clients/{clientId} {
-      allow get, list: if isAdmin() || (isAuthenticated() && getUserData() != null && getUserData().clientId == clientId);
+      allow read, list: if isAdmin() || (isAuthenticated() && getUserData() != null && getUserData().clientId == clientId);
       allow write: if isAdmin();
     }
 
     match /projects/{projectId} {
-      allow read, list: if isAdmin() || (isAuthenticated() && getUserData() != null && resource.data.clientId == getUserData().clientId);
+      allow read, list: if isAdmin() || (isAuthenticated() && getUserData() != null && (resource == null || resource.data.clientId == getUserData().clientId));
       allow write: if isAdmin();
+    }
+
+    match /testing_groups/{groupId} {
+      allow read, write, list, delete: if isAdmin();
     }
 
     match /invoices/{invoiceId} {
