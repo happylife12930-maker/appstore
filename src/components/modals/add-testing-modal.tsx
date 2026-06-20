@@ -30,7 +30,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export interface TestingGroupData {
   id?: string;
