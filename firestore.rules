@@ -12,7 +12,9 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isAuthenticated() && getUserData().role == 'admin';
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+             getUserData().role == 'admin';
     }
 
     match /users/{userId} {
@@ -26,16 +28,16 @@ service cloud.firestore {
     }
 
     match /clients/{clientId} {
-      allow read: if isAdmin() || (isAuthenticated() && getUserData().clientId == clientId);
+      allow read: if isAdmin() || (isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().clientId == clientId);
       allow write: if isAdmin();
     }
 
     match /projects/{projectId} {
-      // السماح للقراءة إذا كان الأدمن أو إذا كان clientId الخاص بالمشروع يطابق clientId الخاص بالمستخدم
-      allow read: if isAdmin() || (
-        isAuthenticated() && (
-          resource.data.clientId == getUserData().clientId
-        )
+      // السماح للقراءة والقائمة إذا كان أدمن أو مستفيد يملك نفس الـ clientId
+      allow read, list: if isAdmin() || (
+        isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        resource.data.clientId == getUserData().clientId
       );
       allow write: if isAdmin();
     }

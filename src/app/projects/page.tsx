@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -53,8 +54,8 @@ function ProjectsContent() {
     if (profile.role === 'admin') {
       q = query(collection(db, "projects"));
     } else {
-      // الاعتماد الصارم على clientId لضمان جلب مشاريع هذا العميل فقط وتوافقها مع الأمان
       const clientId = profile.clientId;
+      // لا ترسل الاستعلام إذا لم يكن الـ clientId جاهزاً لتجنب خطأ الصلاحيات
       if (!clientId) {
         setLoading(false);
         return;
@@ -70,6 +71,7 @@ function ProjectsContent() {
       setProjects(docs);
       setLoading(false);
     }, (error) => {
+      console.error("Projects Access Error:", error);
       setLoading(false);
     });
     

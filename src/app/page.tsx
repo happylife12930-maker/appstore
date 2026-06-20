@@ -19,7 +19,7 @@ export default function DashboardPage() {
     if (!db || authLoading) return;
     
     if (!profile) {
-      if (!authLoading) setLoading(false);
+      setLoading(false);
       return;
     }
 
@@ -35,17 +35,17 @@ export default function DashboardPage() {
           finished: s.docs.filter(d => d.data().status === 'مكتمل').length
         }));
         setLoading(false);
-      });
+      }, () => setLoading(false));
     } 
     else if (profile.role === 'client') {
       const clientId = profile.clientId;
       
+      // لا ترسل الاستعلام إذا لم يكن الـ clientId جاهزاً لتجنب خطأ الصلاحيات
       if (!clientId) {
         setLoading(false);
         return;
       }
 
-      // البحث عن المشاريع التي تطابق clientId الخاص بالعميل حصراً
       const q = query(
         collection(db, "projects"),
         where("clientId", "==", clientId)
@@ -60,7 +60,7 @@ export default function DashboardPage() {
         });
         setLoading(false);
       }, (error) => {
-        console.error("Dashboard Client Query Error:", error);
+        console.error("Dashboard Permission Error:", error);
         setLoading(false);
       });
     } else {
