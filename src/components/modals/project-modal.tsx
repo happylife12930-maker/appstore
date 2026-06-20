@@ -15,12 +15,11 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/select';
 import { Loader2, Briefcase, Search, Image as ImageIcon, Plus, Trash2, Save, Phone, UserCheck, DollarSign, Upload } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { db, storage } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
 
 export interface ProjectData {
@@ -78,7 +77,6 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
       { id: 6, title: 'التسليم النهائي', completed: false },
     ]
   });
-  const [newImageUrl, setNewImageUrl] = useState('');
 
   useEffect(() => {
     if (!db) return;
@@ -144,38 +142,42 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
     return "اختر العميل من القائمة...";
   }, [clients, formData.clientId, clientSearch]);
 
-  const handleAddImage = () => {
-    if (newImageUrl.trim()) {
-      setFormData(prev => ({ ...prev, images: [...prev.images, newImageUrl.trim()] }));
-      setNewImageUrl('');
-    }
-  };
-
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files || files.length === 0 || !storage) return;
+    if (!files || files.length === 0) return;
 
     setIsUploading(true);
     const uploadedUrls: string[] = [];
+    const IMGBB_API_KEY = '182b7fc61cf92fcbd3094ed2dce7cd27';
     
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        const storageRef = ref(storage, `projects/${Date.now()}-${file.name}`);
-        await uploadBytes(storageRef, file);
-        const url = await getDownloadURL(storageRef);
-        uploadedUrls.push(url);
+        const uploadFormData = new FormData();
+        uploadFormData.append('image', file);
+        
+        const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+          method: 'POST',
+          body: uploadFormData,
+        });
+        
+        if (!response.ok) throw new Error('فشل الرفع لخدمة ImgBB');
+        
+        const result = await response.json();
+        if (result.success && result.data && result.data.url) {
+          uploadedUrls.push(result.data.url);
+        }
       }
       
       setFormData(prev => ({ ...prev, images: [...prev.images, ...uploadedUrls] }));
       toast({ 
-        title: "تم الرفع", 
-        description: `تم رفع ${files.length} صور بنجاح من جهازك` 
+        title: "تم الرفع بنجاح", 
+        description: `تم رفع ${uploadedUrls.length} صور ومعالجتها عبر ImgBB` 
       });
     } catch (error) {
       toast({ 
-        title: "خطأ", 
-        description: "فشل في رفع بعض أو كل الصور، تأكد من اتصالك", 
+        title: "خطأ في الرفع", 
+        description: "حدثت مشكلة أثناء محاولة رفع الصور، تأكد من الاتصال بالإنترنت", 
         variant: "destructive" 
       });
     } finally {
@@ -326,34 +328,24 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
                   />
                   <Button 
                     variant="outline" 
-                    size="sm" 
+                    size="lg" 
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isUploading}
-                    className="rounded-xl font-black gap-2 border-primary text-primary hover:bg-primary/5"
+                    className="rounded-2xl font-black h-14 px-10 gap-2 border-primary text-primary hover:bg-primary/5 shadow-sm transition-all active:scale-95"
                   >
-                    {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                    رفع من الجهاز
+                    {isUploading ? <Loader2 className="h-6 w-6 animate-spin" /> : <Upload className="h-6 w-6" />}
+                    رفع صور من الجهاز (اختيار متعدد)
                   </Button>
                 </div>
               </div>
 
-              <div className="flex gap-2">
-                <Input 
-                  value={newImageUrl} 
-                  onChange={(e) => setNewImageUrl(e.target.value)} 
-                  placeholder="أو ضع رابط صورة مباشر..." 
-                  className="rounded-xl h-12 border-slate-200 bg-white"
-                />
-                <Button onClick={handleAddImage} className="rounded-xl h-12 px-6 shadow-md"><Plus className="h-5 w-5" /></Button>
-              </div>
-
               {isUploading && (
-                <div className="flex items-center gap-2 text-primary font-bold text-xs p-2">
-                  <Loader2 className="h-3 w-3 animate-spin" /> جاري رفع الصور إلى السيرفر...
+                <div className="flex items-center justify-center gap-3 text-primary font-black text-sm p-4 bg-white/50 rounded-2xl animate-pulse">
+                  <Loader2 className="h-5 w-5 animate-spin" /> جاري رفع ومعالجة الصور عبر ImgBB...
                 </div>
               )}
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-4">
                 {formData.images.map((img, idx) => (
                   <div key={idx} className="relative group aspect-video rounded-2xl overflow-hidden border-2 border-white shadow-md bg-white">
                     <img src={img} className="w-full h-full object-cover transition-transform group-hover:scale-110" alt="" />
@@ -365,6 +357,12 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
                     </button>
                   </div>
                 ))}
+                {formData.images.length === 0 && !isUploading && (
+                  <div className="col-span-full py-10 text-center opacity-40 flex flex-col items-center gap-2 border-2 border-dashed border-slate-300 rounded-[2rem]">
+                    <ImageIcon className="h-10 w-10" />
+                    <p className="font-bold">لا توجد صور مرفوعة حالياً</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
