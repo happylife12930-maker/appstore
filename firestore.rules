@@ -20,7 +20,7 @@ service cloud.firestore {
     }
 
     match /users_provision/{email} {
-      allow read: if true; // السماح بالقراءة أثناء الدخول للتحقق
+      allow read: if true;
       allow write: if isAdmin();
     }
 
@@ -30,14 +30,16 @@ service cloud.firestore {
     }
 
     match /projects/{projectId} {
+      // السماح بالقراءة (get + list) إذا كان المستخدم أدمن 
+      // أو إذا كان المشروع مرتبطاً بـ clientId الخاص بالمستخدم
       allow read: if isAdmin() || (
         isAuthenticated() && (
-          resource.data.clientId == getUserData().clientId || 
-          resource.data.clientEmail == request.auth.token.email ||
-          resource.data.clientPhone == getUserData().phone
+          resource.data.clientId == getUserData().clientId ||
+          resource.data.clientEmail == request.auth.token.email
         )
       );
-      allow list, write: if isAdmin();
+      // الإضافة والحذف والتعديل للأدمن فقط
+      allow write: if isAdmin();
     }
   }
 }

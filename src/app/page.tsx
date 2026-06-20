@@ -5,7 +5,7 @@ import { Users, Briefcase, CheckCircle, LayoutDashboard, ShieldCheck, Clock, Loa
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, where, or, Unsubscribe } from "firebase/firestore";
+import { collection, onSnapshot, query, where, Unsubscribe } from "firebase/firestore";
 import { useAuth } from "@/components/auth-provider";
 
 export default function DashboardPage() {
@@ -17,7 +17,6 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!db || authLoading) return;
     
-    // الانتظار حتى يتأكد النظام من هوية المستخدم وبيانات بروفايله
     if (!profile) {
       if (!authLoading) setLoading(false);
       return;
@@ -38,14 +37,17 @@ export default function DashboardPage() {
       });
     } 
     else if (profile.role === 'client') {
-      // الربط الثلاثي الموثوق: استخدام clientId أو Email أو Phone لضمان جلب كافة المشاريع
+      // الاعتماد الحصري والصارم على clientId للربط مع مشاريع العميل
+      const clientId = profile.clientId;
+      
+      if (!clientId) {
+        setLoading(false);
+        return;
+      }
+
       const q = query(
         collection(db, "projects"),
-        or(
-          where("clientId", "==", profile.clientId || "NONE_MATCH"),
-          where("clientEmail", "==", profile.email || "NONE_MATCH"),
-          where("clientPhone", "==", profile.phone || "NONE_MATCH")
-        )
+        where("clientId", "==", clientId)
       );
 
       unsubP = onSnapshot(q, (s) => {
@@ -57,7 +59,6 @@ export default function DashboardPage() {
         });
         setLoading(false);
       }, (error) => {
-        console.error("Client Dashboard Query Error:", error);
         setLoading(false);
       });
     } else {
@@ -128,10 +129,10 @@ export default function DashboardPage() {
           />
         ) : (
           <StatCard 
-            title="آخر تحديث" 
-            icon={<Clock className="text-blue-500" />} 
-            value="الآن" 
-            onClick={() => router.push('/projects')} 
+            title="حسابي" 
+            icon={<ShieldCheck className="text-blue-500" />} 
+            value="نشط" 
+            onClick={() => {}} 
           />
         )}
       </div>
