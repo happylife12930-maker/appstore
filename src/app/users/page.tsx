@@ -13,7 +13,8 @@ import {
   UserPlus,
   ShieldCheck,
   Key,
-  Users
+  Users,
+  Clock
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,7 @@ const normalizeText = (text: string) => {
 export default function UsersPermissionsPage() {
   const [allClients, setAllClients] = useState<any[]>([]);
   const [activeUsers, setActiveUsers] = useState<any[]>([]);
+  const [provisionedUsers, setProvisionedUsers] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
@@ -49,22 +51,31 @@ export default function UsersPermissionsPage() {
     }
     if (!db) return;
 
+    // جلب قائمة العملاء
     const unsubClients = onSnapshot(collection(db, "clients"), (snap) => {
       setAllClients(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
 
+    // جلب الحسابات المفعلة فعلياً
     const unsubUsers = onSnapshot(collection(db, "users"), (snap) => {
       setActiveUsers(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
+    // جلب طلبات التجهيز المعلقة (بانتظار أول دخول)
+    const unsubProvision = onSnapshot(collection(db, "users_provision"), (snap) => {
+      setProvisionedUsers(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       setLoading(false);
     });
 
     return () => {
       unsubClients();
       unsubUsers();
+      unsubProvision();
     };
   }, [profile, router]);
 
   const handleGrantAccess = async (client: any) => {
+    if (!db) return;
     if (!client.email) {
       alert("العميل ليس له بريد إلكتروني مسجل. يرجى تعديل بيانات العميل أولاً.");
       return;
@@ -78,7 +89,7 @@ export default function UsersPermissionsPage() {
 
     try {
       // إرسال البيانات لجدول التجهيز (users_provision)
-      await setDoc(doc(db!, "users_provision", client.email), {
+      await setDoc(doc(db, "users_provision", client.email), {
         name: client.name,
         email: client.email,
         phone: client.phone,
@@ -87,16 +98,17 @@ export default function UsersPermissionsPage() {
         tempPassword: password,
         permissions: ["p_projects"]
       });
-      toast({ title: "تم التجهيز بنجاح", description: "يمكن للعميل الآن الدخول ببريده وبكلمة المرور هذه." });
+      toast({ title: "تم التجهيز بنجاح", description: "تم إرسال الصلاحية. يمكن للعميل الآن الدخول ببياناته." });
     } catch (err) {
       toast({ title: "خطأ", description: "فشل في منح الصلاحية.", variant: "destructive" });
     }
   };
 
   const handleRevokeAccess = async (id: string) => {
+    if (!db) return;
     if (confirm("هل أنت متأكد من إلغاء صلاحية دخول هذا العميل وحذف حسابه؟")) {
       try {
-        await deleteDoc(doc(db!, "users", id));
+        await deleteDoc(doc(db, "users", id));
         toast({ title: "تم السحب", description: "تم إلغاء صلاحية الدخول للعميل." });
       } catch (err) {
         toast({ title: "خطأ", variant: "destructive" });
@@ -153,7 +165,9 @@ export default function UsersPermissionsPage() {
             <ScrollArea className="h-[500px] pr-2">
               <div className="space-y-3">
                 {filteredClients.map(client => {
-                  const isAlreadyUser = activeUsers.some(u => u.email === client.email);
+                  const isActive = activeUsers.some(u => u.email === client.email);
+                  const isProvisioned = provisionedUsers.some(u => u.email === client.email);
+                  
                   return (
                     <div key={client.id} className="p-4 rounded-3xl bg-white border border-slate-100 flex justify-between items-center shadow-sm hover:border-primary/20 transition-colors group">
                       <div className="overflow-hidden">
@@ -162,14 +176,18 @@ export default function UsersPermissionsPage() {
                       </div>
                       <Button 
                         size="sm" 
-                        disabled={isAlreadyUser || !client.email}
+                        disabled={isActive || !client.email}
                         onClick={() => handleGrantAccess(client)} 
                         className={`rounded-xl font-black gap-2 h-9 px-4 transition-all ${
-                          isAlreadyUser ? 'bg-green-500 hover:bg-green-600 text-white shadow-green-100' : 'shadow-primary/10'
+                          isActive 
+                          ? 'bg-green-500 hover:bg-green-600 text-white shadow-green-100' 
+                          : isProvisioned 
+                          ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-amber-100' 
+                          : 'shadow-primary/10'
                         }`}
                       >
-                        {isAlreadyUser ? <BadgeCheck className="h-4 w-4" /> : <UserPlus className="h-3.5 w-3.5" />}
-                        {isAlreadyUser ? 'نشط' : 'تفعيل'}
+                        {isActive ? <BadgeCheck className="h-4 w-4" /> : isProvisioned ? <Clock className="h-3.5 w-3.5" /> : <UserPlus className="h-3.5 w-3.5" />}
+                        {isActive ? 'نشط' : isProvisioned ? 'جاهز' : 'تفعيل'}
                       </Button>
                     </div>
                   );
