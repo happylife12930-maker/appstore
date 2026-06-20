@@ -34,20 +34,23 @@
   body {
     @apply bg-background text-foreground;
     font-family: 'Cairo', sans-serif;
-    /* إجبار الصفحة على قبول التفاعل دائماً لحل مشكلة الفريز */
+    /* حل نهائي لمشكلة التجمد: إجبار الصفحة على التفاعل دائماً */
     pointer-events: auto !important;
-    overflow-x: hidden;
   }
 }
 
-/* حل جذري لمشكلة تجمد الشاشة بعد إغلاق المودال في Shadcn */
+/* حل جذري لمشكلة تجمد الشاشة بعد إغلاق المودال في Shadcn/Radix */
+html, body {
+  pointer-events: auto !important;
+}
+
 body[style*="pointer-events: none"] {
   pointer-events: auto !important;
 }
 
-/* تحسين السكرول بار ليناسب التصميم الفخم */
+/* تحسين السكرول بار */
 ::-webkit-scrollbar {
-  width: 10px;
+  width: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -55,10 +58,10 @@ body[style*="pointer-events: none"] {
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-slate-300 rounded-full border-2 border-slate-100 hover:bg-slate-400 transition-colors;
+  @apply bg-slate-300 rounded-full hover:bg-slate-400;
 }
 
-/* ضمان ظهور السكرول داخل المودال */
+/* ضمان أن الحوار (Dialog) لا يمنع التمرير في الخلفية بعد الإغلاق */
 [data-radix-scroll-area-viewport] {
   scrollbar-width: thin;
   scrollbar-color: #cbd5e1 transparent;
