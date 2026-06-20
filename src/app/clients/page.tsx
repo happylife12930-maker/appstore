@@ -9,17 +9,15 @@ import {
   Plus, 
   Phone, 
   Mail, 
-  Building, 
   Trash2, 
   Edit3, 
   Wallet,
   Loader2,
-  AlertCircle
+  Briefcase
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, deleteDoc, doc, setDoc, addDoc } from "firebase/firestore";
@@ -43,12 +41,13 @@ export default function ClientsPage() {
     return () => unsub();
   }, []);
 
+  // تحسين البحث ليشمل الاسم والهاتف واسم المشروع
   const filteredClients = useMemo(() => {
     const s = searchQuery.toLowerCase();
     return clients.filter(c => 
-      c.name?.toLowerCase().includes(s) || 
-      c.phone?.includes(searchQuery) ||
-      c.projectName?.toLowerCase().includes(s)
+      (c.name || "").toLowerCase().includes(s) || 
+      (c.phone || "").includes(searchQuery) ||
+      (c.projectName || "").toLowerCase().includes(s)
     );
   }, [clients, searchQuery]);
 
@@ -65,10 +64,11 @@ export default function ClientsPage() {
       }
       setIsModalOpen(false);
       setEditingClient(null);
-      // حل مشكلة الفريز عبر التأكد من إعادة تفعيل الـ pointer-events
+      
+      // حل مشكلة الفريز عبر التأكد من إعادة تفعيل الـ pointer-events برمجياً
       setTimeout(() => {
         document.body.style.pointerEvents = 'auto';
-      }, 100);
+      }, 200);
     } catch (err) {
       toast({ title: "خطأ", description: "فشل في حفظ البيانات", variant: "destructive" });
     } finally {
@@ -95,14 +95,14 @@ export default function ClientsPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 pb-20" dir="rtl">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-8 rounded-[2.5rem] shadow-sm">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100">
         <div className="flex items-center gap-4">
           <div className="p-4 bg-primary/10 rounded-2xl text-primary">
             <Users className="h-8 w-8" />
           </div>
           <div>
-            <h1 className="text-3xl font-black text-slate-800 tracking-tight">قائمة العملاء</h1>
-            <p className="text-slate-500 font-bold">إدارة البيانات المالية والتقنية لعملائك</p>
+            <h1 className="text-3xl font-black text-slate-800 tracking-tight">إدارة العملاء</h1>
+            <p className="text-slate-500 font-bold">ابحث بالاسم، الهاتف، أو اسم المشروع</p>
           </div>
         </div>
         <Button 
@@ -127,27 +127,28 @@ export default function ClientsPage() {
         <Card className="rounded-[2.5rem] border-none shadow-sm py-20 text-center bg-white">
           <div className="flex flex-col items-center gap-4 opacity-40">
             <Users className="h-20 w-20" />
-            <p className="text-xl font-black">لم يتم العثور على عملاء</p>
+            <p className="text-xl font-black">لم يتم العثور على نتائج</p>
           </div>
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredClients.map((client) => (
-            <Card key={client.id} className="rounded-[2.5rem] border-none shadow-sm hover:shadow-xl transition-all bg-white group overflow-hidden">
+            <Card key={client.id} className="rounded-[2.5rem] border-none shadow-sm hover:shadow-xl transition-all bg-white overflow-hidden group border border-slate-50">
               <CardHeader className="p-6 border-b border-slate-50 flex flex-row items-center justify-between bg-slate-50/50">
                 <div className="flex items-center gap-3">
                   <div className="h-12 w-12 rounded-2xl bg-primary flex items-center justify-center text-white font-black text-xl shadow-inner">
                     {client.name?.[0] || 'U'}
                   </div>
                   <div className="overflow-hidden">
-                    <CardTitle className="text-lg font-black truncate">{client.name}</CardTitle>
-                    <Badge variant="secondary" className="rounded-lg font-bold text-[10px] mt-1">
-                      {client.projectName || 'بدون مشروع'}
-                    </Badge>
+                    <CardTitle className="text-lg font-black truncate max-w-[150px]">{client.name}</CardTitle>
+                    <div className="flex items-center gap-1 mt-1">
+                      <Briefcase className="h-3 w-3 text-slate-400" />
+                      <span className="text-[10px] font-bold text-slate-500 truncate max-w-[120px]">{client.projectName || 'بدون مشروع'}</span>
+                    </div>
                   </div>
                 </div>
                 <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" onClick={() => { setEditingClient(client); setIsModalOpen(true); }} className="h-9 w-9 rounded-xl hover:bg-white">
+                  <Button variant="ghost" size="icon" onClick={() => { setEditingClient(client); setIsModalOpen(true); }} className="h-9 w-9 rounded-xl">
                     <Edit3 className="h-4 w-4 text-slate-500" />
                   </Button>
                   <Button variant="ghost" size="icon" onClick={() => handleDeleteClient(client.id!)} className="h-9 w-9 rounded-xl hover:bg-rose-50 text-rose-500">
@@ -157,13 +158,13 @@ export default function ClientsPage() {
               </CardHeader>
               <CardContent className="p-6 space-y-4">
                 <div className="space-y-3">
-                  <div className="flex items-center gap-3 text-slate-500">
-                    <Phone className="h-4 w-4" />
+                  <div className="flex items-center gap-3 text-slate-600">
+                    <Phone className="h-4 w-4 text-primary" />
                     <span className="font-bold text-sm" dir="ltr">{client.phone || '---'}</span>
                   </div>
-                  <div className="flex items-center gap-3 text-slate-500">
-                    <Mail className="h-4 w-4" />
-                    <span className="font-bold text-sm truncate">{client.email || '---'}</span>
+                  <div className="flex items-center gap-3 text-slate-600">
+                    <Mail className="h-4 w-4 text-primary" />
+                    <span className="font-bold text-sm truncate max-w-[200px]">{client.email || '---'}</span>
                   </div>
                 </div>
 
@@ -171,7 +172,7 @@ export default function ClientsPage() {
                   <div className="p-4 bg-slate-50 rounded-2xl flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Wallet className="h-4 w-4 text-primary" />
-                      <span className="font-black text-xs text-slate-400">الرصيد المتبقي</span>
+                      <span className="font-black text-xs text-slate-400">الرصيد</span>
                     </div>
                     <span className={`font-black text-lg ${client.balance > 0 ? 'text-rose-600' : 'text-green-600'}`}>
                       {client.balance.toLocaleString('ar-EG')} ج.م

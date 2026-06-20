@@ -35,16 +35,12 @@
   body {
     @apply bg-background text-foreground;
     font-family: 'Cairo', sans-serif;
-    /* إجبار الصفحة على قبول اللمس دائماً لمنع الفريز */
+    /* حل مشكلة الفريز عبر إجبار قبول الأحداث دائماً */
     pointer-events: auto !important;
-  }
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-bold;
-    font-family: 'Cairo', sans-serif;
   }
 }
 
-/* إصلاح مشكلة قفل التمرير واللمس بعد إغلاق المودال */
+/* حل جذري لمشكلة تجمد الشاشة بعد إغلاق المودال في Shadcn */
 body[style*="pointer-events: none"] {
   pointer-events: auto !important;
 }

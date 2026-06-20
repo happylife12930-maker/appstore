@@ -1,8 +1,8 @@
 
 /**
- * تم نقل الكود إلى src/app/clients/page.tsx
- * هذا الملف تم تعطيله لمنع تعارض المسارات في Next.js
+ * هذا الملف معطل لتجنب تعارض المسارات (Parallel Pages) مع src/app/clients/page.tsx
+ * الكود النشط والأساسي موجود في المسار الرئيسي خارج المجلد المجمع.
  */
-export default function Obsolete() {
+export default function ObsoleteClientsPage() {
   return null;
 }
