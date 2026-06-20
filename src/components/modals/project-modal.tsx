@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -40,7 +41,7 @@ interface ProjectModalProps {
   initialData?: ProjectData | null;
 }
 
-// دالة لتحويل الأرقام العربية إلى إنجليزية وتوحيد النص للبحث
+// دالة توحيد النص للبحث (تحويل أرقام عربية، إزالة مسافات)
 const normalizeText = (text: string) => {
   if (!text) return '';
   const arToEn = (str: string) => str.replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d).toString());
@@ -117,6 +118,10 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
     });
   }, [clients, clientSearch]);
 
+  const selectedClientName = useMemo(() => {
+    return clients.find(c => c.id === formData.clientId)?.name || "اختر من قائمة النتائج";
+  }, [clients, formData.clientId]);
+
   const handleAddImage = () => {
     if (newImageUrl.trim()) {
       setFormData(prev => ({ ...prev, images: [...prev.images, newImageUrl.trim()] }));
@@ -177,13 +182,14 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
                     />
                   </div>
                   <Select value={formData.clientId} onValueChange={(val) => setFormData({...formData, clientId: val})}>
-                    <SelectTrigger className="rounded-2xl h-12 border-slate-200 font-bold">
-                      <SelectValue placeholder={formData.clientId ? clients.find(c => c.id === formData.clientId)?.name : "اختر من قائمة النتائج"} />
+                    <SelectTrigger className="rounded-2xl h-12 border-slate-200 font-bold text-right">
+                      {/* حل مشكلة عدم ظهور الاسم: نعرضه يدوياً هنا */}
+                      <span className="truncate">{selectedClientName}</span>
                     </SelectTrigger>
                     <SelectContent className="rounded-2xl font-bold max-h-[200px]">
                       {filteredClients.map(c => (
                         <SelectItem key={c.id} value={c.id}>
-                          <div className="flex flex-col items-start gap-0.5">
+                          <div className="flex flex-col items-start gap-0.5 text-right">
                             <span className="text-sm">{c.name}</span>
                             <span className="text-[10px] text-primary font-black" dir="ltr">{c.phone}</span>
                           </div>
