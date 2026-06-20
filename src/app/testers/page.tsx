@@ -136,14 +136,15 @@ ${group.notes ? `*تعليمات إضافية:*
 
       const encodedMessage = encodeURIComponent(message);
       
+      // استخدام setTimeout بفاصل زمني لضمان فتح جميع النوافذ وعدم حظر المتصفح لها
       setTimeout(() => {
         window.open(`https://wa.me/${cleanPhone}?text=${encodedMessage}`, '_blank');
       }, index * 1000);
     });
 
     toast({ 
-      title: "جاري فتح المحادثات", 
-      description: `يتم الآن فتح ${group.testers.length} محادثة واتساب لإرسال التنبيهات.` 
+      title: "جاري إرسال التنبيهات", 
+      description: `يتم الآن فتح ${group.testers.length} محادثة واتساب للفريق.` 
     });
   };
 
@@ -155,7 +156,6 @@ ${group.notes ? `*تعليمات إضافية:*
       return;
     }
 
-    const headers = ["البريد الإلكتروني"];
     const rows = dataToExport.flatMap(group => 
       group.testers.map(tester => [
         tester.email
@@ -163,7 +163,7 @@ ${group.notes ? `*تعليمات إضافية:*
     );
 
     const csvContent = "\uFEFF" + [
-      headers.join(","),
+      "البريد الإلكتروني",
       ...rows.map(e => e.join(","))
     ].join("\n");
 
@@ -172,8 +172,8 @@ ${group.notes ? `*تعليمات إضافية:*
     const link = document.createElement("a");
     link.setAttribute("href", url);
     const fileName = specificGroup 
-      ? `إيميلات_مختبرين_مشروع_${specificGroup.projectName}_${new Date().toLocaleDateString('ar-EG')}.csv`
-      : `جميع_إيميلات_المختبرين_${new Date().toLocaleDateString('ar-EG')}.csv`;
+      ? `إيميلات_مختبرين_مشروع_${specificGroup.projectName}.csv`
+      : `جميع_إيميلات_المختبرين.csv`;
     
     link.setAttribute("download", fileName);
     document.body.appendChild(link);
@@ -330,7 +330,7 @@ ${group.notes ? `*تعليمات إضافية:*
                   onClick={() => handleSendWhatsAppNotifications(group)}
                   className="w-full h-12 rounded-2xl font-black text-xs gap-2 bg-green-500 hover:bg-green-600 text-white shadow-lg active:scale-95 transition-all mt-4"
                 >
-                  <MessageCircle className="h-4 w-4" /> إرسال تنبيهات واتساب للفريق
+                  <MessageCircle className="h-4 w-4" /> إرسال تنبيهات واتساب لجميع المختبرين
                 </Button>
               )}
             </CardContent>
