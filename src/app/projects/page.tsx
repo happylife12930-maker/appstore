@@ -26,6 +26,7 @@ import { collection, onSnapshot, deleteDoc, doc, setDoc, addDoc } from "firebase
 import { ProjectModal, type ProjectData } from "@/components/modals/project-modal";
 import { ProjectDetailsModal } from "@/components/modals/project-details-modal";
 import { useSearchParams, useRouter } from "next/navigation";
+import { useAuth } from "@/components/auth-provider";
 
 function ProjectsContent() {
   const [projects, setProjects] = useState<ProjectData[]>([]);
@@ -41,6 +42,7 @@ function ProjectsContent() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { profile } = useAuth();
 
   useEffect(() => {
     const q = searchParams.get('q');
@@ -50,11 +52,18 @@ function ProjectsContent() {
   useEffect(() => {
     if (!db) return;
     const unsub = onSnapshot(collection(db, "projects"), (snap) => {
-      setProjects(snap.docs.map(d => ({ id: d.id, ...d.data() } as ProjectData)));
+      let docs = snap.docs.map(d => ({ id: d.id, ...d.data() } as ProjectData));
+      
+      // إذا كان المستخدم عميلاً (مستفيد)، لا يرى إلا مشاريعه فقط
+      if (profile?.role === 'client') {
+        docs = docs.filter(p => p.clientEmail === profile.email || p.clientPhone === profile.phone);
+      }
+      
+      setProjects(docs);
       setLoading(false);
     });
     return () => unsub();
-  }, []);
+  }, [profile]);
 
   const filteredProjects = useMemo(() => {
     const s = searchQuery.toLowerCase().trim();
@@ -79,7 +88,6 @@ function ProjectsContent() {
       }
       setIsModalOpen(false);
       setEditingProject(null);
-      setTimeout(() => { document.body.style.pointerEvents = 'auto'; }, 200);
     } catch (err) {
       toast({ title: "خطأ", description: "فشل في حفظ المشروع", variant: "destructive" });
     } finally {
@@ -110,7 +118,7 @@ function ProjectsContent() {
   if (loading) return (
     <div className="flex flex-col items-center justify-center py-20 gap-4">
       <Loader2 className="h-12 w-12 animate-spin text-primary" />
-      <p className="font-bold text-slate-500">جاري تحميل المشاريع...</p>
+      <p className="font-bold text-slate-500">جاري تحميل مشاريعك...</p>
     </div>
   );
 
@@ -122,44 +130,51 @@ function ProjectsContent() {
             <Briefcase className="h-8 w-8" />
           </div>
           <div>
-            <h1 className="text-3xl font-black text-slate-800 tracking-tight">إدارة المشاريع</h1>
-            <p className="text-slate-500 font-bold">متابعة مراحل التنفيذ والمتطلبات</p>
+            <h1 className="text-3xl font-black text-slate-800 tracking-tight">
+              {profile?.role === 'client' ? 'مشاريعي المتعاقد عليها' : 'إدارة المشاريع'}
+            </h1>
+            <p className="text-slate-500 font-bold">
+              {profile?.role === 'client' ? 'تابع مراحل تنفيذ طلباتك لحظة بلحظة' : 'متابعة مراحل التنفيذ والمتطلبات'}
+            </p>
           </div>
         </div>
-        <Button 
-          onClick={() => { setEditingProject(null); setIsModalOpen(true); }}
-          className="rounded-2xl h-14 px-8 font-black text-lg gap-2 shadow-xl hover:scale-105 transition-all"
-        >
-          <Plus className="h-6 w-6" /> إضافة مشروع جديد
-        </Button>
-      </header>
-
-      <div className="relative">
-        <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5" />
-        <Input 
-          placeholder="ابحث باسم المشروع أو اسم العميل..." 
-          className="pr-12 h-16 rounded-2xl font-bold text-lg border-none shadow-sm bg-white focus-visible:ring-primary/20"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-        {searchQuery && (
+        {profile?.role !== 'client' && (
           <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={clearSearch}
-            className="absolute left-4 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full hover:bg-slate-100"
+            onClick={() => { setEditingProject(null); setIsModalOpen(true); }}
+            className="rounded-2xl h-14 px-8 font-black text-lg gap-2 shadow-xl hover:scale-105 transition-all"
           >
-            <X className="h-4 w-4 text-slate-400" />
+            <Plus className="h-6 w-6" /> إضافة مشروع جديد
           </Button>
         )}
-      </div>
+      </header>
+
+      {profile?.role !== 'client' && (
+        <div className="relative">
+          <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5" />
+          <Input 
+            placeholder="ابحث باسم المشروع أو اسم العميل..." 
+            className="pr-12 h-16 rounded-2xl font-bold text-lg border-none shadow-sm bg-white focus-visible:ring-primary/20"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          {searchQuery && (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={clearSearch}
+              className="absolute left-4 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full hover:bg-slate-100"
+            >
+              <X className="h-4 w-4 text-slate-400" />
+            </Button>
+          )}
+        </div>
+      )}
 
       {filteredProjects.length === 0 ? (
         <Card className="rounded-[2.5rem] border-none shadow-sm py-20 text-center bg-white">
           <div className="flex flex-col items-center gap-4 opacity-40">
             <Briefcase className="h-20 w-20" />
-            <p className="text-xl font-black">لم يتم العثور على مشاريع بهذا الاسم</p>
-            {searchQuery && <Button variant="link" onClick={clearSearch}>عرض كل المشاريع</Button>}
+            <p className="text-xl font-black">لا توجد مشاريع مسجلة حالياً</p>
           </div>
         </Card>
       ) : (
@@ -187,14 +202,16 @@ function ProjectsContent() {
                     <CardTitle className="text-xl font-black">{project.name}</CardTitle>
                     <p className="text-xs font-bold text-slate-400 mt-1">العميل: {project.clientName}</p>
                   </div>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => { setEditingProject(project); setIsModalOpen(true); }} className="h-9 w-9 rounded-xl">
-                      <Edit3 className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDeleteProject(project.id!)} className="h-9 w-9 rounded-xl hover:bg-rose-50 text-rose-500">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  {profile?.role !== 'client' && (
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => { setEditingProject(project); setIsModalOpen(true); }} className="h-9 w-9 rounded-xl">
+                        <Edit3 className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleDeleteProject(project.id!)} className="h-9 w-9 rounded-xl hover:bg-rose-50 text-rose-500">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </CardHeader>
 
@@ -212,7 +229,7 @@ function ProjectsContent() {
                   variant="outline" 
                   className="w-full rounded-2xl h-12 font-black border-slate-200 gap-2 hover:bg-primary hover:text-white transition-all"
                 >
-                  <ExternalLink className="h-4 w-4" /> عرض ملف المشروع
+                  <ExternalLink className="h-4 w-4" /> عرض تفاصيل التنفيذ
                 </Button>
               </CardContent>
             </Card>
@@ -220,13 +237,15 @@ function ProjectsContent() {
         </div>
       )}
 
-      <ProjectModal 
-        isOpen={isModalOpen} 
-        onClose={() => { setIsModalOpen(false); setEditingProject(null); }}
-        onSave={handleSaveProject}
-        isLoading={isSaving}
-        initialData={editingProject}
-      />
+      {profile?.role !== 'client' && (
+        <ProjectModal 
+          isOpen={isModalOpen} 
+          onClose={() => { setIsModalOpen(false); setEditingProject(null); }}
+          onSave={handleSaveProject}
+          isLoading={isSaving}
+          initialData={editingProject}
+        />
+      )}
 
       <ProjectDetailsModal 
         isOpen={isDetailsOpen}

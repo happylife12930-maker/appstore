@@ -45,19 +45,17 @@ import { useAuth } from "@/components/auth-provider";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 
+// تعريف العناصر مع تحديد من يمكنه رؤيتها
 const navItems = [
-  { title: "dashboard", url: "/", icon: LayoutDashboard, permission: "p_dashboard" },
-  { title: "clients", url: "/clients", icon: Users, permission: "p_clients" },
-  { title: "projects", url: "/projects", icon: Briefcase, permission: "p_projects" },
-  { title: "testers", url: "/testers", icon: UserCheck, permission: "p_testers" },
-  { title: "quotations", url: "/quotations", icon: Calculator, permission: "p_projects" },
-  { title: "invoices", url: "/invoices", icon: FileText, permission: "p_finances" },
-  { title: "payments", url: "/payments", icon: CreditCard, permission: "p_finances" },
-  { title: "testCases", url: "/test-cases", icon: ShieldCheck, permission: "p_testers" },
-  { title: "chat", url: "/chat", icon: MessageSquare, permission: "p_dashboard" },
-  { title: "support", url: "/support", icon: LifeBuoy, permission: "p_dashboard" },
-  { title: "reviews", url: "/reviews", icon: Star, permission: "p_dashboard" },
-  { title: "analytics", url: "/analytics", icon: BarChart3, permission: "p_finances" },
+  { title: "dashboard", url: "/", icon: LayoutDashboard, permission: "p_dashboard", roles: ['admin', 'tester'] },
+  { title: "clients", url: "/clients", icon: Users, permission: "p_clients", roles: ['admin'] },
+  { title: "projects", url: "/projects", icon: Briefcase, permission: "p_projects", roles: ['admin', 'tester', 'client'] },
+  { title: "testers", url: "/testers", icon: UserCheck, permission: "p_testers", roles: ['admin'] },
+  { title: "quotations", url: "/quotations", icon: Calculator, permission: "p_projects", roles: ['admin'] },
+  { title: "invoices", url: "/invoices", icon: FileText, permission: "p_finances", roles: ['admin'] },
+  { title: "payments", url: "/payments", icon: CreditCard, permission: "p_finances", roles: ['admin'] },
+  { title: "chat", url: "/chat", icon: MessageSquare, permission: "p_dashboard", roles: ['admin', 'client'] },
+  { title: "support", url: "/support", icon: LifeBuoy, permission: "p_dashboard", roles: ['admin', 'client'] },
 ];
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
@@ -66,7 +64,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const { profile, loading } = useAuth();
 
   if (pathname === '/login') return <>{children}</>;
-  if (loading) return null;
+  if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
 
   const toggleLanguage = () => {
     setLanguage(language === 'en' ? 'ar' : 'en');
@@ -76,10 +74,12 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     await signOut(auth);
   };
 
-  // تصفية القائمة بناءً على صلاحيات المستخدم
-  const filteredNavItems = navItems.filter(item => 
-    profile?.role === 'admin' || profile?.permissions?.includes(item.permission)
-  );
+  // تصفية القائمة بناءً على دور المستخدم وصلاحياته
+  const filteredNavItems = navItems.filter(item => {
+    if (!profile) return false;
+    if (profile.role === 'admin') return true;
+    return item.roles.includes(profile.role);
+  });
 
   return (
     <SidebarProvider>
@@ -91,13 +91,15 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             </div>
             <div className="flex flex-col overflow-hidden transition-all group-data-[collapsible=icon]:w-0">
               <span className="font-headline font-bold text-lg leading-tight uppercase">APP STORE</span>
-              <span className="text-[10px] uppercase tracking-wider text-sidebar-foreground/50 font-medium">{t('agencyAdmin')}</span>
+              <span className="text-[10px] uppercase tracking-wider text-sidebar-foreground/50 font-medium">
+                {profile?.role === 'client' ? 'بوابة المستفيد' : t('agencyAdmin')}
+              </span>
             </div>
           </div>
         </SidebarHeader>
         <SidebarContent>
           <SidebarGroup>
-            <SidebarGroupLabel>{t('management')}</SidebarGroupLabel>
+            <SidebarGroupLabel>{profile?.role === 'client' ? 'قائمتي' : t('management')}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {filteredNavItems.map((item) => (
@@ -120,18 +122,18 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
           {profile?.role === 'admin' && (
             <SidebarGroup>
-              <SidebarGroupLabel>الإدارة العليا</SidebarGroupLabel>
+              <SidebarGroupLabel>إعدادات النظام</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
                   <SidebarMenuItem>
                     <SidebarMenuButton 
                       asChild 
                       isActive={pathname === "/users"}
-                      tooltip={t('userManagement')}
+                      tooltip="إدارة الصلاحيات"
                     >
                       <Link href="/users">
                         <ShieldAlert className="text-rose-500" />
-                        <span>{t('userManagement')}</span>
+                        <span>بوابة المستفيدين</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -149,8 +151,10 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                   <AvatarFallback>{profile?.name?.[0] || 'U'}</AvatarFallback>
                 </Avatar>
                 <div className="flex flex-col items-start transition-all group-data-[collapsible=icon]:hidden overflow-hidden">
-                  <span className="font-medium text-sm">{profile?.name || 'مستخدم'}</span>
-                  <span className="text-xs text-sidebar-foreground/50">{t(profile?.role || 'admin')}</span>
+                  <span className="font-medium text-sm truncate max-w-[120px]">{profile?.name || 'مستفيد'}</span>
+                  <span className="text-xs text-sidebar-foreground/50">
+                    {profile?.role === 'client' ? 'عميل نشط' : t(profile?.role || 'admin')}
+                  </span>
                 </div>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -163,16 +167,13 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             <SidebarTrigger />
             <div className="h-4 w-px bg-border" />
             <h2 className="font-headline text-lg font-bold">
-              {t(navItems.find(i => i.url === pathname)?.title || "overview")}
+              {profile?.role === 'client' && pathname === '/projects' ? 'متابعة مشاريحي' : t(navItems.find(i => i.url === pathname)?.title || "overview")}
             </h2>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" onClick={toggleLanguage} className="rounded-full">
               <Languages className="h-5 w-5" />
             </Button>
-            <button className="text-muted-foreground hover:text-foreground transition-colors p-2">
-              <Settings className="h-5 w-5" />
-            </button>
             <Button variant="ghost" size="icon" onClick={handleLogout} className="text-muted-foreground hover:text-destructive">
               <LogOut className="h-5 w-5" />
             </Button>
@@ -185,3 +186,5 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     </SidebarProvider>
   );
 }
+
+import { Loader2 } from "lucide-react";

@@ -45,42 +45,36 @@ export default function LoginPage() {
       try {
         userCredential = await signInWithEmailAndPassword(auth, email, password);
       } catch (loginError: any) {
-        // 2. إذا فشل، نتحقق مما إذا كان هناك حساب "مجهز" من الأدمن (Invitation)
+        // 2. إذا فشل (مثلاً الحساب غير موجود في Auth)، نتحقق من جدول التجهيز (users_provision)
         const provisionDocRef = doc(db, "users_provision", email);
         const provisionSnap = await getDoc(provisionDocRef);
 
         if (provisionSnap.exists()) {
           const provisionData = provisionSnap.data();
-          // إذا كان الباسورد المكتوب يطابق الباسورد الذي حدده الأدمن، نقوم بإنشاء الحساب رسمياً
+          // التحقق من كلمة المرور المؤقتة التي حددها الأدمن
           if (password === provisionData.tempPassword) {
+            // إنشاء الحساب رسمياً في Firebase Auth
             userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
             
-            // إنشاء بروفايل المستخدم النهائي
+            // إنشاء بروفايل المستخدم النهائي في مجموعة users
             await setDoc(doc(db, "users", user.uid), {
-              ...provisionData,
               uid: user.uid,
+              name: provisionData.name,
+              email: email,
+              role: provisionData.role || "client",
+              status: "active",
+              permissions: provisionData.permissions || ["p_projects"],
+              createdAt: new Date().toISOString(),
               lastLogin: new Date().toLocaleString('ar-EG'),
-              tempPassword: password // حفظه كما طلب العميل
+              tempPassword: password // حفظه كما طلب العميل ليسهل على الأدمن رؤيته
             });
 
-            // حذف طلب التجهيز
+            // حذف طلب التجهيز بعد النجاح
             await deleteDoc(provisionDocRef);
           } else {
             throw { code: 'auth/wrong-password' };
           }
-        } else if (email === "islam_nader@appstore.com" && password === "20176885") {
-          // حساب الأدمن الافتراضي
-          userCredential = await createUserWithEmailAndPassword(auth, email, password);
-          await setDoc(doc(db, "users", userCredential.user.uid), {
-            uid: userCredential.user.uid,
-            name: "إسلام نادر (المدير العام)",
-            email: email,
-            role: "admin",
-            status: "active",
-            permissions: ["p_all"],
-            tempPassword: password
-          });
         } else {
           throw loginError;
         }
@@ -105,7 +99,7 @@ export default function LoginPage() {
         <CardHeader className="text-center bg-primary p-10 text-primary-foreground">
           <ShieldCheck className="h-16 w-16 mx-auto mb-4" />
           <CardTitle className="text-3xl font-black">APP STORE</CardTitle>
-          <CardDescription className="text-primary-foreground/80 font-bold">بوابة إدارة الوكالة</CardDescription>
+          <CardDescription className="text-primary-foreground/80 font-bold">بوابة المستفيد والعملاء</CardDescription>
         </CardHeader>
         <CardContent className="p-10 space-y-6">
           <form onSubmit={handleLogin} className="space-y-4">
@@ -116,10 +110,10 @@ export default function LoginPage() {
               </Alert>
             )}
             <div className="space-y-2">
-              <label className="text-sm font-black text-slate-700 pr-2">البريد الإلكتروني</label>
+              <label className="text-sm font-black text-slate-700 pr-2">البريد الإلكتروني للعميل</label>
               <Input 
                 type="email" 
-                placeholder="example@appstore.com" 
+                placeholder="example@mail.com" 
                 className="rounded-2xl h-14 font-bold border-slate-200" 
                 required 
                 value={email}
@@ -139,8 +133,11 @@ export default function LoginPage() {
             </div>
             <Button type="submit" className="w-full h-16 font-black rounded-2xl text-xl mt-6 shadow-xl transition-all active:scale-95" disabled={loading}>
               {loading ? <Loader2 className="ml-2 h-6 w-6 animate-spin" /> : <LogIn className="ml-2 h-6 w-6" />}
-              دخول النظام
+              دخول البوابة
             </Button>
+            <p className="text-center text-xs font-bold text-slate-400 mt-4">
+              إذا لم يكن لديك حساب، يرجى التواصل مع إدارة APP STORE للحصول على بيانات الدخول.
+            </p>
           </form>
         </CardContent>
       </Card>
