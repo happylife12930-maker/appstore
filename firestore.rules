@@ -26,9 +26,9 @@ service cloud.firestore {
     }
 
     match /users_provision/{email} {
-      // السماح بجلب وثيقة التفعيل بالبريد الإلكتروني للتحقق قبل أو أثناء تسجيل الدخول
-      allow get: if true;
-      allow delete: if true; // السماح بالحذف لتنظيف بيانات التفعيل بعد الدخول
+      // السماح بجلب وثيقة التفعيل بالبريد الإلكتروني للتحقق قبل أو أثناء أو بعد تسجيل الدخول
+      allow get: if true; 
+      allow delete: if isAuthenticated() && (request.auth.token.email.lower() == email.lower());
       allow list, write: if isAdmin();
     }
 

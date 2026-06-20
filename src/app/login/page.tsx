@@ -49,7 +49,7 @@ export default function LoginPage() {
       try {
         userCredential = await signInWithEmailAndPassword(auth, emailLower, password);
       } catch (loginError: any) {
-        // 2. إذا كان الخطأ أن الحساب غير موجود، نتحقق من التفعيل لإنشائه
+        // 2. إذا كان الحساب غير موجود، نتحقق من التفعيل لإنشائه
         if (loginError.code === "auth/user-not-found" || loginError.code === "auth/invalid-credential") {
           const provisionDocRef = doc(db, "users_provision", emailLower);
           const provisionSnap = await getDoc(provisionDocRef);
@@ -66,25 +66,25 @@ export default function LoginPage() {
 
       const user = userCredential.user;
 
-      // 3. الخطوة الأهم: سحب الـ clientId من جدول التفعيل وحفظه في ملف المستخدم
+      // 3. الخطوة الجوهرية: سحب الـ clientId من جدول التفعيل وحفظه في ملف المستخدم
       const provisionDocRef = doc(db, "users_provision", emailLower);
       const provisionSnap = await getDoc(provisionDocRef);
 
       if (provisionSnap.exists() && user) {
         const pData = provisionSnap.data();
-        // التأكد من حفظ الـ clientId بدقة تامة
+        // التأكد من حفظ الـ clientId بدقة تامة لفتح الصلاحيات
         await setDoc(doc(db, "users", user.uid), {
           uid: user.uid,
           name: pData.name || "مستفيد",
           email: emailLower,
-          clientId: pData.clientId || "", // هذا هو الربط الجوهري
+          clientId: pData.clientId || "", 
           role: "client",
           status: "active",
           permissions: ["p_projects"],
           lastLogin: new Date().toISOString()
         }, { merge: true });
         
-        // حذف مستند التفعيل بعد ضمان نجاح الربط
+        // حذف مستند التفعيل لضمان عدم استخدامه مرة أخرى
         await deleteDoc(provisionDocRef).catch(e => console.warn("Cleanup deferred:", e));
       } else if (user) {
         // تحديث تاريخ الدخول فقط إذا كان الحساب مربوطاً مسبقاً

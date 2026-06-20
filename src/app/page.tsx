@@ -1,18 +1,23 @@
+
 "use client";
 import * as React from "react";
 import { useState, useEffect } from "react";
-import { Users, Briefcase, CheckCircle, LayoutDashboard, ShieldCheck, Loader2 } from "lucide-react";
+import { Users, Briefcase, CheckCircle, LayoutDashboard, ShieldCheck, Loader2, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, where, Unsubscribe } from "firebase/firestore";
+import { collection, onSnapshot, query, where, Unsubscribe, doc, getDoc, setDoc, deleteDoc } from "firebase/firestore";
 import { useAuth } from "@/components/auth-provider";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 export default function DashboardPage() {
   const router = useRouter();
   const { profile, loading: authLoading } = useAuth();
   const [stats, setStats] = useState({ clients: 0, projects: 0, finished: 0 });
   const [loading, setLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!db || authLoading) return;
@@ -38,7 +43,6 @@ export default function DashboardPage() {
       }, () => setLoading(false));
     } 
     else if (profile.role === 'client' && profile.clientId) {
-      // استعلام صارم بناءً على الـ clientId لضمان التوافق مع القواعد
       const q = query(
         collection(db, "projects"),
         where("clientId", "==", profile.clientId)
@@ -66,6 +70,34 @@ export default function DashboardPage() {
     };
   }, [profile, authLoading]);
 
+  // دالة لمزامنة الربط إذا كان معلقاً
+  const handleSyncLink = async () => {
+    if (!profile || !db) return;
+    setIsSyncing(true);
+    try {
+      const emailLower = profile.email.toLowerCase().trim();
+      const provisionDocRef = doc(db, "users_provision", emailLower);
+      const provisionSnap = await getDoc(provisionDocRef);
+
+      if (provisionSnap.exists()) {
+        const pData = provisionSnap.data();
+        await setDoc(doc(db, "users", profile.uid), {
+          clientId: pData.clientId,
+          status: "active"
+        }, { merge: true });
+        
+        await deleteDoc(provisionDocRef);
+        toast({ title: "تم التفعيل", description: "تم ربط حسابك بالمشاريع بنجاح." });
+      } else {
+        toast({ title: "تنبيه", description: "لم يتم العثور على تفعيل جديد. تأكد من قيام الإدارة بتنشيط حسابك.", variant: "destructive" });
+      }
+    } catch (err) {
+      toast({ title: "خطأ", description: "فشلت المزامنة، يرجى المحاولة لاحقاً.", variant: "destructive" });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   if (loading || authLoading) return (
     <div className="flex flex-col items-center justify-center py-20 gap-4">
       <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -74,21 +106,34 @@ export default function DashboardPage() {
   );
 
   const isAdmin = profile?.role === 'admin';
+  const isLinked = !!profile?.clientId;
 
   return (
     <div className="max-w-7xl mx-auto space-y-8" dir="rtl">
-      <header className="flex items-center gap-4">
-        <div className="p-3 bg-primary rounded-2xl text-white shadow-lg">
-          <LayoutDashboard className="h-8 w-8" />
+      <header className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-primary rounded-2xl text-white shadow-lg">
+            <LayoutDashboard className="h-8 w-8" />
+          </div>
+          <div>
+            <h1 className="text-4xl font-black text-slate-800">
+              {isAdmin ? 'نظرة عامة' : 'بوابة المستفيد'}
+            </h1>
+            <p className="text-slate-500 font-bold">
+              {isAdmin ? 'مرحباً بك في نظام APP STORE الإداري' : `مرحباً بك يا ${profile?.name || 'عميلنا العزيز'}`}
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-4xl font-black text-slate-800">
-            {isAdmin ? 'نظرة عامة' : 'بوابة المستفيد'}
-          </h1>
-          <p className="text-slate-500 font-bold">
-            {isAdmin ? 'مرحباً بك في نظام APP STORE الإداري' : `مرحباً بك يا ${profile?.name || 'عميلنا العزيز'}`}
-          </p>
-        </div>
+        {!isAdmin && !isLinked && (
+          <Button 
+            onClick={handleSyncLink} 
+            disabled={isSyncing}
+            className="rounded-2xl h-14 px-8 font-black bg-orange-500 hover:bg-orange-600 text-white gap-2 shadow-xl animate-pulse"
+          >
+            {isSyncing ? <Loader2 className="h-5 w-5 animate-spin" /> : <RefreshCw className="h-5 w-5" />}
+            تحديث حالة الربط الآن
+          </Button>
+        )}
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -125,8 +170,8 @@ export default function DashboardPage() {
         ) : (
           <StatCard 
             title="حالة الربط" 
-            icon={<ShieldCheck className="text-blue-500" />} 
-            value={profile?.clientId ? "مفعل" : "معلق"} 
+            icon={<ShieldCheck className={isLinked ? "text-green-500" : "text-rose-500"} />} 
+            value={isLinked ? "مفعل" : "معلق"} 
             onClick={() => {}} 
           />
         )}
