@@ -45,7 +45,7 @@ export default function DashboardPage() {
         return;
       }
 
-      // البحث عن المشاريع التي تطابق clientId الخاص بالعميل
+      // البحث عن المشاريع التي تطابق clientId الخاص بالعميل حصراً
       const q = query(
         collection(db, "projects"),
         where("clientId", "==", clientId)
@@ -131,18 +131,14 @@ export default function DashboardPage() {
           />
         ) : (
           <StatCard 
-            title="حسابي" 
+            title="حالة الربط" 
             icon={<ShieldCheck className="text-blue-500" />} 
-            value="نشط" 
+            value={profile?.clientId ? "مفعل" : "معلق"} 
             onClick={() => {}} 
           />
         )}
       </div>
 
-      {!isAdmin && profile?.clientId && (
-        <p className="text-[10px] text-slate-300 font-bold text-center">معرف الربط النشط: {profile.clientId}</p>
-      )}
-      
       <Card className="rounded-[2.5rem] border-none shadow-sm bg-primary p-12 text-primary-foreground text-center relative overflow-hidden">
         <div className="absolute top-0 right-0 p-10 opacity-10">
           <Briefcase className="h-64 w-64 rotate-12" />

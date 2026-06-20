@@ -17,9 +17,11 @@ import { auth, db } from "@/lib/firebase";
 const getFriendlyErrorMessage = (errorCode: string) => {
   switch (errorCode) {
     case "auth/invalid-email": return "البريد الإلكتروني غير صالح.";
-    case "auth/user-not-found": return "لم يتم العثور على حساب. إذا كنت عميلاً جديداً، استخدم كلمة المرور المسلمة لك.";
+    case "auth/user-not-found": 
+    case "auth/invalid-credential": return "بيانات الدخول غير صحيحة. إذا كنت عميلاً جديداً، استخدم كلمة المرور المسلمة لك.";
     case "auth/wrong-password": return "كلمة المرور غير صحيحة.";
     case "auth/email-already-in-use": return "هذا البريد مسجل بالفعل، يرجى تسجيل الدخول مباشرة.";
+    case "auth/weak-password": return "كلمة المرور يجب أن تكون 6 رموز على الأقل.";
     default: return "حدث خطأ في الدخول. تأكد من بياناتك وحاول مرة أخرى.";
   }
 };
@@ -40,68 +42,57 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      // 1. فحص وجود بيانات تجهيز (تفعيل)
+      // 1. فحص وجود بيانات تجهيز (تفعيل) أولاً
       const provisionDocRef = doc(db, "users_provision", email);
       const provisionSnap = await getDoc(provisionDocRef);
       const provisionData = provisionSnap.exists() ? provisionSnap.data() : null;
 
+      let userCredential;
+
       try {
-        // 2. محاولة تسجيل الدخول العادي أولاً
-        const loginRes = await signInWithEmailAndPassword(auth, email, password);
-        const user = loginRes.user;
-
-        // إذا كان هناك بيانات تجهيز، نقوم بتحديث ملف المستخدم فوراً (لضمان وجود الـ clientId)
-        if (provisionData && user) {
-          await setDoc(doc(db, "users", user.uid), {
-            uid: user.uid,
-            name: provisionData.name || "مستفيد",
-            email: email,
-            phone: provisionData.phone || "",
-            clientId: provisionData.clientId || "", // هذا هو المعرف (id) من جدول العملاء
-            role: "client",
-            status: "active",
-            permissions: ["p_projects"],
-            lastLogin: new Date().toLocaleString('ar-EG')
-          }, { merge: true });
-          
-          await deleteDoc(provisionDocRef);
-        }
-
-        toast({ title: "تم الدخول بنجاح", description: "مرحباً بك مجدداً في APP STORE" });
-        router.push("/");
-        return;
+        // 2. محاولة تسجيل الدخول
+        userCredential = await signInWithEmailAndPassword(auth, email, password);
       } catch (loginError: any) {
-        // 3. إذا فشل الدخول لأن الحساب غير موجود في Auth
-        if (loginError.code === "auth/user-not-found" && provisionData && password === provisionData.tempPassword) {
-          const createRes = await createUserWithEmailAndPassword(auth, email, password);
-          const user = createRes.user;
-
-          if (user) {
-            await setDoc(doc(db, "users", user.uid), {
-              uid: user.uid,
-              name: provisionData.name || "مستفيد",
-              email: email,
-              phone: provisionData.phone || "",
-              clientId: provisionData.clientId || "", 
-              role: "client",
-              status: "active",
-              permissions: ["p_projects"],
-              createdAt: new Date().toISOString(),
-              lastLogin: new Date().toLocaleString('ar-EG')
-            });
-
-            await deleteDoc(provisionDocRef);
-            
-            toast({ title: "تم تفعيل حسابك", description: "تم ربط بياناتك بنجاح، يمكنك الآن متابعة مشاريعك." });
-            router.push("/");
-            return;
+        // 3. إذا فشل الدخول وكان السبب "غير موجود" وكان هناك بيانات تفعيل بكلمة مرور مطابقة
+        if ((loginError.code === "auth/user-not-found" || loginError.code === "auth/invalid-credential") && provisionData && password === provisionData.tempPassword) {
+          try {
+            userCredential = await createUserWithEmailAndPassword(auth, email, password);
+          } catch (createError: any) {
+            // إذا كان البريد موجود فعلاً في Auth (Email already in use) رغم فشل تسجيل الدخول ببيانات معينة
+            if (createError.code === "auth/email-already-in-use") {
+              throw new Error("auth/invalid-credential");
+            }
+            throw createError;
           }
         } else {
-          // إذا كان الخطأ كلمة مرور خطأ أو بريد مستخدم (أو أي خطأ آخر)
           throw loginError;
         }
       }
+
+      const user = userCredential.user;
+
+      // 4. تحديث البروفايل بالبيانات الجديدة (خاصة الـ clientId) إذا كان هناك تفعيل معلق
+      if (provisionData && user) {
+        await setDoc(doc(db, "users", user.uid), {
+          uid: user.uid,
+          name: provisionData.name || "مستفيد",
+          email: email,
+          phone: provisionData.phone || "",
+          clientId: provisionData.clientId || "", 
+          role: "client",
+          status: "active",
+          permissions: ["p_projects"],
+          lastLogin: new Date().toLocaleString('ar-EG')
+        }, { merge: true });
+        
+        // مسح بيانات التفعيل بعد النجاح
+        await deleteDoc(provisionDocRef);
+      }
+
+      toast({ title: "تم الدخول بنجاح", description: "مرحباً بك مجدداً في APP STORE" });
+      router.push("/");
     } catch (error: any) {
+      console.error("Login process error:", error);
       const friendlyMessage = getFriendlyErrorMessage(error.code);
       setError(friendlyMessage);
       toast({ title: "فشل العملية", description: friendlyMessage, variant: "destructive" });

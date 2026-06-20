@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
@@ -13,7 +14,7 @@ interface UserProfile {
   name: string;
   email: string;
   phone?: string;
-  clientId?: string; // المعرف المربوط بجدول العملاء
+  clientId?: string;
 }
 
 interface AuthContextType {
@@ -38,7 +39,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(firebaseUser);
       
       if (firebaseUser) {
-        // الاستماع المباشر لبروفايل المستخدم في Firestore
         const docRef = doc(db, 'users', firebaseUser.uid);
         const unsubProfile = onSnapshot(docRef, (docSnap) => {
           if (docSnap.exists()) {
@@ -50,14 +50,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               name: data.name || "مستفيد",
               email: data.email || firebaseUser.email || "",
               phone: data.phone || "",
-              clientId: data.clientId || "", // نضمن تحميل الـ clientId هنا
+              clientId: data.clientId || "", 
             });
           } else {
+            // إذا كان المستخدم مسجل دخول ولكن ليس له بروفايل في Firestore بعد
             setProfile(null);
           }
           setLoading(false);
         }, (err) => {
-          console.error("Auth Profile Error:", err);
+          console.error("Auth Profile Listener Error:", err);
           setLoading(false);
         });
 
