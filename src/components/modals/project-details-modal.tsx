@@ -27,6 +27,7 @@ import {
 import { doc, updateDoc } from 'firebase/firestore';
 import { ProjectData } from './project-modal';
 import Link from 'next/link';
+import { useAuth } from '@/components/auth-provider';
 
 interface ProjectDetailsModalProps {
   isOpen: boolean;
@@ -36,8 +37,11 @@ interface ProjectDetailsModalProps {
 }
 
 export function ProjectDetailsModal({ isOpen, onClose, project, db }: ProjectDetailsModalProps) {
+  const { profile } = useAuth();
   const [localSteps, setLocalSteps] = useState(project?.steps || []);
   const [progress, setProgress] = useState(project?.progress || 0);
+
+  const isAdmin = profile?.role === 'admin';
 
   useEffect(() => {
     if (project) {
@@ -57,7 +61,8 @@ export function ProjectDetailsModal({ isOpen, onClose, project, db }: ProjectDet
   if (!project) return null;
 
   const handleToggleStep = async (stepId: number) => {
-    if (!db || !project.id) return;
+    // منع التعديل إذا لم يكن المستخدم مديراً
+    if (!isAdmin || !db || !project.id) return;
 
     const updatedSteps = localSteps.map(step => 
       step.id === stepId ? { ...step, completed: !step.completed } : step
@@ -96,12 +101,13 @@ export function ProjectDetailsModal({ isOpen, onClose, project, db }: ProjectDet
                     <DialogDescription className="text-primary-foreground/80 font-bold flex items-center gap-2">
                       <User className="h-4 w-4" /> العميل: {project.clientName}
                     </DialogDescription>
-                    {/* تعديل الرابط ليقوم بفلترة العميل المحدد فقط */}
-                    <Link href={`/clients?q=${encodeURIComponent(project.clientPhone || project.clientName)}`}>
-                      <Button variant="outline" size="sm" className="h-7 rounded-lg text-[10px] font-black bg-white/10 border-white/20 hover:bg-white/20 text-white gap-1">
-                        <Users className="h-3 w-3" /> عرض ملف العميل <ExternalLink className="h-2 w-2" />
-                      </Button>
-                    </Link>
+                    {isAdmin && (
+                      <Link href={`/clients?q=${encodeURIComponent(project.clientPhone || project.clientName)}`}>
+                        <Button variant="outline" size="sm" className="h-7 rounded-lg text-[10px] font-black bg-white/10 border-white/20 hover:bg-white/20 text-white gap-1">
+                          <Users className="h-3 w-3" /> عرض ملف العميل <ExternalLink className="h-2 w-2" />
+                        </Button>
+                      </Link>
+                    )}
                   </div>
                 </div>
               </div>
@@ -171,8 +177,10 @@ export function ProjectDetailsModal({ isOpen, onClose, project, db }: ProjectDet
                     <div 
                       key={step.id} 
                       onClick={() => handleToggleStep(step.id)}
-                      className={`flex items-center gap-4 p-4 rounded-xl cursor-pointer transition-all border-2 ${
-                        step.completed ? 'bg-green-50 border-green-100' : 'bg-white border-slate-50 hover:border-primary/20'
+                      className={`flex items-center gap-4 p-4 rounded-xl transition-all border-2 ${
+                        isAdmin ? 'cursor-pointer hover:border-primary/20' : 'cursor-default'
+                      } ${
+                        step.completed ? 'bg-green-50 border-green-100' : 'bg-white border-slate-50'
                       }`}
                     >
                       <div className={`h-8 w-8 rounded-xl flex items-center justify-center ${
@@ -199,9 +207,11 @@ export function ProjectDetailsModal({ isOpen, onClose, project, db }: ProjectDet
               إغلاق ومعاودة العمل
               <ChevronLeft className="h-6 w-6" />
             </Button>
-            <p className="text-center text-slate-400 font-bold text-xs mt-4 flex items-center justify-center gap-2">
-              <Clock className="h-3 w-3" /> يتم حفظ تقدمك تلقائياً
-            </p>
+            {isAdmin && (
+              <p className="text-center text-slate-400 font-bold text-xs mt-4 flex items-center justify-center gap-2">
+                <Clock className="h-3 w-3" /> يتم حفظ تقدمك تلقائياً
+              </p>
+            )}
           </div>
         </div>
       </DialogContent>
