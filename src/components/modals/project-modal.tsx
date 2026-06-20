@@ -15,7 +15,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Briefcase, Search, Image as ImageIcon, Plus, Trash2, Save, Phone, UserCheck, DollarSign, Upload } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { db } from '@/lib/firebase';
