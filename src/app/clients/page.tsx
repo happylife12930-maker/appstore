@@ -14,7 +14,9 @@ import {
   Loader2,
   Briefcase,
   ExternalLink,
-  X
+  X,
+  Printer,
+  FileText
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,8 +27,9 @@ import { collection, onSnapshot, deleteDoc, doc, setDoc, addDoc } from "firebase
 import { AddClientModal, type ClientData } from "@/components/modals/add-client-modal";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
 
-// دالة توحيد النص للبحث (تحويل أرقام عربية، حذف مسافات)
+// دالة توحيد النص للبحث
 const normalizeText = (text: string) => {
   if (!text) return '';
   const arToEn = (str: string) => str.replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d).toString());
@@ -46,12 +49,9 @@ function ClientsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  // التحقق من وجود بحث قادم من رابط (مثلاً من صفحة المشاريع)
   useEffect(() => {
     const q = searchParams.get('q');
-    if (q) {
-      setSearchQuery(q);
-    }
+    if (q) setSearchQuery(q);
   }, [searchParams]);
 
   useEffect(() => {
@@ -71,7 +71,7 @@ function ClientsContent() {
 
   const clientsWithProjects = useMemo(() => {
     return clients.map(client => {
-      const clientProjects = projects.filter(p => p.clientId === client.id);
+      const clientProjects = projects.filter(p => p.clientId === client.id || p.clientPhone === client.phone);
       return {
         ...client,
         associatedProjects: clientProjects
@@ -126,6 +126,89 @@ function ClientsContent() {
     }
   };
 
+  const handlePrintStatement = (client: any) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const projectsList = client.associatedProjects.map((p: any) => `
+      <tr>
+        <td style="padding: 10px; border: 1px solid #ddd;">${p.name}</td>
+        <td style="padding: 10px; border: 1px solid #ddd;">${p.status}</td>
+        <td style="padding: 10px; border: 1px solid #ddd;">${(p.cost || 0).toLocaleString('ar-EG')} ج.م</td>
+      </tr>
+    `).join('');
+
+    printWindow.document.write(`
+      <html dir="rtl">
+        <head>
+          <title>كشف حساب - ${client.name}</title>
+          <style>
+            body { font-family: 'Cairo', sans-serif; padding: 40px; color: #333; }
+            .header { text-align: center; border-bottom: 3px solid #1e293b; padding-bottom: 20px; margin-bottom: 40px; }
+            .info-grid { display: grid; grid-template-cols: 1fr 1fr; gap: 20px; margin-bottom: 40px; }
+            .card { background: #f8fafc; padding: 20px; border-radius: 15px; border: 1px solid #e2e8f0; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th { background: #1e293b; color: white; padding: 12px; text-align: right; }
+            .footer { margin-top: 60px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #eee; pt: 20px; }
+            .balance-box { background: #1e293b; color: white; padding: 20px; border-radius: 15px; text-align: center; margin-top: 30px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1 style="margin: 0; color: #1e293b;">APP STORE</h1>
+            <p style="margin: 5px 0; font-weight: bold;">كشف حساب عميل رسمي</p>
+            <p style="font-size: 12px;">تاريخ الإصدار: ${new Date().toLocaleDateString('ar-EG')}</p>
+          </div>
+          
+          <div class="info-grid">
+            <div class="card">
+              <h3 style="margin-top: 0;">بيانات العميل</h3>
+              <p><b>الاسم:</b> ${client.name}</p>
+              <p><b>الهاتف:</b> ${client.phone}</p>
+              <p><b>البريد:</b> ${client.email || '---'}</p>
+              <p><b>الشركة:</b> ${client.company || '---'}</p>
+            </div>
+            <div class="card">
+              <h3 style="margin-top: 0;">الملخص المالي</h3>
+              <p><b>إجمالي التعاقدات:</b> ${(client.totalInvoices || 0).toLocaleString('ar-EG')} ج.م</p>
+              <p><b>إجمالي المدفوعات:</b> ${(client.totalPayments || 0).toLocaleString('ar-EG')} ج.م</p>
+              <div style="margin-top: 15px; border-top: 1px solid #ddd; padding-top: 10px;">
+                <b style="color: ${client.balance > 0 ? '#e11d48' : '#16a34a'}">الرصيد المتبقي: ${client.balance.toLocaleString('ar-EG')} ج.م</b>
+              </div>
+            </div>
+          </div>
+
+          <h3>المشاريع المرتبطة</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>اسم المشروع</th>
+                <th>الحالة</th>
+                <th>التكلفة</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${projectsList || '<tr><td colspan="3" style="text-align:center; padding: 20px;">لا توجد مشاريع مسجلة</td></tr>'}
+            </tbody>
+          </table>
+
+          <div class="balance-box">
+            <p style="margin: 0; opacity: 0.8; font-size: 14px;">صافي المستحقات المطلوب سدادها</p>
+            <h2 style="margin: 10px 0;">${client.balance.toLocaleString('ar-EG')} جنيه مصري فقط لا غير</h2>
+          </div>
+
+          <div class="footer">
+            <p>هذا المستند تم إنشاؤه آلياً بواسطة نظام إدارة APP STORE.</p>
+            <p>شركة APP STORE لتطوير البرمجيات والحلول الرقمية</p>
+          </div>
+
+          <script>window.print();</script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
   const clearSearch = () => {
     setSearchQuery("");
     router.push("/clients");
@@ -147,7 +230,7 @@ function ClientsContent() {
           </div>
           <div>
             <h1 className="text-3xl font-black text-slate-800 tracking-tight">إدارة العملاء</h1>
-            <p className="text-slate-500 font-bold">عرض وتعديل بيانات العملاء والربط المالي</p>
+            <p className="text-slate-500 font-bold">عرض وتعديل بيانات العملاء والربط المالي والمشاريع</p>
           </div>
         </div>
         <Button 
@@ -178,13 +261,6 @@ function ClientsContent() {
         )}
       </div>
 
-      {searchParams.get('q') && (
-        <div className="bg-primary/5 p-4 rounded-2xl border border-primary/10 flex items-center justify-between">
-          <p className="text-sm font-bold text-primary">عرض نتائج البحث عن: <span className="font-black underline">{searchParams.get('q')}</span></p>
-          <Button variant="ghost" size="sm" onClick={clearSearch} className="font-black text-xs text-primary h-8 px-4">عرض كل العملاء</Button>
-        </div>
-      )}
-
       {filteredClients.length === 0 ? (
         <Card className="rounded-[2.5rem] border-none shadow-sm py-20 text-center bg-white">
           <div className="flex flex-col items-center gap-4 opacity-40">
@@ -210,6 +286,9 @@ function ClientsContent() {
                   </div>
                 </div>
                 <div className="flex gap-1">
+                  <Button variant="ghost" size="icon" onClick={() => handlePrintStatement(client)} className="h-9 w-9 rounded-xl text-primary hover:bg-primary/5" title="طباعة كشف حساب">
+                    <Printer className="h-4 w-4" />
+                  </Button>
                   <Button variant="ghost" size="icon" onClick={() => { setEditingClient(client); setIsModalOpen(true); }} className="h-9 w-9 rounded-xl">
                     <Edit3 className="h-4 w-4 text-slate-500" />
                   </Button>
@@ -226,35 +305,46 @@ function ClientsContent() {
                   </div>
                   
                   <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-slate-400">
-                      <Briefcase className="h-3.5 w-3.5" />
-                      <span className="text-xs font-black">المشاريع المرتبطة</span>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-slate-400">
+                        <Briefcase className="h-3.5 w-3.5" />
+                        <span className="text-xs font-black uppercase">المشاريع المرتبطة</span>
+                      </div>
+                      <Badge variant="outline" className="rounded-lg h-5 text-[10px] font-black">
+                        {client.associatedProjects?.length || 0} مشاريع
+                      </Badge>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {client.associatedProjects && client.associatedProjects.length > 0 ? (
                         client.associatedProjects.map((p: any) => (
                           <Link key={p.id} href="/projects">
-                            <Button variant="outline" size="sm" className="h-7 rounded-lg text-[10px] font-bold border-slate-100 hover:bg-primary/5 hover:text-primary gap-1">
+                            <Button variant="outline" size="sm" className="h-8 rounded-xl text-[10px] font-black border-slate-100 hover:bg-primary/5 hover:text-primary gap-1 px-3 shadow-sm">
                               {p.name} <ExternalLink className="h-2 w-2" />
                             </Button>
                           </Link>
                         ))
                       ) : (
-                        <span className="text-[10px] text-slate-400 font-bold italic">لا توجد مشاريع حالياً</span>
+                        <span className="text-[10px] text-slate-400 font-bold italic py-2">لا توجد مشاريع حالياً</span>
                       )}
                     </div>
                   </div>
                 </div>
 
                 <div className="pt-4 border-t border-slate-50">
-                  <div className="p-4 bg-slate-50 rounded-2xl flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Wallet className="h-4 w-4 text-primary" />
-                      <span className="font-black text-xs text-slate-400">الرصيد</span>
+                  <div className="p-4 bg-slate-50 rounded-2xl flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Wallet className="h-4 w-4 text-primary" />
+                        <span className="font-black text-[10px] text-slate-400 uppercase">الرصيد المتبقي</span>
+                      </div>
+                      <span className={`font-black text-lg ${client.balance > 0 ? 'text-rose-600' : 'text-green-600'}`}>
+                        {(client.balance || 0).toLocaleString('ar-EG')} ج.م
+                      </span>
                     </div>
-                    <span className={`font-black text-lg ${client.balance > 0 ? 'text-rose-600' : 'text-green-600'}`}>
-                      {(client.balance || 0).toLocaleString('ar-EG')} ج.م
-                    </span>
+                    <div className="flex justify-between text-[8px] font-black text-slate-400 opacity-60">
+                      <span>إجمالي: {client.totalInvoices?.toLocaleString('ar-EG')}</span>
+                      <span>المدفوع: {client.totalPayments?.toLocaleString('ar-EG')}</span>
+                    </div>
                   </div>
                 </div>
               </CardContent>
