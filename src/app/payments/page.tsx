@@ -140,7 +140,7 @@ function PaymentsContent() {
     printWindow.document.write(`
       <html dir="rtl">
         <head>
-          <title>فاتورة تفصيلية - ${client.name}</title>
+          <title>فاتورة - ${client.name}</title>
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap');
             body { font-family: 'Cairo', sans-serif; padding: 40px; color: #334155; line-height: 1.6; }
@@ -164,7 +164,6 @@ function PaymentsContent() {
             <div class="header">
               <div class="logo">APP STORE</div>
               <div style="text-align: left;">
-                <p style="margin: 0; font-weight: 900;">فاتورة ضريبية / بيان مالي</p>
                 <p style="margin: 0; font-size: 12px; color: #64748b;">رقم المرجع: #${client.id?.slice(-6).toUpperCase()}</p>
                 <p style="margin: 0; font-size: 12px; color: #64748b;">التاريخ: ${new Date().toLocaleDateString('ar-EG')}</p>
               </div>
