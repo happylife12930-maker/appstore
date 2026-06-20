@@ -6,22 +6,23 @@ import {
   CreditCard, 
   Search, 
   Printer, 
-  Download, 
   Phone, 
   Wallet, 
   Briefcase, 
   Loader2,
-  Filter,
   ArrowUpDown,
   FileText,
   X,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Filter
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { 
   Table, 
   TableBody, 
@@ -32,7 +33,7 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { collection, onSnapshot } from "firebase/firestore";
 import { useAuth } from "@/components/auth-provider";
 import { useRouter } from "next/navigation";
 
@@ -48,6 +49,7 @@ function PaymentsContent() {
   const [clients, setClients] = useState<any[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showOnlyUnpaid, setShowOnlyUnpaid] = useState(false);
   const [loading, setLoading] = useState(true);
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
   
@@ -85,7 +87,6 @@ function PaymentsContent() {
         ...client,
         projectsList: clientProjects,
         projectsCount: clientProjects.length,
-        // تأكيد الحسابات المالية
         totalRequired: client.totalInvoices || 0,
         totalPaid: client.totalPayments || 0,
         remainingBalance: (client.totalInvoices || 0) - (client.totalPayments || 0)
@@ -96,8 +97,14 @@ function PaymentsContent() {
   // التصفية والبحث
   const filteredData = useMemo(() => {
     let result = financialData;
-    const s = normalizeText(searchQuery);
+    
+    // فلتر المديونيات
+    if (showOnlyUnpaid) {
+      result = result.filter(item => item.remainingBalance > 0);
+    }
 
+    // فلتر البحث النصي
+    const s = normalizeText(searchQuery);
     if (s) {
       result = result.filter(item => 
         normalizeText(item.name).includes(s) || 
@@ -106,6 +113,7 @@ function PaymentsContent() {
       );
     }
 
+    // الترتيب
     if (sortConfig) {
       result = [...result].sort((a, b) => {
         if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === 'asc' ? -1 : 1;
@@ -115,7 +123,7 @@ function PaymentsContent() {
     }
 
     return result;
-  }, [financialData, searchQuery, sortConfig]);
+  }, [financialData, searchQuery, showOnlyUnpaid, sortConfig]);
 
   const requestSort = (key: string) => {
     let direction: 'asc' | 'desc' = 'asc';
@@ -311,24 +319,43 @@ function PaymentsContent() {
         </div>
       </header>
 
-      <div className="relative group">
-        <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5 transition-colors group-focus-within:text-primary" />
-        <Input 
-          placeholder="ابحث باسم العميل، رقم الهاتف، أو اسم المشروع المالي..." 
-          className="pr-12 h-16 rounded-2xl font-bold text-lg border-none shadow-sm bg-white focus-visible:ring-primary/20"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-        {searchQuery && (
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => setSearchQuery("")}
-            className="absolute left-4 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full hover:bg-slate-100"
-          >
-            <X className="h-4 w-4 text-slate-400" />
-          </Button>
-        )}
+      <div className="flex flex-col md:flex-row gap-4 items-center">
+        <div className="relative flex-1 w-full group">
+          <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5 transition-colors group-focus-within:text-primary" />
+          <Input 
+            placeholder="ابحث باسم العميل، رقم الهاتف، أو اسم المشروع المالي..." 
+            className="pr-12 h-16 rounded-2xl font-bold text-lg border-none shadow-sm bg-white focus-visible:ring-primary/20"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          {searchQuery && (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => setSearchQuery("")}
+              className="absolute left-4 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full hover:bg-slate-100"
+            >
+              <X className="h-4 w-4 text-slate-400" />
+            </Button>
+          )}
+        </div>
+        
+        <Card className="rounded-2xl border-none shadow-sm bg-white p-4 h-16 flex items-center gap-3 border whitespace-nowrap">
+          <div className="flex items-center space-x-2 space-x-reverse">
+            <Switch 
+              id="unpaid-only" 
+              checked={showOnlyUnpaid} 
+              onCheckedChange={setShowOnlyUnpaid}
+              className="data-[state=checked]:bg-rose-500"
+            />
+            <Label htmlFor="unpaid-only" className="font-black text-slate-600 cursor-pointer text-sm">عرض المديونيات فقط</Label>
+          </div>
+          {showOnlyUnpaid && (
+            <Badge className="bg-rose-500 rounded-lg h-6 font-black">
+              {filteredData.length}
+            </Badge>
+          )}
+        </Card>
       </div>
 
       <Card className="rounded-[2.5rem] border-none shadow-sm overflow-hidden bg-white border">
@@ -404,7 +431,7 @@ function PaymentsContent() {
                 <TableRow>
                   <TableCell colSpan={5} className="py-20 text-center opacity-30">
                     <AlertCircle className="h-12 w-12 mx-auto mb-4" />
-                    <p className="font-black text-lg">لم يتم العثور على أي نتائج مطابقة لبحثك المالي</p>
+                    <p className="font-black text-lg">لم يتم العثور على أي نتائج مطابقة</p>
                   </TableCell>
                 </TableRow>
               )}
