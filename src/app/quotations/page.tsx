@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -36,8 +35,11 @@ function QuotationsContent() {
   const { profile, loading: authLoading } = useAuth();
   const router = useRouter();
 
+  const isAdmin = profile?.role === 'admin';
+  const isClient = profile?.role === 'client';
+
   useEffect(() => {
-    if (profile?.role !== 'admin' && !authLoading) {
+    if (!isAdmin && !isClient && !authLoading) {
       router.push("/");
       return;
     }
@@ -53,10 +55,10 @@ function QuotationsContent() {
     });
     
     return () => unsub();
-  }, [profile, authLoading, router]);
+  }, [profile, authLoading, router, isAdmin, isClient]);
 
   const handleSaveQuotation = async (data: any) => {
-    if (!db) return;
+    if (!db || !isAdmin) return;
     setIsSaving(true);
     try {
       const quotationData = {
@@ -82,7 +84,7 @@ function QuotationsContent() {
   };
 
   const handleDeleteQuotation = async (id: string) => {
-    if (!db || !confirm("هل أنت متأكد من حذف هذا العرض؟")) return;
+    if (!db || !isAdmin || !confirm("هل أنت متأكد من حذف هذا العرض؟")) return;
     try {
       await deleteDoc(doc(db, "quotations", id));
       toast({ title: "تم الحذف", description: "تمت إزالة العرض نهائياً" });
@@ -107,15 +109,17 @@ function QuotationsContent() {
           </div>
           <div>
             <h1 className="text-4xl font-black text-slate-800 tracking-tight">معرض عروض الأسعار</h1>
-            <p className="text-slate-500 font-bold text-lg">ارفع صور التصاميم والعروض وقدمها بشكل احترافي</p>
+            <p className="text-slate-500 font-bold text-lg">تصفح أحدث التصاميم وعروض الأسعار المتاحة</p>
           </div>
         </div>
-        <Button 
-          onClick={() => { setEditingQuotation(null); setIsModalOpen(true); }}
-          className="rounded-3xl h-16 px-10 font-black text-xl gap-3 shadow-xl hover:scale-105 transition-all bg-primary"
-        >
-          <Plus className="h-7 w-7" /> إضافة عرض جديد
-        </Button>
+        {isAdmin && (
+          <Button 
+            onClick={() => { setEditingQuotation(null); setIsModalOpen(true); }}
+            className="rounded-3xl h-16 px-10 font-black text-xl gap-3 shadow-xl hover:scale-105 transition-all bg-primary"
+          >
+            <Plus className="h-7 w-7" /> إضافة عرض جديد
+          </Button>
+        )}
       </header>
 
       {quotations.length === 0 ? (
@@ -132,17 +136,19 @@ function QuotationsContent() {
               {/* صندوق الاسم فوق الصورة */}
               <div className="bg-white p-6 rounded-[2rem] shadow-md border-r-8 border-primary flex items-center justify-between group-hover:shadow-lg transition-all">
                 <h2 className="text-2xl font-black text-slate-800 truncate">{q.projectName}</h2>
-                <div className="flex gap-2">
-                  <Button variant="ghost" size="icon" onClick={() => { setEditingQuotation(q); setIsModalOpen(true); }} className="h-10 w-10 rounded-xl hover:bg-primary/5">
-                    <Edit3 className="h-5 w-5 text-slate-400 group-hover:text-primary transition-colors" />
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => handleDeleteQuotation(q.id)} className="h-10 w-10 rounded-xl hover:bg-rose-50">
-                    <Trash2 className="h-5 w-5 text-rose-300 group-hover:text-rose-500 transition-colors" />
-                  </Button>
-                </div>
+                {isAdmin && (
+                  <div className="flex gap-2">
+                    <Button variant="ghost" size="icon" onClick={() => { setEditingQuotation(q); setIsModalOpen(true); }} className="h-10 w-10 rounded-xl hover:bg-primary/5">
+                      <Edit3 className="h-5 w-5 text-slate-400 group-hover:text-primary transition-colors" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleDeleteQuotation(q.id)} className="h-10 w-10 rounded-xl hover:bg-rose-50">
+                      <Trash2 className="h-5 w-5 text-rose-300 group-hover:text-rose-500 transition-colors" />
+                    </Button>
+                  </div>
+                )}
               </div>
 
-              {/* معرض الصور المرفق - Preview Card with Dynamic Height */}
+              {/* معرض الصور المرفق */}
               <Card className="rounded-[2.5rem] border-none shadow-xl overflow-hidden bg-white group-hover:scale-[1.01] transition-all cursor-pointer" onClick={() => { setViewingQuotation(q); setIsDetailsOpen(true); }}>
                 <div className="relative min-h-[300px] max-h-[600px] bg-slate-100 flex items-center justify-center overflow-hidden">
                   {q.images?.[0] ? (
@@ -171,13 +177,15 @@ function QuotationsContent() {
         </div>
       )}
 
-      <QuotationModal 
-        isOpen={isModalOpen} 
-        onClose={() => { setIsModalOpen(false); setEditingQuotation(null); }}
-        onSave={handleSaveQuotation}
-        isLoading={isSaving}
-        initialData={editingQuotation}
-      />
+      {isAdmin && (
+        <QuotationModal 
+          isOpen={isModalOpen} 
+          onClose={() => { setIsModalOpen(false); setEditingQuotation(null); }}
+          onSave={handleSaveQuotation}
+          isLoading={isSaving}
+          initialData={editingQuotation}
+        />
+      )}
 
       <QuotationDetailsModal 
         isOpen={isDetailsOpen}
