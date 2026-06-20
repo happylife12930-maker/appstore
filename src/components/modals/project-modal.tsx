@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Briefcase, Search, Image as ImageIcon, Plus, Trash2, Save } from 'lucide-react';
+import { Loader2, Briefcase, Search, Image as ImageIcon, Plus, Trash2, Save, Phone } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
@@ -41,11 +41,14 @@ interface ProjectModalProps {
   initialData?: ProjectData | null;
 }
 
-// دالة توحيد النص للبحث (تحويل أرقام عربية، إزالة مسافات)
-const normalizeText = (text: string) => {
+// دالة تنظيف النص والبحث المتقدم
+const normalizeForSearch = (text: any) => {
   if (!text) return '';
-  const arToEn = (str: string) => str.replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d).toString());
-  return arToEn(text).toLowerCase().replace(/\s+/g, '');
+  const str = String(text);
+  // تحويل الأرقام العربية إلى إنجليزية
+  const arToEn = (s: string) => s.replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d).toString());
+  // إزالة كافة الرموز والمسافات وترك الأرقام والحروف فقط
+  return arToEn(str).toLowerCase().replace(/[^a-z0-9]/g, '');
 };
 
 export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }: ProjectModalProps) {
@@ -108,18 +111,20 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
   }, [initialData, isOpen]);
 
   const filteredClients = useMemo(() => {
-    const s = normalizeText(clientSearch);
+    const s = normalizeForSearch(clientSearch);
     if (!s) return clients;
     
     return clients.filter(c => {
-      const clientName = normalizeText(c.name);
-      const clientPhone = normalizeText(c.phone);
-      return clientName.includes(s) || clientPhone.includes(s);
+      const nameMatch = normalizeForSearch(c.name).includes(s);
+      const phoneMatch = normalizeForSearch(c.phone).includes(s);
+      return nameMatch || phoneMatch;
     });
   }, [clients, clientSearch]);
 
-  const selectedClientName = useMemo(() => {
-    return clients.find(c => c.id === formData.clientId)?.name || "اختر من قائمة النتائج";
+  const selectedClientDisplay = useMemo(() => {
+    const found = clients.find(c => c.id === formData.clientId);
+    if (found) return `${found.name} (${found.phone})`;
+    return "اختر العميل من النتائج...";
   }, [clients, formData.clientId]);
 
   const handleAddImage = () => {
@@ -152,7 +157,7 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
               <Briefcase className="h-6 w-6" /> {initialData ? 'تعديل المشروع' : 'مشروع جديد'}
             </DialogTitle>
             <DialogDescription className="text-primary-foreground/80 font-bold">
-              اربط المشروع بالعميل من خلال البحث بالاسم أو رقم الهاتف
+              ابحث عن العميل بالاسم أو رقم الهاتف لربطه بالمشروع
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -170,7 +175,9 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
                 />
               </div>
               <div className="space-y-2">
-                <Label className="font-black text-slate-700">البحث عن العميل (اسم/هاتف)</Label>
+                <Label className="font-black text-slate-700 flex items-center gap-2">
+                   البحث عن العميل <Phone className="h-3 w-3" />
+                </Label>
                 <div className="space-y-2">
                   <div className="relative">
                     <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -178,25 +185,24 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
                       placeholder="اكتب رقم الهاتف أو الاسم..." 
                       value={clientSearch}
                       onChange={(e) => setClientSearch(e.target.value)}
-                      className="rounded-2xl h-12 pr-10 border-slate-200 font-bold text-sm bg-slate-50/50"
+                      className="rounded-2xl h-12 pr-10 border-slate-200 font-bold text-sm bg-slate-50/50 focus-visible:ring-primary"
                     />
                   </div>
                   <Select value={formData.clientId} onValueChange={(val) => setFormData({...formData, clientId: val})}>
-                    <SelectTrigger className="rounded-2xl h-12 border-slate-200 font-bold text-right">
-                      {/* حل مشكلة عدم ظهور الاسم: نعرضه يدوياً هنا */}
-                      <span className="truncate">{selectedClientName}</span>
+                    <SelectTrigger className="rounded-2xl h-12 border-slate-200 font-bold text-right bg-white">
+                      <span className="truncate">{selectedClientDisplay}</span>
                     </SelectTrigger>
-                    <SelectContent className="rounded-2xl font-bold max-h-[200px]">
+                    <SelectContent className="rounded-2xl font-bold max-h-[250px]">
                       {filteredClients.map(c => (
                         <SelectItem key={c.id} value={c.id}>
-                          <div className="flex flex-col items-start gap-0.5 text-right">
-                            <span className="text-sm">{c.name}</span>
+                          <div className="flex flex-col items-start gap-0.5 text-right w-full">
+                            <span className="text-sm font-black">{c.name}</span>
                             <span className="text-[10px] text-primary font-black" dir="ltr">{c.phone}</span>
                           </div>
                         </SelectItem>
                       ))}
                       {filteredClients.length === 0 && (
-                        <div className="p-4 text-center text-xs text-slate-400 italic">
+                        <div className="p-6 text-center text-xs text-slate-400 italic">
                           لا يوجد عملاء مطابقين لهذا البحث
                         </div>
                       )}
