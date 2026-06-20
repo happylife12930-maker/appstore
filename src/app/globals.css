@@ -36,33 +36,30 @@
     font-family: 'Cairo', sans-serif;
     /* إجبار الصفحة على قبول التفاعل دائماً لحل مشكلة الفريز */
     pointer-events: auto !important;
+    overflow-x: hidden;
   }
 }
 
 /* حل جذري لمشكلة تجمد الشاشة بعد إغلاق المودال في Shadcn */
 body[style*="pointer-events: none"] {
   pointer-events: auto !important;
-  overflow: auto !important;
-}
-
-body.modal-open {
-  pointer-events: auto !important;
-  overflow: hidden !important;
-}
-
-.modal-open {
-  overflow: hidden !important;
 }
 
 /* تحسين السكرول بار ليناسب التصميم الفخم */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-transparent;
+  @apply bg-slate-100;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-slate-300 rounded-full hover:bg-slate-400 transition-colors;
+  @apply bg-slate-300 rounded-full border-2 border-slate-100 hover:bg-slate-400 transition-colors;
+}
+
+/* ضمان ظهور السكرول داخل المودال */
+[data-radix-scroll-area-viewport] {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
 }

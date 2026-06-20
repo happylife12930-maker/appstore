@@ -12,7 +12,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
-import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Briefcase, 
   Clock, 
@@ -21,8 +20,8 @@ import {
   Image as ImageIcon,
   FileText,
   User,
-  Layout,
-  Layers
+  Layers,
+  Layout
 } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { ProjectData } from './project-modal';
@@ -45,13 +44,13 @@ export function ProjectDetailsModal({ isOpen, onClose, project, db }: ProjectDet
     }
   }, [project]);
 
-  // حل مشكلة الفريز عند الإغلاق
+  // حل مشكلة الفريز عند الإغلاق بشكل قاطع
   const handleClose = () => {
     onClose();
     setTimeout(() => {
       document.body.style.pointerEvents = 'auto';
-      document.body.classList.remove('modal-open');
-    }, 300);
+      document.body.style.overflow = 'auto';
+    }, 200);
   };
 
   if (!project) return null;
@@ -79,125 +78,158 @@ export function ProjectDetailsModal({ isOpen, onClose, project, db }: ProjectDet
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="sm:max-w-[900px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white max-h-[90vh] flex flex-col" dir="rtl">
-        {/* Header - Fixed */}
-        <div className="bg-primary p-8 text-primary-foreground shrink-0">
+      <DialogContent 
+        className="sm:max-w-[1000px] w-[95vw] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white max-h-[92vh] flex flex-col focus:outline-none" 
+        dir="rtl"
+      >
+        {/* Header - ثابت في الأعلى */}
+        <div className="bg-primary p-8 text-primary-foreground shrink-0 border-b border-white/10 shadow-lg z-20">
           <DialogHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-md">
-                  <Briefcase className="h-7 w-7" />
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="flex items-center gap-5">
+                <div className="p-4 bg-white/20 rounded-[1.5rem] backdrop-blur-xl shadow-inner">
+                  <Briefcase className="h-8 w-8" />
                 </div>
-                <div>
-                  <DialogTitle className="text-3xl font-black mb-1">{project.name}</DialogTitle>
+                <div className="space-y-1">
+                  <DialogTitle className="text-3xl font-black tracking-tight">{project.name}</DialogTitle>
                   <DialogDescription className="text-primary-foreground/90 font-bold flex items-center gap-2 text-lg">
-                    <User className="h-5 w-5" /> العميل: {project.clientName}
+                    <User className="h-5 w-5 text-accent" /> العميل: {project.clientName}
                   </DialogDescription>
                 </div>
               </div>
-              <div className="hidden md:block bg-white/10 p-4 rounded-3xl border border-white/20">
-                <div className="flex items-center gap-2 mb-2">
-                  <Layout className="h-4 w-4" />
-                  <span className="text-xs font-black uppercase tracking-wider">الحالة الحالية</span>
+              <div className="flex items-center gap-4 bg-white/10 p-4 rounded-3xl border border-white/20 backdrop-blur-md">
+                <div className="h-10 w-10 rounded-2xl bg-white/20 flex items-center justify-center">
+                  <Layout className="h-5 w-5" />
                 </div>
-                <div className="text-xl font-black">{project.status}</div>
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60 block">حالة المشروع</span>
+                  <span className="text-lg font-black">{project.status}</span>
+                </div>
               </div>
             </div>
           </DialogHeader>
         </div>
 
-        {/* Content - Scrollable */}
-        <ScrollArea className="flex-1">
-          <div className="p-8 space-y-10">
-            {/* Project Images Gallery */}
+        {/* Content - قابل للتمرير */}
+        <ScrollArea className="flex-1 w-full bg-slate-50/30">
+          <div className="p-6 md:p-10 space-y-12 pb-24">
+            
+            {/* معرض الصور - Gallery */}
             {project.images && project.images.length > 0 && (
-              <div className="space-y-4">
-                <h3 className="font-black text-slate-800 text-xl flex items-center gap-3 pr-2">
-                  <div className="h-8 w-1.5 bg-primary rounded-full" />
-                  <ImageIcon className="h-6 w-6 text-primary" /> صور واجهات التطبيق
-                </h3>
+              <div className="space-y-6">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-1.5 bg-primary rounded-full" />
+                  <h3 className="font-black text-slate-800 text-2xl flex items-center gap-3">
+                    <ImageIcon className="h-7 w-7 text-primary" /> واجهات النظام
+                  </h3>
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {project.images.map((img, idx) => (
-                    <div key={idx} className="group relative aspect-video rounded-[2rem] overflow-hidden border-4 border-slate-50 shadow-md hover:shadow-xl transition-all">
+                    <div key={idx} className="group relative aspect-video rounded-[2.5rem] overflow-hidden border-4 border-white shadow-xl hover:shadow-2xl transition-all duration-500">
                       <img 
                         src={img} 
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
-                        alt={`Project visual ${idx + 1}`} 
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                        alt={`Interface ${idx + 1}`} 
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-end p-6">
+                        <span className="text-white font-black text-sm">عرض بالحجم الكامل</span>
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-10">
-              {/* Technical Requirements Section */}
-              <div className="lg:col-span-2 space-y-4">
-                <h3 className="font-black text-slate-800 text-xl flex items-center gap-3 pr-2">
+            {/* تفاصيل المشروع والخطوات - Two Columns */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+              
+              {/* العمود الأول: المتطلبات */}
+              <div className="lg:col-span-5 space-y-6">
+                <div className="flex items-center gap-3">
                   <div className="h-8 w-1.5 bg-primary rounded-full" />
-                  <FileText className="h-6 w-6 text-primary" /> ملف المتطلبات
-                </h3>
-                <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 min-h-[300px] shadow-inner">
-                  <p className="text-slate-600 font-bold leading-relaxed whitespace-pre-line text-base italic">
+                  <h3 className="font-black text-slate-800 text-xl flex items-center gap-3">
+                    <FileText className="h-6 w-6 text-primary" /> تفاصيل المتطلبات
+                  </h3>
+                </div>
+                <div className="p-8 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm min-h-[300px] relative">
+                  <div className="absolute top-4 left-4 opacity-5">
+                    <FileText className="h-32 w-32" />
+                  </div>
+                  <p className="text-slate-600 font-bold leading-relaxed whitespace-pre-line text-lg italic relative z-10">
                     {project.requirements || 'لا توجد تفاصيل متطلبات محددة لهذا المشروع حالياً.'}
                   </p>
                 </div>
               </div>
 
-              {/* Execution Steps & Progress Section */}
-              <div className="lg:col-span-3 space-y-4">
-                <h3 className="font-black text-slate-800 text-xl flex items-center gap-3 pr-2">
+              {/* العمود الثاني: التقدم والخطوات */}
+              <div className="lg:col-span-7 space-y-6">
+                <div className="flex items-center gap-3">
                   <div className="h-8 w-1.5 bg-primary rounded-full" />
-                  <Layers className="h-6 w-6 text-primary" /> مراحل التنفيذ والتقدم
-                </h3>
-                <div className="p-8 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm space-y-8">
-                  {/* Progress Indicator */}
-                  <div className="bg-slate-50 p-6 rounded-3xl space-y-3">
+                  <h3 className="font-black text-slate-800 text-xl flex items-center gap-3">
+                    <Layers className="h-6 w-6 text-primary" /> مراحل التنفيذ والتقدم
+                  </h3>
+                </div>
+                
+                <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
+                  {/* شريط التقدم */}
+                  <div className="p-8 bg-slate-900 text-white space-y-4">
                     <div className="flex justify-between items-end">
-                      <span className="text-sm font-black text-slate-500 uppercase tracking-widest">إجمالي الإنجاز</span>
-                      <span className="text-4xl font-black text-primary">{progress}%</span>
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-50">نسبة الإنجاز الإجمالية</span>
+                        <div className="text-5xl font-black text-accent">{progress}%</div>
+                      </div>
+                      <CheckCircle2 className={`h-16 w-16 ${progress === 100 ? 'text-green-400' : 'text-white/10'}`} />
                     </div>
-                    <Progress value={progress} className="h-4 rounded-full bg-slate-200" />
+                    <Progress value={progress} className="h-3 rounded-full bg-white/10" />
                   </div>
 
-                  {/* Steps List */}
-                  <div className="space-y-3">
+                  {/* قائمة الخطوات */}
+                  <div className="p-8 space-y-4">
                     {localSteps.map((step) => (
                       <div 
                         key={step.id} 
                         onClick={() => handleToggleStep(step.id)}
-                        className={`group flex items-center gap-4 p-5 rounded-2xl transition-all cursor-pointer border-2 ${
+                        className={`group flex items-center gap-5 p-5 rounded-2xl transition-all cursor-pointer border-2 shadow-sm hover:translate-x-[-4px] active:scale-[0.98] ${
                           step.completed 
-                            ? 'bg-green-50/50 border-green-100 shadow-sm' 
-                            : 'bg-white border-slate-100 hover:border-primary/30 hover:shadow-md'
+                            ? 'bg-green-50/40 border-green-200' 
+                            : 'bg-white border-slate-100 hover:border-primary/40'
                         }`}
                       >
-                        <div className={`h-8 w-8 rounded-xl flex items-center justify-center transition-colors ${
-                          step.completed ? 'bg-green-500 text-white' : 'bg-slate-100 text-slate-400 group-hover:bg-primary/10'
+                        <div className={`h-10 w-10 rounded-2xl flex items-center justify-center transition-all duration-300 ${
+                          step.completed 
+                            ? 'bg-green-500 text-white shadow-lg rotate-[360deg]' 
+                            : 'bg-slate-100 text-slate-400 group-hover:bg-primary/10 group-hover:text-primary'
                         }`}>
-                          {step.completed ? <CheckCircle2 className="h-5 w-5" /> : <div className="h-2 w-2 rounded-full bg-current" />}
+                          {step.completed ? <CheckCircle2 className="h-6 w-6" /> : <div className="h-2.5 w-2.5 rounded-full bg-current" />}
                         </div>
-                        <span className={`flex-1 font-black text-lg ${step.completed ? 'text-green-700 line-through opacity-60' : 'text-slate-700'}`}>
-                          {step.title}
-                        </span>
-                        {step.completed && <div className="text-[10px] font-black bg-green-200 text-green-800 px-3 py-1 rounded-full uppercase">تم الإنجاز</div>}
+                        <div className="flex-1">
+                          <span className={`block font-black text-lg transition-all ${step.completed ? 'text-green-700 line-through opacity-50' : 'text-slate-700'}`}>
+                            {step.title}
+                          </span>
+                        </div>
+                        {step.completed && (
+                          <div className="bg-green-100 text-green-700 text-[10px] font-black px-4 py-1.5 rounded-full shadow-sm">
+                            تم التنفيذ
+                          </div>
+                        )}
                       </div>
                     ))}
-                  </div>
 
-                  {/* Main Action Button - End of Steps */}
-                  <div className="pt-6">
-                    <Button 
-                      onClick={handleClose}
-                      className="w-full h-20 rounded-[2rem] font-black text-2xl shadow-2xl hover:scale-[1.02] transition-all bg-slate-900 text-white gap-4 group"
-                    >
-                      إغلاق ومعاودة العمل 
-                      <ChevronLeft className="h-8 w-8 group-hover:-translate-x-2 transition-transform" />
-                    </Button>
-                    <p className="text-center text-slate-400 font-bold mt-4 text-sm flex items-center justify-center gap-2">
-                      <Clock className="h-4 w-4" /> يتم حفظ كافة التغييرات تلقائياً في قاعدة البيانات
-                    </p>
+                    {/* زر الإغلاق الضخم - داخل السكرول أسفل الخطوات */}
+                    <div className="pt-10">
+                      <Button 
+                        onClick={handleClose}
+                        className="w-full h-20 rounded-[2rem] font-black text-2xl shadow-2xl hover:scale-[1.02] active:scale-95 transition-all bg-primary text-white gap-4 group overflow-hidden relative"
+                      >
+                        <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+                        <span className="relative z-10">إغلاق ومعاودة العمل</span>
+                        <ChevronLeft className="h-8 w-8 group-hover:-translate-x-2 transition-transform relative z-10" />
+                      </Button>
+                      <div className="flex items-center justify-center gap-2 mt-6 text-slate-400 font-bold text-sm">
+                        <Clock className="h-4 w-4" />
+                        <span>يتم حفظ تقدمك تلقائياً في السحابة</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
