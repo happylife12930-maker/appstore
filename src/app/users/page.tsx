@@ -13,7 +13,8 @@ import {
   Lock,
   Unlock,
   Link2,
-  CheckCircle2
+  CheckCircle2,
+  Key
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -132,7 +133,8 @@ export default function UsersPermissionsPage() {
         status: editingUser.status,
         permissions: editingUser.permissions,
         name: editingUser.name,
-        clientId: editingUser.clientId
+        clientId: editingUser.clientId,
+        tempPassword: editingUser.tempPassword || ""
       });
       
       toast({ title: "تم التحديث", description: "تم تعديل صلاحيات وبيانات المستخدم بنجاح." });
@@ -346,6 +348,23 @@ export default function UsersPermissionsPage() {
                   onChange={(e) => setEditingUser({...editingUser, name: e.target.value})}
                   className="rounded-2xl h-12 font-bold"
                 />
+              </div>
+
+              <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 space-y-4">
+                <div className="flex items-center gap-2 text-slate-700">
+                  <Key className="h-5 w-5 text-primary" />
+                  <h3 className="font-black text-sm uppercase">كلمة المرور</h3>
+                </div>
+                <div className="space-y-2">
+                  <Label className="font-black text-slate-600 text-xs">تحديث كلمة المرور</Label>
+                  <Input 
+                    value={editingUser?.tempPassword || ""} 
+                    onChange={(e) => setEditingUser({...editingUser, tempPassword: e.target.value})}
+                    placeholder="أدخل كلمة مرور جديدة..."
+                    className="rounded-xl h-10 font-black text-center tracking-widest border-slate-200"
+                  />
+                  <p className="text-[9px] font-bold text-slate-400 pr-2">سيتمكن العميل من الدخول بهذا الرمز فوراً.</p>
+                </div>
               </div>
 
               <div className="p-6 bg-primary/5 rounded-3xl border border-primary/10 space-y-4">
