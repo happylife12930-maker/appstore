@@ -5,14 +5,13 @@ import * as React from "react";
 import { useState, useEffect, useRef } from "react";
 import { 
   Send, 
-  User, 
   LifeBuoy, 
   Search, 
   Loader2, 
   MoreVertical,
   Circle,
-  Clock,
-  CheckCheck
+  CheckCheck,
+  AlertCircle
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,6 +35,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { ar } from "date-fns/locale";
+import { useToast } from "@/hooks/use-toast";
 
 export default function SupportPage() {
   const { profile, loading: authLoading } = useAuth();
@@ -45,9 +45,9 @@ export default function SupportPage() {
   const [inputText, setInputText] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
   
   const scrollRef = useRef<HTMLDivElement>(null);
-
   const isAdmin = profile?.role === 'admin';
 
   // التمرير لأسفل المحادثة
@@ -62,10 +62,16 @@ export default function SupportPage() {
     if (!db || !isAdmin) return;
 
     const q = query(collection(db, "support_threads"), orderBy("lastMessageTime", "desc"));
-    const unsub = onSnapshot(q, (snap) => {
-      setThreads(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-      setLoading(false);
-    });
+    const unsub = onSnapshot(q, 
+      (snap) => {
+        setThreads(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Threads Listener Error:", error);
+        setLoading(false);
+      }
+    );
 
     return () => unsub();
   }, [isAdmin]);
@@ -78,9 +84,9 @@ export default function SupportPage() {
     }
   }, [profile, isAdmin]);
 
-  // جلب الرسائل للمحادثة النشطة
+  // جلب الرسائل للمحادثة النشطة وتصفير العداد
   useEffect(() => {
-    if (!db || !activeThreadId) return;
+    if (!db || !activeThreadId || !profile) return;
 
     const q = query(
       collection(db, "support_threads", activeThreadId, "messages"),
@@ -88,22 +94,25 @@ export default function SupportPage() {
       limit(100)
     );
 
-    const unsub = onSnapshot(q, (snap) => {
-      setMessages(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-      
-      // تصفير عداد الرسائل غير المقروءة عند فتح المحادثة
-      if (activeThreadId) {
+    const unsub = onSnapshot(q, 
+      (snap) => {
+        setMessages(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        
+        // تصفير عداد الرسائل غير المقروءة عند فتح المحادثة (فقط إذا كان هناك رسائل غير مقروءة لتجنب الكتابة الزائدة)
         const threadRef = doc(db, "support_threads", activeThreadId);
         if (isAdmin) {
-          updateDoc(threadRef, { unreadAdmin: 0 });
+          updateDoc(threadRef, { unreadAdmin: 0 }).catch(() => {});
         } else {
-          updateDoc(threadRef, { unreadClient: 0 });
+          updateDoc(threadRef, { unreadClient: 0 }).catch(() => {});
         }
+      },
+      (error) => {
+        console.error("Messages Listener Error:", error);
       }
-    });
+    );
 
     return () => unsub();
-  }, [activeThreadId, isAdmin]);
+  }, [activeThreadId, isAdmin, profile]);
 
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -121,15 +130,13 @@ export default function SupportPage() {
     };
 
     try {
-      // 1. إضافة الرسالة
       await addDoc(collection(db, "support_threads", threadId, "messages"), msgData);
 
-      // 2. تحديث رأس المحادثة
       const threadRef = doc(db, "support_threads", threadId);
       const updateData: any = {
         lastMessage: text,
         lastMessageTime: serverTimestamp(),
-        clientName: isAdmin ? threads.find(t => t.id === threadId)?.clientName : profile.name,
+        clientName: isAdmin ? threads.find(t => t.id === threadId)?.clientName || "مستفيد" : profile.name,
       };
 
       if (isAdmin) {
@@ -140,9 +147,8 @@ export default function SupportPage() {
       }
 
       await setDoc(threadRef, updateData, { merge: true });
-
     } catch (err) {
-      console.error("Chat Send Error:", err);
+      toast({ title: "خطأ", description: "فشل في إرسال الرسالة", variant: "destructive" });
     }
   };
 
@@ -159,7 +165,6 @@ export default function SupportPage() {
 
   return (
     <div className="max-w-7xl mx-auto h-[calc(100vh-140px)] flex flex-col md:flex-row gap-6" dir="rtl">
-      {/* قائمة المحادثات (للمدير فقط) */}
       {isAdmin && (
         <Card className="w-full md:w-80 rounded-[2.5rem] border-none shadow-sm flex flex-col overflow-hidden bg-white">
           <CardHeader className="p-6 border-b bg-slate-50/50">
@@ -170,7 +175,7 @@ export default function SupportPage() {
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input 
                 placeholder="ابحث عن مستفيد..." 
-                className="pr-10 h-10 rounded-xl bg-white border-slate-200"
+                className="pr-10 h-10 rounded-xl bg-white border-slate-200 font-bold"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -206,9 +211,6 @@ export default function SupportPage() {
                       {thread.lastMessage || 'لا توجد رسائل'}
                     </p>
                   </div>
-                  {activeThreadId === thread.id && (
-                    <div className="absolute left-2 top-1/2 -translate-y-1/2 h-1.5 w-1.5 rounded-full bg-white shadow-lg" />
-                  )}
                 </div>
               ))}
               {filteredThreads.length === 0 && (
@@ -219,18 +221,17 @@ export default function SupportPage() {
         </Card>
       )}
 
-      {/* منطقة الدردشة */}
       <Card className="flex-1 rounded-[2.5rem] border-none shadow-sm flex flex-col overflow-hidden bg-white">
         {activeThreadId ? (
           <>
             <CardHeader className="p-6 border-b flex flex-row items-center justify-between bg-slate-50/50">
               <div className="flex items-center gap-4">
                 <div className="h-12 w-12 rounded-2xl bg-primary flex items-center justify-center text-white font-black text-xl shadow-lg">
-                  {isAdmin ? threads.find(t => t.id === activeThreadId)?.clientName?.[0] : 'A'}
+                  {isAdmin ? threads.find(t => t.id === activeThreadId)?.clientName?.[0] || 'U' : 'A'}
                 </div>
                 <div>
                   <CardTitle className="text-lg font-black text-slate-800">
-                    {isAdmin ? threads.find(t => t.id === activeThreadId)?.clientName : 'الدعم الفني - APP STORE'}
+                    {isAdmin ? threads.find(t => t.id === activeThreadId)?.clientName || "مستفيد" : 'الدعم الفني - APP STORE'}
                   </CardTitle>
                   <div className="flex items-center gap-2 mt-0.5">
                     <Circle className="h-2 w-2 fill-green-500 text-green-500 animate-pulse" />
@@ -238,9 +239,6 @@ export default function SupportPage() {
                   </div>
                 </div>
               </div>
-              <Button variant="ghost" size="icon" className="rounded-xl">
-                <MoreVertical className="h-5 w-5 text-slate-400" />
-              </Button>
             </CardHeader>
 
             <ScrollArea className="flex-1 p-6" viewportRef={scrollRef}>

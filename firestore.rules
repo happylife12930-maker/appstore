@@ -3,29 +3,35 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- Helper Functions ---
+    // --- دالات المساعدة الأساسية ---
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    function getUserData() {
-      let path = /databases/$(database)/documents/users/$(request.auth.uid);
-      return exists(path) ? get(path).data : null;
+    // دالة للتحقق من الدور مباشرة دون الاعتماد على قواعد أخرى (لمنع التداخل)
+    function hasRole(role) {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
     }
 
     function isAdmin() {
-      return isAuthenticated() && getUserData() != null && getUserData().role == 'admin';
+      return hasRole('admin');
     }
 
-    // --- Security Rules ---
+    // --- قواعد الأمان ---
 
     match /users/{userId} {
-      allow get, create, update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
-      allow list, delete: if isAdmin();
+      // القاعدة الأساسية: المستخدم يمكنه دائماً قراءة بياناته الخاصة (تكسر التداخل المنطقي)
+      allow get: if isAuthenticated() && request.auth.uid == userId;
+      // المدير يمكنه قراءة أي مستخدم
+      allow get, list: if isAdmin();
+      // التعديل والإنشاء
+      allow create, update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow delete: if isAdmin();
     }
 
     match /projects/{projectId} {
-      allow read, list: if isAdmin() || (isAuthenticated() && getUserData() != null && (resource == null || resource.data.clientId == getUserData().clientId));
+      allow read, list: if isAdmin() || (isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.clientId == resource.data.clientId);
       allow write: if isAdmin();
     }
 
@@ -39,7 +45,8 @@ service cloud.firestore {
     }
 
     match /support_threads/{threadId} {
-      allow read, write: if isAdmin() || (isAuthenticated() && request.auth.uid == threadId);
+      allow get, write: if isAdmin() || (isAuthenticated() && request.auth.uid == threadId);
+      allow list: if isAdmin();
       
       match /messages/{msgId} {
         allow read, write: if isAdmin() || (isAuthenticated() && request.auth.uid == threadId);
