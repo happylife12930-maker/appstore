@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -44,6 +45,16 @@ function ProjectsContent() {
 
   const hasProjectPermission = profile?.role === 'admin' || profile?.permissions.includes('p_projects');
 
+  // يتم استدعاء كافة الخطافات (useMemo, useEffect) في بداية المكون وقبل أي return
+  const filteredProjects = useMemo(() => {
+    const s = searchQuery.toLowerCase().trim();
+    if (!s) return projects;
+    return projects.filter(p => 
+      p.name?.toLowerCase().includes(s) || 
+      p.clientName?.toLowerCase().includes(s)
+    );
+  }, [projects, searchQuery]);
+
   useEffect(() => {
     const qParam = searchParams.get('q');
     if (qParam) setSearchQuery(qParam);
@@ -81,6 +92,7 @@ function ProjectsContent() {
     return () => unsub();
   }, [profile, authLoading, hasProjectPermission]);
 
+  // جمل العودة المبكرة (Early Returns) تأتي بعد استدعاء كافة الخطافات
   if (loading || authLoading) return (
     <div className="flex flex-col items-center justify-center py-20 gap-4">
       <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -100,15 +112,6 @@ function ProjectsContent() {
       </div>
     );
   }
-
-  const filteredProjects = useMemo(() => {
-    const s = searchQuery.toLowerCase().trim();
-    if (!s) return projects;
-    return projects.filter(p => 
-      p.name?.toLowerCase().includes(s) || 
-      p.clientName?.toLowerCase().includes(s)
-    );
-  }, [projects, searchQuery]);
 
   const handleSaveProject = async (data: ProjectData) => {
     if (!db) return;
