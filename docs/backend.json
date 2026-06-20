@@ -45,6 +45,30 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["name", "clientId"]
+    },
+    "TestingGroup": {
+      "title": "Testing Group",
+      "description": "Manages a group of testers for a specific project.",
+      "type": "object",
+      "properties": {
+        "projectId": { "type": "string" },
+        "projectName": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "in_progress", "completed"] },
+        "testers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "email": { "type": "string" },
+              "assignedDays": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        },
+        "resourceLink": { "type": "string" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["projectId", "projectName"]
     }
   },
   "auth": {
@@ -58,6 +82,10 @@
     "/projects/{projectId}": {
       "schema": "Project",
       "description": "Project details and assets."
+    },
+    "/testing_groups/{groupId}": {
+      "schema": "TestingGroup",
+      "description": "Testing assignments and tester schedules."
     }
   }
 }
