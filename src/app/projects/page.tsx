@@ -14,7 +14,8 @@ import {
   Plus,
   Edit3,
   Trash2,
-  Image as ImageIcon
+  Image as ImageIcon,
+  FileText
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -88,7 +89,7 @@ function ProjectsContent() {
       toast({ title: "خطأ", description: "فشل حفظ البيانات.", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
-      document.body.style.pointerEvents = 'auto';
+      setTimeout(() => { document.body.style.pointerEvents = 'auto'; }, 300);
     }
   };
 
@@ -269,6 +270,7 @@ function ProjectsContent() {
                 </div>
               </div>
 
+              {/* زر الخروج الضخم أسفل المراحل مباشرة */}
               <div className="pt-6">
                 <Button 
                   onClick={() => setIsViewModalOpen(false)}

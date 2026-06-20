@@ -34,7 +34,7 @@
   body {
     @apply bg-background text-foreground;
     font-family: 'Cairo', sans-serif;
-    /* حل قاطع لمشكلة التجمد */
+    /* إجبار الصفحة على قبول اللمس دائماً لمنع الفريز */
     pointer-events: auto !important;
   }
   h1, h2, h3, h4, h5, h6 {

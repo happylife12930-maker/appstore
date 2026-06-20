@@ -69,8 +69,10 @@ export default function ClientsPage() {
       toast({ title: "خطأ", description: "فشل حفظ البيانات.", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
-      // التأكد من إزالة أي حالة تجمد في الشاشة
-      document.body.style.pointerEvents = 'auto';
+      // حل مشكلة الفريز: إعادة التحكم في مؤشر الماوس للجسم الرئيسي
+      setTimeout(() => {
+        document.body.style.pointerEvents = 'auto';
+      }, 300);
     }
   };
 

@@ -15,10 +15,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Briefcase, FileText, Image as ImageIcon, Plus, Trash2, User, Save } from 'lucide-react';
+import { Loader2, Briefcase, FileText, Image as ImageIcon, Plus, Trash2, Save } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { collection, getDocs, db } from '@/lib/firebase';
-import { onSnapshot, query } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { collection, onSnapshot, query } from 'firebase/firestore';
 
 export interface ProjectData {
   id?: string;
@@ -62,12 +62,11 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
   const [newImageUrl, setNewImageUrl] = useState('');
 
   useEffect(() => {
-    if (db) {
-      const unsub = onSnapshot(collection(db, "clients"), (snap) => {
-        setClients(snap.docs.map(doc => ({ id: doc.id, name: doc.data().name })));
-      });
-      return () => unsub();
-    }
+    if (!db) return;
+    const unsub = onSnapshot(collection(db, "clients"), (snap) => {
+      setClients(snap.docs.map(doc => ({ id: doc.id, name: doc.data().name })));
+    });
+    return () => unsub();
   }, []);
 
   useEffect(() => {
