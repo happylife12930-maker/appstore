@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -15,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
 import { 
   UserPlus, 
   Mail, 
@@ -24,12 +24,13 @@ import {
   CheckCircle2,
   X,
   Search,
-  Briefcase
+  Briefcase,
+  FileText
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/select';
 
 export interface TestingGroupData {
   id?: string;
@@ -264,16 +265,30 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label className="font-black text-slate-700 pr-2 flex items-center gap-2">
-                <LinkIcon className="h-4 w-4 text-primary" /> رابط نسخة الاختبار / المرفقات
-              </Label>
-              <Input 
-                value={formData.resourceLink} 
-                onChange={(e) => setFormData({...formData, resourceLink: e.target.value})} 
-                placeholder="https://..." 
-                className="rounded-2xl h-12 border-slate-200 font-bold"
-              />
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <Label className="font-black text-slate-700 pr-2 flex items-center gap-2">
+                  <LinkIcon className="h-4 w-4 text-primary" /> رابط نسخة الاختبار / المرفقات
+                </Label>
+                <Input 
+                  value={formData.resourceLink} 
+                  onChange={(e) => setFormData({...formData, resourceLink: e.target.value})} 
+                  placeholder="https://..." 
+                  className="rounded-2xl h-12 border-slate-200 font-bold"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="font-black text-slate-700 pr-2 flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-primary" /> وصف المرفق / ملاحظات للمختبرين
+                </Label>
+                <Textarea 
+                  value={formData.notes} 
+                  onChange={(e) => setFormData({...formData, notes: e.target.value})} 
+                  placeholder="اكتب هنا توضيحاً للمختبرين حول هذا الرابط أو أي تعليمات إضافية..." 
+                  className="rounded-2xl min-h-[100px] border-slate-200 font-bold leading-relaxed"
+                />
+              </div>
             </div>
           </div>
         </ScrollArea>

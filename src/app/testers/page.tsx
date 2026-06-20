@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -18,7 +17,8 @@ import {
   AlertCircle,
   ExternalLink,
   Download,
-  FileSpreadsheet
+  FileSpreadsheet,
+  FileText
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -108,7 +108,6 @@ export default function TestersManagementPage() {
       return;
     }
 
-    // تجهيز البيانات - الآن تحتوي على الإيميلات فقط
     const headers = ["البريد الإلكتروني"];
     const rows = dataToExport.flatMap(group => 
       group.testers.map(tester => [
@@ -116,7 +115,6 @@ export default function TestersManagementPage() {
       ])
     );
 
-    // بناء المحتوى بصيغة CSV مع دعم اللغة العربية (UTF-8 BOM)
     const csvContent = "\uFEFF" + [
       headers.join(","),
       ...rows.map(e => e.join(","))
@@ -242,19 +240,33 @@ export default function TestersManagementPage() {
                 </div>
               </div>
 
-              {group.resourceLink && (
-                <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] font-black text-primary uppercase">رابط المرفقات</span>
-                    <LinkIcon className="h-3 w-3 text-primary" />
-                  </div>
-                  <a 
-                    href={group.resourceLink} 
-                    target="_blank" 
-                    className="text-xs font-bold text-slate-600 truncate block hover:text-primary transition-colors flex items-center gap-2"
-                  >
-                    {group.resourceLink} <ExternalLink className="h-3 w-3" />
-                  </a>
+              {(group.resourceLink || group.notes) && (
+                <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10 space-y-3">
+                  {group.notes && (
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 text-[10px] font-black text-primary uppercase">
+                        <FileText className="h-3 w-3" /> تعليمات المختبرين
+                      </div>
+                      <p className="text-[10px] font-bold text-slate-600 leading-relaxed bg-white/50 p-2 rounded-lg border border-slate-100">
+                        {group.notes}
+                      </p>
+                    </div>
+                  )}
+                  {group.resourceLink && (
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-black text-primary uppercase">رابط المرفقات</span>
+                        <LinkIcon className="h-3 w-3 text-primary" />
+                      </div>
+                      <a 
+                        href={group.resourceLink} 
+                        target="_blank" 
+                        className="text-[10px] font-black text-primary truncate block hover:underline flex items-center gap-2"
+                      >
+                        {group.resourceLink} <ExternalLink className="h-2 w-2" />
+                      </a>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>
