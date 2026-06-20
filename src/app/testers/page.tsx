@@ -18,7 +18,8 @@ import {
   FileSpreadsheet,
   FileText,
   Phone,
-  MessageCircle
+  MessageCircle,
+  Link as LinkIcon
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -91,7 +92,7 @@ export default function TestersManagementPage() {
   };
 
   const handleDeleteGroup = async (id: string) => {
-    if (!db || !confirm("هل أنت متأكد من حذف مهمة الاختبار هذه؟")) return;
+    if (!db || !confirm("هل أنت متأكد من حذف هذا المشروع من الاختبار؟")) return;
     try {
       await deleteDoc(doc(db, "testing_groups", id));
       toast({ title: "تم الحذف", description: "تمت إزالة مجموعة الاختبار" });
