@@ -40,6 +40,13 @@ interface ProjectModalProps {
   initialData?: ProjectData | null;
 }
 
+// دالة لتحويل الأرقام العربية إلى إنجليزية وتوحيد النص للبحث
+const normalizeText = (text: string) => {
+  if (!text) return '';
+  const arToEn = (str: string) => str.replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d).toString());
+  return arToEn(text).toLowerCase().replace(/\s+/g, '');
+};
+
 export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }: ProjectModalProps) {
   const [clients, setClients] = useState<{ id: string; name: string; phone: string }[]>([]);
   const [clientSearch, setClientSearch] = useState('');
@@ -100,13 +107,13 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
   }, [initialData, isOpen]);
 
   const filteredClients = useMemo(() => {
-    const s = clientSearch.toLowerCase().trim();
+    const s = normalizeText(clientSearch);
     if (!s) return clients;
     
     return clients.filter(c => {
-      const nameMatch = c.name.toLowerCase().includes(s);
-      const phoneMatch = c.phone.includes(s);
-      return nameMatch || phoneMatch;
+      const clientName = normalizeText(c.name);
+      const clientPhone = normalizeText(c.phone);
+      return clientName.includes(s) || clientPhone.includes(s);
     });
   }, [clients, clientSearch]);
 
@@ -126,7 +133,6 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
     const selectedClient = clients.find(c => c.id === formData.clientId);
     await onSave({ ...formData, clientName: selectedClient?.name || '' });
     
-    // تأكيد استجابة الشاشة بعد الحفظ
     setTimeout(() => {
       document.body.style.pointerEvents = 'auto';
     }, 500);
@@ -172,7 +178,7 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
                   </div>
                   <Select value={formData.clientId} onValueChange={(val) => setFormData({...formData, clientId: val})}>
                     <SelectTrigger className="rounded-2xl h-12 border-slate-200 font-bold">
-                      <SelectValue placeholder="اختر من قائمة النتائج" />
+                      <SelectValue placeholder={formData.clientId ? clients.find(c => c.id === formData.clientId)?.name : "اختر من قائمة النتائج"} />
                     </SelectTrigger>
                     <SelectContent className="rounded-2xl font-bold max-h-[200px]">
                       {filteredClients.map(c => (

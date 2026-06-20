@@ -24,6 +24,13 @@ import { collection, onSnapshot, deleteDoc, doc, setDoc, addDoc } from "firebase
 import { AddClientModal, type ClientData } from "@/components/modals/add-client-modal";
 import Link from "next/link";
 
+// دالة توحيد النص للبحث
+const normalizeText = (text: string) => {
+  if (!text) return '';
+  const arToEn = (str: string) => str.replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d).toString());
+  return arToEn(text).toLowerCase().replace(/\s+/g, '');
+};
+
 export default function ClientsPage() {
   const [clients, setClients] = useState<ClientData[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
@@ -60,15 +67,15 @@ export default function ClientsPage() {
   }, [clients, projects]);
 
   const filteredClients = useMemo(() => {
-    const s = searchQuery.toLowerCase().trim();
+    const s = normalizeText(searchQuery);
     if (!s) return clientsWithProjects;
 
     return clientsWithProjects.filter(c => {
-      const nameMatch = (c.name || "").toLowerCase().includes(s);
-      const phoneMatch = String(c.phone || "").includes(s);
-      const companyMatch = (c.company || "").toLowerCase().includes(s);
+      const nameMatch = normalizeText(c.name).includes(s);
+      const phoneMatch = normalizeText(c.phone).includes(s);
+      const companyMatch = normalizeText(c.company || "").includes(s);
       const projectMatch = c.associatedProjects.some(p => 
-        (p.name || "").toLowerCase().includes(s)
+        normalizeText(p.name || "").includes(s)
       );
       
       return nameMatch || phoneMatch || companyMatch || projectMatch;
@@ -89,7 +96,6 @@ export default function ClientsPage() {
       setIsModalOpen(false);
       setEditingClient(null);
       
-      // حل مشكلة الفريز: ضمان عودة التفاعل فوراً
       setTimeout(() => {
         document.body.style.pointerEvents = 'auto';
       }, 300);
