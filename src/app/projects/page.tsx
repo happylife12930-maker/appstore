@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -11,7 +10,6 @@ import {
   Trash2, 
   ExternalLink, 
   Clock, 
-  CheckCircle2,
   Image as ImageIcon,
   Loader2
 } from "lucide-react";
@@ -24,6 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, deleteDoc, doc, setDoc, addDoc } from "firebase/firestore";
 import { ProjectModal, type ProjectData } from "@/components/modals/project-modal";
+import { ProjectDetailsModal } from "@/components/modals/project-details-modal";
 
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<ProjectData[]>([]);
@@ -31,6 +30,10 @@ export default function ProjectsPage() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<ProjectData | null>(null);
+  
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [viewingProject, setViewingProject] = useState<ProjectData | null>(null);
+
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
 
@@ -82,6 +85,11 @@ export default function ProjectsPage() {
     }
   };
 
+  const handleOpenDetails = (project: ProjectData) => {
+    setViewingProject(project);
+    setIsDetailsOpen(true);
+  };
+
   if (loading) return (
     <div className="flex flex-col items-center justify-center py-20 gap-4">
       <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -129,18 +137,20 @@ export default function ProjectsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredProjects.map((project) => (
-            <Card key={project.id} className="rounded-[2.5rem] border-none shadow-sm hover:shadow-xl transition-all bg-white overflow-hidden flex flex-col group">
+            <Card key={project.id} className="rounded-[2.5rem] border-none shadow-sm hover:shadow-xl transition-all bg-white overflow-hidden flex flex-col group border border-slate-50">
               <div className="relative h-48 bg-slate-100 overflow-hidden">
                 {project.images?.[0] ? (
                   <img src={project.images[0]} className="w-full h-full object-cover transition-transform group-hover:scale-110" alt={project.name} />
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 gap-2">
                     <ImageIcon className="h-12 w-12" />
-                    <span className="font-bold text-xs uppercase">No Cover Image</span>
+                    <span className="font-bold text-xs uppercase">بدون صورة غلاف</span>
                   </div>
                 )}
                 <div className="absolute top-4 right-4 flex gap-2">
-                  <Badge className="rounded-xl font-black px-3 py-1 bg-white/90 text-primary border-none backdrop-blur-sm">
+                  <Badge className={`rounded-xl font-black px-3 py-1 border-none backdrop-blur-sm ${
+                    project.status === 'مكتمل' ? 'bg-green-500/90 text-white' : 'bg-white/90 text-primary'
+                  }`}>
                     {project.status}
                   </Badge>
                 </div>
@@ -150,7 +160,7 @@ export default function ProjectsPage() {
                 <div className="flex justify-between items-start gap-2">
                   <div>
                     <CardTitle className="text-xl font-black mb-1">{project.name}</CardTitle>
-                    <p className="text-xs font-bold text-slate-400">{project.clientName}</p>
+                    <p className="text-xs font-bold text-slate-400">العميل: {project.clientName}</p>
                   </div>
                   <div className="flex gap-1">
                     <Button variant="ghost" size="icon" onClick={() => { setEditingProject(project); setIsModalOpen(true); }} className="h-9 w-9 rounded-xl">
@@ -167,7 +177,7 @@ export default function ProjectsPage() {
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <div className="flex justify-between text-xs font-black">
-                      <span className="text-slate-400">تقدم التنفيذ</span>
+                      <span className="text-slate-400">نسبة الإنجاز</span>
                       <span className="text-primary">{project.progress}%</span>
                     </div>
                     <Progress value={project.progress} className="h-2 rounded-full" />
@@ -176,7 +186,7 @@ export default function ProjectsPage() {
                   <div className="p-4 bg-slate-50 rounded-2xl space-y-2">
                     <div className="flex items-center gap-2 text-primary">
                       <Clock className="h-4 w-4" />
-                      <span className="font-black text-xs">آخر تحديث</span>
+                      <span className="font-black text-xs">نظرة على المتطلبات</span>
                     </div>
                     <p className="text-xs font-bold text-slate-500 line-clamp-2">
                       {project.requirements || 'لا توجد تفاصيل متوفرة حالياً للمتطلبات.'}
@@ -184,7 +194,11 @@ export default function ProjectsPage() {
                   </div>
                 </div>
 
-                <Button variant="outline" className="w-full rounded-2xl h-12 font-black border-slate-200 mt-4 gap-2 hover:bg-primary hover:text-white transition-all">
+                <Button 
+                  onClick={() => handleOpenDetails(project)}
+                  variant="outline" 
+                  className="w-full rounded-2xl h-12 font-black border-slate-200 mt-4 gap-2 hover:bg-primary hover:text-white transition-all shadow-sm"
+                >
                   <ExternalLink className="h-4 w-4" /> عرض ملف المشروع
                 </Button>
               </CardContent>
@@ -193,12 +207,21 @@ export default function ProjectsPage() {
         </div>
       )}
 
+      {/* مودال الإضافة والتعديل */}
       <ProjectModal 
         isOpen={isModalOpen} 
         onClose={() => { setIsModalOpen(false); setEditingProject(null); }}
         onSave={handleSaveProject}
         isLoading={isSaving}
         initialData={editingProject}
+      />
+
+      {/* مودال عرض التفاصيل ومراحل التنفيذ */}
+      <ProjectDetailsModal 
+        isOpen={isDetailsOpen}
+        onClose={() => { setIsDetailsOpen(false); setViewingProject(null); }}
+        project={viewingProject}
+        db={db}
       />
     </div>
   );
