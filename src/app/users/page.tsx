@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -14,7 +13,8 @@ import {
   ShieldCheck,
   Key,
   Users,
-  Clock
+  Clock,
+  AlertCircle
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/auth-provider";
 import { useRouter } from "next/navigation";
 
-// دالة توحيد النص للبحث (عربي/إنجليزي وتجاهل الرموز)
 const normalizeText = (text: string) => {
   if (!text) return '';
   const arToEn = (str: string) => str.replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d).toString());
@@ -51,19 +50,19 @@ export default function UsersPermissionsPage() {
     }
     if (!db) return;
 
-    // جلب قائمة العملاء
     const unsubClients = onSnapshot(collection(db, "clients"), (snap) => {
       setAllClients(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
 
-    // جلب الحسابات المفعلة فعلياً
     const unsubUsers = onSnapshot(collection(db, "users"), (snap) => {
       setActiveUsers(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
 
-    // جلب طلبات التجهيز المعلقة (بانتظار أول دخول)
     const unsubProvision = onSnapshot(collection(db, "users_provision"), (snap) => {
       setProvisionedUsers(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setLoading(false);
+    }, (error) => {
+      console.error("Provisioning Load Error:", error);
       setLoading(false);
     });
 
@@ -75,41 +74,62 @@ export default function UsersPermissionsPage() {
   }, [profile, router]);
 
   const handleGrantAccess = async (client: any) => {
-    if (!db) return;
+    if (!db) {
+      toast({ title: "خطأ في الاتصال", description: "قاعدة البيانات غير متصلة.", variant: "destructive" });
+      return;
+    }
+    
     if (!client.email) {
-      alert("العميل ليس له بريد إلكتروني مسجل. يرجى تعديل بيانات العميل أولاً.");
+      toast({ 
+        title: "بيانات ناقصة", 
+        description: "العميل ليس له بريد إلكتروني مسجل. يرجى تعديله من قائمة العملاء.", 
+        variant: "destructive" 
+      });
       return;
     }
 
-    const password = prompt(`أدخل كلمة مرور للعميل (${client.name}):`);
-    if (!password || password.length < 4) {
-      alert("كلمة المرور يجب أن تكون 4 أحرف على الأقل.");
+    const password = prompt(`أدخل كلمة مرور الدخول للعميل (${client.name}):`);
+    if (!password) return;
+    
+    if (password.length < 4) {
+      alert("كلمة المرور قصيرة جداً، يرجى إدخال 4 رموز على الأقل.");
       return;
     }
 
     try {
-      // إرسال البيانات لجدول التجهيز (users_provision)
       await setDoc(doc(db, "users_provision", client.email), {
         name: client.name,
         email: client.email,
-        phone: client.phone,
+        phone: client.phone || "",
         role: "client",
         status: "active",
         tempPassword: password,
-        permissions: ["p_projects"]
+        permissions: ["p_projects"],
+        createdAt: new Date().toISOString()
       });
-      toast({ title: "تم التجهيز بنجاح", description: "تم إرسال الصلاحية. يمكن للعميل الآن الدخول ببياناته." });
-    } catch (err) {
-      toast({ title: "خطأ", description: "فشل في منح الصلاحية.", variant: "destructive" });
+      
+      toast({ 
+        title: "تم إرسال الصلاحية", 
+        description: `أصبح العميل (${client.name}) جاهزاً للدخول الآن بالباسورد الذي حددته.` 
+      });
+    } catch (err: any) {
+      console.error("Grant Access Error:", err);
+      toast({ 
+        title: "فشل التفعيل", 
+        description: "تأكد من صلاحيات الأدمن أو اتصال الإنترنت.", 
+        variant: "destructive" 
+      });
     }
   };
 
-  const handleRevokeAccess = async (id: string) => {
+  const handleRevokeAccess = async (id: string, email: string) => {
     if (!db) return;
-    if (confirm("هل أنت متأكد من إلغاء صلاحية دخول هذا العميل وحذف حسابه؟")) {
+    if (confirm("هل تريد سحب صلاحية الدخول نهائياً؟")) {
       try {
         await deleteDoc(doc(db, "users", id));
-        toast({ title: "تم السحب", description: "تم إلغاء صلاحية الدخول للعميل." });
+        // حذف من جدول التجهيز أيضاً لو وجد
+        await deleteDoc(doc(db, "users_provision", email));
+        toast({ title: "تم السحب", description: "تم إلغاء حساب العميل بنجاح." });
       } catch (err) {
         toast({ title: "خطأ", variant: "destructive" });
       }
@@ -121,7 +141,7 @@ export default function UsersPermissionsPage() {
     if (!s) return allClients;
     return allClients.filter(c => 
       normalizeText(c.name).includes(s) || 
-      normalizeText(c.phone).includes(s)
+      normalizeText(c.phone || "").includes(s)
     );
   }, [allClients, searchQuery]);
 
@@ -147,7 +167,6 @@ export default function UsersPermissionsPage() {
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* قائمة العملاء لمنحهم صلاحية */}
         <Card className="lg:col-span-4 rounded-[2.5rem] border-none shadow-sm bg-white overflow-hidden border border-slate-50">
           <CardHeader className="bg-slate-50/50 border-b p-6">
             <CardTitle className="text-lg font-black mb-4">منح صلاحية دخول</CardTitle>
@@ -180,10 +199,10 @@ export default function UsersPermissionsPage() {
                         onClick={() => handleGrantAccess(client)} 
                         className={`rounded-xl font-black gap-2 h-9 px-4 transition-all ${
                           isActive 
-                          ? 'bg-green-500 hover:bg-green-600 text-white shadow-green-100' 
+                          ? 'bg-green-500 hover:bg-green-600 text-white' 
                           : isProvisioned 
-                          ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-amber-100' 
-                          : 'shadow-primary/10'
+                          ? 'bg-amber-500 hover:bg-amber-600 text-white' 
+                          : 'bg-primary shadow-primary/10'
                         }`}
                       >
                         {isActive ? <BadgeCheck className="h-4 w-4" /> : isProvisioned ? <Clock className="h-3.5 w-3.5" /> : <UserPlus className="h-3.5 w-3.5" />}
@@ -197,7 +216,6 @@ export default function UsersPermissionsPage() {
           </CardContent>
         </Card>
 
-        {/* الحسابات التي تم تفعيلها */}
         <Card className="lg:col-span-8 rounded-[2.5rem] border-none shadow-sm bg-white overflow-hidden border border-slate-50">
           <CardHeader className="bg-primary p-8 text-primary-foreground">
             <CardTitle className="text-2xl font-black flex items-center gap-3">
@@ -239,7 +257,7 @@ export default function UsersPermissionsPage() {
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      onClick={() => handleRevokeAccess(user.id)} 
+                      onClick={() => handleRevokeAccess(user.id, user.email)} 
                       className="text-rose-500 hover:bg-rose-50 h-12 w-12 rounded-2xl transition-all"
                     >
                       <Trash2 className="h-6 w-6" />

@@ -1,9 +1,36 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow logged-in users to read and write their own user document
+    
+    // دالة للتحقق مما إذا كان المستخدم مديراً
+    function isAdmin() {
+      return request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // قواعد جدول المستخدمين
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if request.auth != null && (request.auth.uid == userId || isAdmin());
+    }
+    
+    // قواعد جدول العملاء
+    match /clients/{clientId} {
+      allow read, write: if isAdmin();
+    }
+    
+    // قواعد جدول المشاريع
+    match /projects/{projectId} {
+      allow read, write: if isAdmin() || (request.auth != null && (
+        resource.data.clientEmail == request.auth.token.email || 
+        resource.data.clientPhone == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.phone
+      ));
+    }
+    
+    // قواعد جدول التجهيز (بوابة المستفيد)
+    match /users_provision/{email} {
+      allow read, write: if isAdmin();
+      // السماح بالقراءة أثناء تسجيل الدخول للتحقق من وجود دعوة
+      allow get: if true;
     }
   }
 }
