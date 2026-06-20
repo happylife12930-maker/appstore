@@ -1,8 +1,8 @@
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
+
+    // --- Helper Functions ---
     function isAuthenticated() {
       return request.auth != null;
     }
@@ -11,35 +11,51 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
-    function isAdmin() {
-      return isAuthenticated() && 
-             exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-             getUserData().role == 'admin';
+    function userProfileExists() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
     }
 
+    function isAdmin() {
+      return isAuthenticated() && userProfileExists() && getUserData().role == 'admin';
+    }
+
+    function isClientOwner(clientId) {
+      return isAuthenticated() && userProfileExists() && getUserData().clientId == clientId;
+    }
+
+    // --- Security Rules ---
+
     match /users/{userId} {
-      allow read, write: if isAuthenticated() && request.auth.uid == userId;
+      allow get, update, create: if isAuthenticated() && request.auth.uid == userId;
       allow list: if isAdmin();
+      allow delete: if false;
     }
 
     match /users_provision/{email} {
-      allow read: if true;
+      // السماح للأدمن بإدارة التجهيز، وللمستخدم بالتحقق من وجود تفعيله أثناء تسجيل الدخول
+      allow read: if isAuthenticated() || isAdmin();
       allow write: if isAdmin();
     }
 
     match /clients/{clientId} {
-      allow read: if isAdmin() || (isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().clientId == clientId);
-      allow write: if isAdmin();
+      allow get: if isAdmin() || isClientOwner(clientId);
+      allow list, create, update, delete: if isAdmin();
     }
 
     match /projects/{projectId} {
-      // السماح للقراءة والقائمة إذا كان أدمن أو مستفيد يملك نفس الـ clientId
-      allow read, list: if isAdmin() || (
-        isAuthenticated() && 
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        resource.data.clientId == getUserData().clientId
-      );
+      // السماح بالقراءة والقائمة إذا كان أدمن أو كان العميل يطلب مشاريعه الخاصة (بناءً على clientId)
+      allow read, list: if isAdmin() || (isAuthenticated() && userProfileExists() && resource.data.clientId == getUserData().clientId);
       allow write: if isAdmin();
+    }
+
+    match /invoices/{invoiceId} {
+      allow read, list: if isAdmin() || (isAuthenticated() && userProfileExists() && resource.data.clientId == getUserData().clientId);
+      allow create, update, delete: if isAdmin();
+    }
+    
+    match /payments/{paymentId} {
+      allow read, list: if isAdmin() || (isAuthenticated() && userProfileExists() && resource.data.clientId == getUserData().clientId);
+      allow create, update, delete: if isAdmin();
     }
   }
 }

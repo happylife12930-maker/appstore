@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -40,7 +39,7 @@ function ProjectsContent() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { profile } = useAuth();
+  const { profile, loading: authLoading } = useAuth();
 
   useEffect(() => {
     const qParam = searchParams.get('q');
@@ -48,21 +47,20 @@ function ProjectsContent() {
   }, [searchParams]);
 
   useEffect(() => {
-    if (!db || !profile) return;
+    if (!db || authLoading || !profile) return;
     
     let q;
     if (profile.role === 'admin') {
       q = query(collection(db, "projects"));
     } else {
-      const clientId = profile.clientId;
-      // لا ترسل الاستعلام إذا لم يكن الـ clientId جاهزاً لتجنب خطأ الصلاحيات
-      if (!clientId) {
+      // إذا كان عميلاً، يجب أن يطلب فقط المشاريع التي تخصه ليتوافق مع الـ Rules
+      if (!profile.clientId) {
         setLoading(false);
         return;
       }
       q = query(
         collection(db, "projects"),
-        where("clientId", "==", clientId)
+        where("clientId", "==", profile.clientId)
       );
     }
 
@@ -72,11 +70,16 @@ function ProjectsContent() {
       setLoading(false);
     }, (error) => {
       console.error("Projects Access Error:", error);
+      toast({ 
+        title: "خطأ في الصلاحيات", 
+        description: "لا تملك تصريحاً لعرض هذه المشاريع حالياً.", 
+        variant: "destructive" 
+      });
       setLoading(false);
     });
     
     return () => unsub();
-  }, [profile]);
+  }, [profile, authLoading, toast]);
 
   const filteredProjects = useMemo(() => {
     const s = searchQuery.toLowerCase().trim();
@@ -127,7 +130,7 @@ function ProjectsContent() {
     router.push("/projects");
   };
 
-  if (loading) return (
+  if (loading || authLoading) return (
     <div className="flex flex-col items-center justify-center py-20 gap-4">
       <Loader2 className="h-12 w-12 animate-spin text-primary" />
       <p className="font-bold text-slate-500">جاري تحميل مشاريعك...</p>

@@ -4,7 +4,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { auth, db } from '@/lib/firebase';
 
 interface UserProfile {
@@ -30,11 +30,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const pathname = usePathname();
 
   useEffect(() => {
-    if (!auth || !db) return;
-
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
       
@@ -53,7 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               clientId: data.clientId || "", 
             });
           } else {
-            // إذا كان المستخدم مسجل دخول ولكن ليس له بروفايل في Firestore بعد
+            // If user is logged in but has no profile in Firestore yet
             setProfile(null);
           }
           setLoading(false);
@@ -66,14 +63,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         setProfile(null);
         setLoading(false);
-        if (pathname !== '/login') {
+        if (window.location.pathname !== '/login') {
           router.push('/login');
         }
       }
     });
 
     return () => unsubscribe();
-  }, [db, router, pathname]);
+  }, [router]);
 
   return (
     <AuthContext.Provider value={{ user, profile, loading }}>

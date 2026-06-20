@@ -1,8 +1,7 @@
-
 "use client";
 import * as React from "react";
 import { useState, useEffect } from "react";
-import { Users, Briefcase, CheckCircle, LayoutDashboard, ShieldCheck, Clock, Loader2 } from "lucide-react";
+import { Users, Briefcase, CheckCircle, LayoutDashboard, ShieldCheck, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
@@ -29,38 +28,32 @@ export default function DashboardPage() {
     if (profile.role === 'admin') {
       unsubC = onSnapshot(collection(db, "clients"), (s) => setStats(p => ({ ...p, clients: s.size })));
       unsubP = onSnapshot(collection(db, "projects"), (s) => {
+        const docs = s.docs.map(d => d.data());
         setStats(p => ({ 
           ...p, 
-          projects: s.docs.filter(d => d.data().status !== 'مكتمل').length,
-          finished: s.docs.filter(d => d.data().status === 'مكتمل').length
+          projects: docs.filter(d => d.status !== 'مكتمل').length,
+          finished: docs.filter(d => d.status === 'مكتمل').length
         }));
         setLoading(false);
       }, () => setLoading(false));
     } 
-    else if (profile.role === 'client') {
-      const clientId = profile.clientId;
-      
-      // لا ترسل الاستعلام إذا لم يكن الـ clientId جاهزاً لتجنب خطأ الصلاحيات
-      if (!clientId) {
-        setLoading(false);
-        return;
-      }
-
+    else if (profile.role === 'client' && profile.clientId) {
+      // استعلام محدد بدقة بناءً على clientId لتجنب خطأ الصلاحيات
       const q = query(
         collection(db, "projects"),
-        where("clientId", "==", clientId)
+        where("clientId", "==", profile.clientId)
       );
 
       unsubP = onSnapshot(q, (s) => {
-        const myProjects = s.docs;
+        const myProjects = s.docs.map(d => d.data());
         setStats({
           clients: 0,
-          projects: myProjects.filter(p => p.data().status !== 'مكتمل').length,
-          finished: myProjects.filter(p => p.data().status === 'مكتمل').length
+          projects: myProjects.filter(p => p.status !== 'مكتمل').length,
+          finished: myProjects.filter(p => p.status === 'مكتمل').length
         });
         setLoading(false);
       }, (error) => {
-        console.error("Dashboard Permission Error:", error);
+        console.error("Dashboard Stats Error:", error);
         setLoading(false);
       });
     } else {
