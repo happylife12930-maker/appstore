@@ -19,9 +19,8 @@ const getFriendlyErrorMessage = (errorCode: string) => {
     case "auth/user-not-found": 
     case "auth/invalid-credential": return "بيانات الدخول غير صحيحة. تأكد من البريد وكلمة المرور.";
     case "auth/wrong-password": return "كلمة المرور غير صحيحة.";
-    case "auth/email-already-in-use": return "هذا البريد مسجل بالفعل، يرجى تسجيل الدخول بكلمة مرورك.";
-    case "auth/weak-password": return "كلمة المرور يجب أن تكون 6 رموز على الأقل.";
-    default: return "حدث خطأ أثناء الدخول. يرجى المحاولة مرة أخرى.";
+    case "auth/email-already-in-use": return "البريد مسجل مسبقاً، يرجى الدخول بكلمة مرورك.";
+    default: return "حدث خطأ في الدخول. تأكد من بياناتك وحاول مرة أخرى.";
   }
 };
 
@@ -45,17 +44,16 @@ export default function LoginPage() {
     try {
       let userCredential;
 
+      // 1. محاولة تسجيل الدخول
       try {
-        // 1. محاولة تسجيل الدخول أولاً
         userCredential = await signInWithEmailAndPassword(auth, emailLower, password);
       } catch (loginError: any) {
-        // 2. إذا لم يكن الحساب موجوداً، نتحقق من وجود تفعيل (Invitation)
+        // 2. إذا لم يكن الحساب موجوداً، نتحقق من التفعيل
         if (loginError.code === "auth/user-not-found" || loginError.code === "auth/invalid-credential") {
           const provisionDocRef = doc(db, "users_provision", emailLower);
           const provisionSnap = await getDoc(provisionDocRef);
           
           if (provisionSnap.exists() && password === provisionSnap.data().tempPassword) {
-            // إنشاء حساب جديد إذا كانت كلمة المرور مطابقة للمؤقتة
             userCredential = await createUserWithEmailAndPassword(auth, emailLower, password);
           } else {
             throw loginError;
@@ -67,7 +65,7 @@ export default function LoginPage() {
 
       const user = userCredential.user;
 
-      // 3. مزامنة بيانات الملف الشخصي وربط الـ clientId
+      // 3. مزامنة بيانات التفعيل (clientId) لضمان نجاح الربط مع المشاريع
       const provisionDocRef = doc(db, "users_provision", emailLower);
       const provisionSnap = await getDoc(provisionDocRef);
 
@@ -78,17 +76,16 @@ export default function LoginPage() {
           name: pData.name || "مستفيد",
           email: emailLower,
           phone: pData.phone || "",
-          clientId: pData.clientId || "", // المعرف الأساسي للربط مع المشاريع
+          clientId: pData.clientId || "", // المعرف الأساسي للربط (المأخوذ من id العميل)
           role: "client",
           status: "active",
           permissions: ["p_projects"],
           lastLogin: new Date().toISOString()
         }, { merge: true });
         
-        // مسح بيانات التفعيل بعد الربط بنجاح
         await deleteDoc(provisionDocRef);
       } else if (user) {
-        // تحديث تاريخ الدخول فقط إذا كان الحساب مربوطاً مسبقاً
+        // تحديث وقت الدخول للحسابات النشطة مسبقاً
         await setDoc(doc(db, "users", user.uid), {
           lastLogin: new Date().toISOString()
         }, { merge: true });
@@ -98,7 +95,9 @@ export default function LoginPage() {
       router.push("/");
     } catch (error: any) {
       console.error("Login Error:", error);
-      setError(getFriendlyErrorMessage(error.code));
+      setError(error.message?.includes("insufficient permissions") 
+        ? "خطأ في صلاحيات النظام، يرجى التواصل مع الإدارة." 
+        : getFriendlyErrorMessage(error.code));
     } finally {
       setLoading(false);
     }
@@ -150,7 +149,7 @@ export default function LoginPage() {
               دخول البوابة
             </Button>
             <p className="text-center text-[10px] font-bold text-slate-400 mt-4 leading-relaxed">
-              إذا كنت تدخل لأول مرة، يرجى استخدام بيانات التفعيل المزودة من الإدارة.
+              تأكد من استخدام البريد وكلمة المرور المزودة لك من قبل الإدارة.
             </p>
           </form>
         </CardContent>

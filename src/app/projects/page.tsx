@@ -53,8 +53,9 @@ function ProjectsContent() {
     if (profile.role === 'admin') {
       q = query(collection(db, "projects"));
     } else {
-      // إذا كان عميلاً، يجب استخدام الـ clientId ليتوافق مع الـ Rules
+      // ربط صارم وحصري بناءً على clientId لضمان التوافق مع القواعد (Security Rules)
       if (!profile.clientId) {
+        console.warn("User has no clientId, project fetch skipped.");
         setLoading(false);
         return;
       }
@@ -68,13 +69,15 @@ function ProjectsContent() {
       const docs = snap.docs.map(d => ({ id: d.id, ...d.data() } as ProjectData));
       setProjects(docs);
       setLoading(false);
-    }, (error) => {
+    }, (error: any) => {
       console.error("Projects Access Error:", error);
-      toast({ 
-        title: "خطأ في الصلاحيات", 
-        description: "لا تملك تصريحاً لعرض هذه المشاريع حالياً.", 
-        variant: "destructive" 
-      });
+      if (error.message?.includes("insufficient permissions")) {
+        toast({ 
+          title: "خطأ في الصلاحيات", 
+          description: "برجاء تسجيل الخروج والدخول مرة أخرى لتحديث بيانات الربط.", 
+          variant: "destructive" 
+        });
+      }
       setLoading(false);
     });
     
@@ -146,7 +149,7 @@ function ProjectsContent() {
           </div>
           <div>
             <h1 className="text-3xl font-black text-slate-800 tracking-tight">
-              {profile?.role === 'client' ? 'مشاريعي المتعاقد عليها' : 'إدارة المشاريع'}
+              {profile?.role === 'client' ? 'مشاريعي الجارية' : 'إدارة المشاريع'}
             </h1>
             <p className="text-slate-500 font-bold">
               {profile?.role === 'client' ? 'تابع مراحل تنفيذ طلباتك لحظة بلحظة' : 'متابعة مراحل التنفيذ والمتطلبات'}
@@ -189,7 +192,7 @@ function ProjectsContent() {
         <Card className="rounded-[2.5rem] border-none shadow-sm py-20 text-center bg-white">
           <div className="flex flex-col items-center gap-4 opacity-40">
             <Briefcase className="h-20 w-20" />
-            <p className="text-xl font-black">لا توجد مشاريع مسجلة حالياً</p>
+            <p className="text-xl font-black">لا توجد مشاريع مرتبطة بحسابك حالياً</p>
           </div>
         </Card>
       ) : (
