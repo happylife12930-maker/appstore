@@ -50,7 +50,6 @@ export default function UsersPermissionsPage() {
   const [loading, setLoading] = useState(true);
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
   
-  // حالات نافذة كلمة المرور
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<any>(null);
   const [tempPassword, setTempPassword] = useState("");
@@ -114,6 +113,7 @@ export default function UsersPermissionsPage() {
         name: selectedClient.name,
         email: selectedClient.email,
         phone: selectedClient.phone || "",
+        clientId: selectedClient.id, // ربط معرف العميل الأصلي
         role: "client",
         status: "active",
         tempPassword: tempPassword,
@@ -286,7 +286,6 @@ export default function UsersPermissionsPage() {
         </Card>
       </div>
 
-      {/* نافذة طلب كلمة المرور */}
       <Dialog open={isPasswordModalOpen} onOpenChange={setIsPasswordModalOpen}>
         <DialogContent className="rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white max-w-md" dir="rtl">
           <div className="bg-primary p-8 text-primary-foreground">

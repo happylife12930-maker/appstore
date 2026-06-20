@@ -54,12 +54,11 @@ function ProjectsContent() {
     const unsub = onSnapshot(collection(db, "projects"), (snap) => {
       let docs = snap.docs.map(d => ({ id: d.id, ...d.data() } as ProjectData));
       
-      // إذا كان المستخدم عميلاً (مستفيد)، لا يرى إلا مشاريعه فقط
       if (profile.role === 'client') {
         docs = docs.filter(p => 
+          (profile.clientId && p.clientId === profile.clientId) || // ربط عبر المعرف الأصلي
           p.clientEmail === profile.email || 
-          (p.clientPhone && profile.phone && p.clientPhone === profile.phone) ||
-          p.clientId === profile.uid
+          (p.clientPhone && profile.phone && p.clientPhone === profile.phone)
         );
       }
       

@@ -19,7 +19,6 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!db || authLoading || !profile) return;
 
-    // إذا كان المستخدم أدمن، نراقب كل شيء
     if (profile.role === 'admin') {
       const unsubC = onSnapshot(collection(db, "clients"), (s) => setStats(p => ({ ...p, clients: s.size })));
       const unsubP = onSnapshot(collection(db, "projects"), (s) => {
@@ -32,16 +31,15 @@ export default function DashboardPage() {
       });
       return () => { unsubC(); unsubP(); };
     } 
-    // إذا كان مستفيد (عميل)، نراقب مشاريعه الخاصة فقط
     else if (profile.role === 'client') {
       const unsubP = onSnapshot(collection(db, "projects"), (s) => {
         const myProjects = s.docs.filter(d => {
           const data = d.data();
-          // الربط عبر البريد الإلكتروني أو الهاتف أو معرف العميل
+          // ربط ثلاثي الأبعاد لضمان الظهور: (المعرف المخصص، البريد، أو الهاتف)
           return (
+            (profile.clientId && data.clientId === profile.clientId) ||
             data.clientEmail === profile.email || 
-            (data.clientPhone && profile.phone && data.clientPhone === profile.phone) ||
-            data.clientId === profile.uid
+            (data.clientPhone && profile.phone && data.clientPhone === profile.phone)
           );
         });
         

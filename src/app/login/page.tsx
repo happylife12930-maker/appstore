@@ -41,7 +41,6 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      // 1. محاولة تسجيل الدخول العادي أولاً
       try {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         if (userCredential) {
@@ -50,22 +49,18 @@ export default function LoginPage() {
           return;
         }
       } catch (loginError: any) {
-        // 2. إذا فشل الدخول، نتحقق من جدول التجهيز (users_provision)
         const provisionDocRef = doc(db, "users_provision", email);
         const provisionSnap = await getDoc(provisionDocRef);
 
         if (provisionSnap.exists()) {
           const provisionData = provisionSnap.data();
           
-          // التحقق من تطابق كلمة المرور المؤقتة
           if (password === provisionData.tempPassword) {
             let user;
             try {
-              // محاولة إنشاء حساب جديد
               const createRes = await createUserWithEmailAndPassword(auth, email, password);
               user = createRes.user;
             } catch (createError: any) {
-              // إذا كان الحساب موجوداً بالفعل في Auth ولكن بكلمة مرور مختلفة
               if (createError.code === 'auth/email-already-in-use') {
                 const signInRes = await signInWithEmailAndPassword(auth, email, password);
                 user = signInRes.user;
@@ -75,12 +70,12 @@ export default function LoginPage() {
             }
 
             if (user) {
-              // إنشاء/تحديث بروفايل المستخدم النهائي - إضافة الهاتف هنا
               await setDoc(doc(db, "users", user.uid), {
                 uid: user.uid,
                 name: provisionData.name,
                 email: email,
-                phone: provisionData.phone || "", // حفظ الهاتف لضمان الربط
+                phone: provisionData.phone || "",
+                clientId: provisionData.clientId || "", // ترحيل معرف العميل الأصلي للربط
                 role: provisionData.role || "client",
                 status: "active",
                 permissions: provisionData.permissions || ["p_projects"],
@@ -89,7 +84,6 @@ export default function LoginPage() {
                 tempPassword: password
               });
 
-              // حذف طلب التجهيز بعد النجاح
               await deleteDoc(provisionDocRef);
               
               toast({ title: "تم تفعيل الحساب", description: "تم إنشاء ملفك الشخصي بنجاح، مرحباً بك!" });

@@ -13,7 +13,8 @@ interface UserProfile {
   permissions: string[];
   name: string;
   email: string;
-  clientId?: string; // مضاف لربط العميل بمشاريعه
+  phone?: string;
+  clientId?: string; // المعرف المربوط بجدول العملاء
 }
 
 interface AuthContextType {
