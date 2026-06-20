@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, deleteDoc, doc, setDoc, addDoc, query, where } from "firebase/firestore";
+import { collection, onSnapshot, deleteDoc, doc, setDoc, addDoc } from "firebase/firestore";
 import { AddClientModal, type ClientData } from "@/components/modals/add-client-modal";
 import Link from "next/link";
 
@@ -37,13 +37,11 @@ export default function ClientsPage() {
   useEffect(() => {
     if (!db) return;
     
-    // جلب العملاء
     const unsubClients = onSnapshot(collection(db, "clients"), (snap) => {
       setClients(snap.docs.map(d => ({ id: d.id, ...d.data() } as ClientData)));
       setLoading(false);
     });
 
-    // جلب المشاريع لربطها بالعملاء في العرض
     const unsubProjects = onSnapshot(collection(db, "projects"), (snap) => {
       setProjects(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
@@ -51,7 +49,6 @@ export default function ClientsPage() {
     return () => { unsubClients(); unsubProjects(); };
   }, []);
 
-  // ربط المشاريع بكل عميل
   const clientsWithProjects = useMemo(() => {
     return clients.map(client => {
       const clientProjects = projects.filter(p => p.clientId === client.id);
@@ -63,12 +60,19 @@ export default function ClientsPage() {
   }, [clients, projects]);
 
   const filteredClients = useMemo(() => {
-    const s = searchQuery.toLowerCase();
-    return clientsWithProjects.filter(c => 
-      (c.name || "").toLowerCase().includes(s) || 
-      (c.phone || "").includes(searchQuery) ||
-      c.associatedProjects.some(p => p.name.toLowerCase().includes(s))
-    );
+    const s = searchQuery.toLowerCase().trim();
+    if (!s) return clientsWithProjects;
+
+    return clientsWithProjects.filter(c => {
+      const nameMatch = (c.name || "").toLowerCase().includes(s);
+      const phoneMatch = (c.phone || "").includes(s);
+      const companyMatch = (c.company || "").toLowerCase().includes(s);
+      const projectMatch = c.associatedProjects.some(p => 
+        (p.name || "").toLowerCase().includes(s)
+      );
+      
+      return nameMatch || phoneMatch || companyMatch || projectMatch;
+    });
   }, [clientsWithProjects, searchQuery]);
 
   const handleSaveClient = async (data: ClientData) => {
@@ -84,7 +88,11 @@ export default function ClientsPage() {
       }
       setIsModalOpen(false);
       setEditingClient(null);
-      setTimeout(() => { document.body.style.pointerEvents = 'auto'; }, 100);
+      // حل مشكلة الفريز: التأكد من إعادة تفعيل الأحداث بعد إغلاق المودال
+      setTimeout(() => {
+        document.body.style.pointerEvents = 'auto';
+        document.body.classList.remove('modal-open');
+      }, 300);
     } catch (err) {
       toast({ title: "خطأ", description: "فشل في حفظ البيانات", variant: "destructive" });
     } finally {
@@ -143,7 +151,7 @@ export default function ClientsPage() {
         <Card className="rounded-[2.5rem] border-none shadow-sm py-20 text-center bg-white">
           <div className="flex flex-col items-center gap-4 opacity-40">
             <Users className="h-20 w-20" />
-            <p className="text-xl font-black">لم يتم العثور على نتائج</p>
+            <p className="text-xl font-black">لم يتم العثور على نتائج للبحث</p>
           </div>
         </Card>
       ) : (
@@ -179,14 +187,13 @@ export default function ClientsPage() {
                     <span className="font-bold text-sm truncate max-w-[200px]">{client.email || '---'}</span>
                   </div>
                   
-                  {/* قسم المشاريع المرتبطة */}
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-slate-400">
                       <Briefcase className="h-3.5 w-3.5" />
                       <span className="text-xs font-black">المشاريع المرتبطة</span>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      {client.associatedProjects.length > 0 ? (
+                      {client.associatedProjects && client.associatedProjects.length > 0 ? (
                         client.associatedProjects.map((p: any) => (
                           <Link key={p.id} href="/projects">
                             <Button variant="outline" size="sm" className="h-7 rounded-lg text-[10px] font-bold border-slate-100 hover:bg-primary/5 hover:text-primary gap-1">
@@ -208,7 +215,7 @@ export default function ClientsPage() {
                       <span className="font-black text-xs text-slate-400">الرصيد</span>
                     </div>
                     <span className={`font-black text-lg ${client.balance > 0 ? 'text-rose-600' : 'text-green-600'}`}>
-                      {client.balance.toLocaleString('ar-EG')} ج.م
+                      {(client.balance || 0).toLocaleString('ar-EG')} ج.م
                     </span>
                   </div>
                 </div>

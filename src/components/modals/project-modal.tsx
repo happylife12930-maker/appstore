@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Briefcase, Search, Image as ImageIcon, Plus, Trash2, Save, Phone } from 'lucide-react';
+import { Loader2, Briefcase, Search, Image as ImageIcon, Plus, Trash2, Save } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
@@ -67,7 +67,7 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
     const unsub = onSnapshot(collection(db, "clients"), (snap) => {
       setClients(snap.docs.map(doc => ({ 
         id: doc.id, 
-        name: doc.data().name, 
+        name: doc.data().name || '', 
         phone: doc.data().phone || '' 
       })));
     });
@@ -100,10 +100,11 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
   }, [initialData, isOpen]);
 
   const filteredClients = useMemo(() => {
-    const s = clientSearch.toLowerCase();
+    const s = clientSearch.toLowerCase().trim();
+    if (!s) return clients;
     return clients.filter(c => 
-      c.name?.toLowerCase().includes(s) || 
-      c.phone?.includes(clientSearch)
+      (c.name || "").toLowerCase().includes(s) || 
+      (c.phone || "").includes(s)
     );
   }, [clients, clientSearch]);
 
@@ -122,6 +123,10 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
     if (!formData.name || !formData.clientId) return;
     const selectedClient = clients.find(c => c.id === formData.clientId);
     await onSave({ ...formData, clientName: selectedClient?.name || '' });
+    // حل مشكلة الفريز بعد الحفظ
+    setTimeout(() => {
+      document.body.style.pointerEvents = 'auto';
+    }, 500);
   };
 
   return (
@@ -171,11 +176,11 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
                         <SelectItem key={c.id} value={c.id}>
                           <div className="flex flex-col items-start">
                             <span>{c.name}</span>
-                            <span className="text-[10px] text-slate-400" dir="ltr">{c.phone}</span>
+                            <span className="text-[10px] text-slate-400 font-normal" dir="ltr">{c.phone}</span>
                           </div>
                         </SelectItem>
                       ))}
-                      {filteredClients.length === 0 && <div className="p-2 text-center text-xs text-slate-400">لا توجد نتائج</div>}
+                      {filteredClients.length === 0 && <div className="p-2 text-center text-xs text-slate-400">لا توجد نتائج مطابقة</div>}
                     </SelectContent>
                   </Select>
                 </div>
