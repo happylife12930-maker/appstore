@@ -27,7 +27,9 @@ import {
   Search,
   Briefcase,
   FileText,
-  Phone
+  Phone,
+  Edit3,
+  RotateCcw
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { db } from '@/lib/firebase';
@@ -73,6 +75,7 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
   const [newTesterEmail, setNewTesterEmail] = useState('');
   const [newTesterPhone, setNewTesterPhone] = useState('');
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
+  const [editingTesterIndex, setEditingTesterIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (!db) return;
@@ -97,6 +100,11 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
       });
       setProjectSearch('');
     }
+    // ريست لحالة التعديل عند فتح النافذة
+    setEditingTesterIndex(null);
+    setNewTesterEmail('');
+    setNewTesterPhone('');
+    setSelectedDays([]);
   }, [initialData, isOpen]);
 
   const filteredProjects = useMemo(() => {
@@ -105,12 +113,42 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
     return projects.filter(p => p.name.toLowerCase().includes(s));
   }, [projects, projectSearch]);
 
-  const addTester = () => {
+  const handleTesterAction = () => {
     if (!newTesterEmail.includes('@') || selectedDays.length === 0) return;
-    setFormData(prev => ({
-      ...prev,
-      testers: [...prev.testers, { email: newTesterEmail, phone: newTesterPhone, assignedDays: selectedDays }]
-    }));
+
+    if (editingTesterIndex !== null) {
+      // تحديث مختبر موجود
+      const updatedTesters = [...formData.testers];
+      updatedTesters[editingTesterIndex] = { 
+        email: newTesterEmail, 
+        phone: newTesterPhone, 
+        assignedDays: selectedDays 
+      };
+      setFormData(prev => ({ ...prev, testers: updatedTesters }));
+      setEditingTesterIndex(null);
+    } else {
+      // إضافة مختبر جديد
+      setFormData(prev => ({
+        ...prev,
+        testers: [...prev.testers, { email: newTesterEmail, phone: newTesterPhone, assignedDays: selectedDays }]
+      }));
+    }
+
+    setNewTesterEmail('');
+    setNewTesterPhone('');
+    setSelectedDays([]);
+  };
+
+  const startEditingTester = (index: number) => {
+    const tester = formData.testers[index];
+    setNewTesterEmail(tester.email);
+    setNewTesterPhone(tester.phone);
+    setSelectedDays(tester.assignedDays);
+    setEditingTesterIndex(index);
+  };
+
+  const cancelEditing = () => {
+    setEditingTesterIndex(null);
     setNewTesterEmail('');
     setNewTesterPhone('');
     setSelectedDays([]);
@@ -121,6 +159,9 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
       ...prev,
       testers: prev.testers.filter((_, i) => i !== index)
     }));
+    if (editingTesterIndex === index) {
+      cancelEditing();
+    }
   };
 
   const toggleDay = (day: string) => {
@@ -205,9 +246,17 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
               </div>
             </div>
 
-            <div className="p-6 bg-slate-50 rounded-[2.5rem] border border-slate-100 space-y-6">
+            <div className={`p-6 rounded-[2.5rem] border transition-all space-y-6 ${editingTesterIndex !== null ? 'bg-orange-50 border-orange-200' : 'bg-slate-50 border-slate-100'}`}>
               <h3 className="font-black text-slate-800 flex items-center gap-2 pr-2">
-                <UserPlus className="h-5 w-5 text-primary" /> إضافة مختبر وتحديد الأيام
+                {editingTesterIndex !== null ? (
+                  <>
+                    <Edit3 className="h-5 w-5 text-orange-500" /> تعديل بيانات المختبر الحالي
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="h-5 w-5 text-primary" /> إضافة مختبر وتحديد الأيام
+                  </>
+                )}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="relative">
@@ -246,24 +295,44 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
                   ))}
                 </div>
               </div>
-              <Button onClick={addTester} className="rounded-2xl h-12 px-6 font-black gap-2 w-full shadow-md">
-                إضافة المختبر للقائمة
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={handleTesterAction} 
+                  className={`flex-1 rounded-2xl h-12 px-6 font-black gap-2 shadow-md ${editingTesterIndex !== null ? 'bg-orange-500 hover:bg-orange-600' : ''}`}
+                >
+                  {editingTesterIndex !== null ? 'تحديث بيانات المختبر' : 'إضافة المختبر للقائمة'}
+                </Button>
+                {editingTesterIndex !== null && (
+                  <Button variant="outline" onClick={cancelEditing} className="rounded-2xl h-12 px-4 font-black text-slate-500 border-slate-200">
+                    <RotateCcw className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
 
             <div className="space-y-4">
               <Label className="font-black text-slate-800 pr-2 uppercase text-xs">فريق الاختبار المعين</Label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {formData.testers.map((tester, idx) => (
-                  <div key={idx} className="p-4 rounded-3xl bg-white border border-slate-100 flex flex-col gap-2 relative shadow-sm group">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => removeTester(idx)}
-                      className="absolute top-2 left-2 h-7 w-7 rounded-lg text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
+                  <div key={idx} className={`p-4 rounded-3xl border flex flex-col gap-2 relative shadow-sm group transition-all ${editingTesterIndex === idx ? 'bg-orange-50 border-orange-300 ring-2 ring-orange-200' : 'bg-white border-slate-100'}`}>
+                    <div className="absolute top-2 left-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => startEditingTester(idx)}
+                        className="h-7 w-7 rounded-lg text-primary hover:bg-primary/10"
+                      >
+                        <Edit3 className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => removeTester(idx)}
+                        className="h-7 w-7 rounded-lg text-rose-500 hover:bg-rose-50"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
                     <div className="space-y-1">
                       <p className="font-black text-xs text-slate-800">{tester.email}</p>
                       {tester.phone && <p className="text-[10px] font-bold text-slate-400" dir="ltr">{tester.phone}</p>}
