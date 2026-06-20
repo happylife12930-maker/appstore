@@ -39,14 +39,14 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      // محاولة الدخول العادي أولاً
+      // 1. محاولة الدخول العادي أولاً
       try {
         await signInWithEmailAndPassword(auth, email, password);
         toast({ title: "تم الدخول بنجاح", description: "مرحباً بك مجدداً في APP STORE" });
         router.push("/");
         return;
       } catch (loginError: any) {
-        // إذا فشل الدخول العادي، نفحص جدول التجهيز
+        // 2. إذا فشل الدخول العادي، نفحص جدول التجهيز (للعملاء الجدد)
         const provisionDocRef = doc(db, "users_provision", email);
         const provisionSnap = await getDoc(provisionDocRef);
 
@@ -56,13 +56,14 @@ export default function LoginPage() {
           if (password === provisionData.tempPassword) {
             let user;
             try {
-              // محاولة إنشاء حساب جديد
+              // محاولة إنشاء حساب جديد في Firebase Auth
               const createRes = await createUserWithEmailAndPassword(auth, email, password);
               user = createRes.user;
             } catch (createError: any) {
               if (createError.code === 'auth/email-already-in-use') {
-                const signInRes = await signInWithEmailAndPassword(auth, email, password).catch(async () => {
-                  return await signInWithEmailAndPassword(auth, email, provisionData.tempPassword);
+                // إذا كان الحساب موجوداً في Auth ولكن بدون بروفايل، نقوم بتسجيل الدخول وتحديث الباسورد
+                const signInRes = await signInWithEmailAndPassword(auth, email, provisionData.tempPassword).catch(async () => {
+                   return await signInWithEmailAndPassword(auth, email, password);
                 });
                 user = signInRes.user;
                 if (user) await updatePassword(user, password);
@@ -72,21 +73,22 @@ export default function LoginPage() {
             }
 
             if (user) {
-              // الربط الصارم باستخدام clientId
+              // 3. الربط الصارم والشامل: نسخ كافة البيانات لجدول المستخدمين
               await setDoc(doc(db, "users", user.uid), {
                 uid: user.uid,
-                name: provisionData.name,
+                name: provisionData.name || "مستفيد",
                 email: email,
                 phone: provisionData.phone || "",
-                clientId: provisionData.clientId || "", 
+                clientId: provisionData.clientId || "", // هذا أهم حقل للربط مع المشاريع
                 role: provisionData.role || "client",
                 status: "active",
                 permissions: ["p_projects"],
                 createdAt: new Date().toISOString(),
                 lastLogin: new Date().toLocaleString('ar-EG'),
-                tempPassword: password
+                tempPassword: password // حفظه للرجوع إليه من الأدمن
               });
 
+              // مسح بيانات التجهيز لضمان الأمان
               await deleteDoc(provisionDocRef);
               
               toast({ title: "تم تفعيل الحساب", description: "تم ربط بياناتك بنجاح، مرحباً بك!" });

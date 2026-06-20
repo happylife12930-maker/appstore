@@ -2,43 +2,42 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // دالة للتحقق مما إذا كان المستخدم مديراً
-    function isAdmin() {
-      return request.auth != null && 
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    function isAuthenticated() {
+      return request.auth != null;
     }
 
-    // قواعد جدول المستخدمين
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && getUserData().role == 'admin';
+    }
+
     match /users/{userId} {
-      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
-      allow write: if isAdmin() || (request.auth != null && request.auth.uid == userId);
+      allow read, write: if isAuthenticated() && request.auth.uid == userId;
+      allow list: if isAdmin();
     }
-    
-    // قواعد جدول العملاء
-    match /clients/{clientId} {
-      allow read, write: if isAdmin();
-    }
-    
-    // قواعد جدول المشاريع
-    match /projects/{projectId} {
-      // السماح بالقراءة للأدمن، أو للعميل بناءً على الربط الثلاثي (ID، بريد، هاتف)
-      allow read: if request.auth != null && (
-        isAdmin() || 
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
-          let user = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-          resource.data.clientId == user.clientId || 
-          resource.data.clientEmail == user.email || 
-          resource.data.clientPhone == user.phone
-        ))
-      );
+
+    match /users_provision/{email} {
+      allow read: if true; // السماح بالقراءة أثناء الدخول للتحقق
       allow write: if isAdmin();
     }
-    
-    // قواعد جدول التجهيز (بوابة المستفيد)
-    match /users_provision/{email} {
-      allow read, write: if isAdmin();
-      allow get: if true;
+
+    match /clients/{clientId} {
+      allow read: if isAdmin() || (isAuthenticated() && getUserData().clientId == clientId);
+      allow write: if isAdmin();
+    }
+
+    match /projects/{projectId} {
+      allow read: if isAdmin() || (
+        isAuthenticated() && (
+          resource.data.clientId == getUserData().clientId || 
+          resource.data.clientEmail == request.auth.token.email ||
+          resource.data.clientPhone == getUserData().phone
+        )
+      );
+      allow list, write: if isAdmin();
     }
   }
 }

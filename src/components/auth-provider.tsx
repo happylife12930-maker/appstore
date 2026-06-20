@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
@@ -39,14 +38,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(firebaseUser);
       
       if (firebaseUser) {
+        // الاستماع المباشر لبروفايل المستخدم في Firestore
         const docRef = doc(db, 'users', firebaseUser.uid);
         const unsubProfile = onSnapshot(docRef, (docSnap) => {
           if (docSnap.exists()) {
-            setProfile(docSnap.data() as UserProfile);
+            const data = docSnap.data();
+            setProfile({
+              uid: firebaseUser.uid,
+              role: data.role || 'client',
+              permissions: data.permissions || [],
+              name: data.name || "مستفيد",
+              email: data.email || firebaseUser.email || "",
+              phone: data.phone || "",
+              clientId: data.clientId || "", // نضمن تحميل الـ clientId هنا
+            });
+          } else {
+            setProfile(null);
           }
           setLoading(false);
         }, (err) => {
-          console.error("Profile Load Error:", err);
+          console.error("Auth Profile Error:", err);
           setLoading(false);
         });
 

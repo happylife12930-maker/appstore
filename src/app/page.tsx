@@ -17,8 +17,9 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!db || authLoading) return;
     
+    // الانتظار حتى يتأكد النظام من هوية المستخدم وبيانات بروفايله
     if (!profile) {
-      setLoading(false);
+      if (!authLoading) setLoading(false);
       return;
     }
 
@@ -37,13 +38,13 @@ export default function DashboardPage() {
       });
     } 
     else if (profile.role === 'client') {
-      // استخدام الربط الثلاثي الذكي لضمان ظهور المشاريع
+      // الربط الثلاثي الموثوق: استخدام clientId أو Email أو Phone لضمان جلب كافة المشاريع
       const q = query(
         collection(db, "projects"),
         or(
-          where("clientId", "==", profile.clientId || "---"),
-          where("clientEmail", "==", profile.email || "---"),
-          where("clientPhone", "==", profile.phone || "---")
+          where("clientId", "==", profile.clientId || "NONE_MATCH"),
+          where("clientEmail", "==", profile.email || "NONE_MATCH"),
+          where("clientPhone", "==", profile.phone || "NONE_MATCH")
         )
       );
 
@@ -56,7 +57,7 @@ export default function DashboardPage() {
         });
         setLoading(false);
       }, (error) => {
-        console.error("Dashboard Client Query Error:", error);
+        console.error("Client Dashboard Query Error:", error);
         setLoading(false);
       });
     } else {
