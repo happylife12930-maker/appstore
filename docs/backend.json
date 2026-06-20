@@ -16,6 +16,30 @@
       },
       "required": ["uid", "email", "role"]
     },
+    "SupportThread": {
+      "title": "Support Thread",
+      "description": "A chat thread between a client and admin.",
+      "type": "object",
+      "properties": {
+        "clientId": { "type": "string" },
+        "clientName": { "type": "string" },
+        "lastMessage": { "type": "string" },
+        "lastMessageTime": { "type": "string", "format": "date-time" },
+        "unreadAdmin": { "type": "number" },
+        "unreadClient": { "type": "number" }
+      }
+    },
+    "ChatMessage": {
+      "title": "Chat Message",
+      "description": "An individual message in a support thread.",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderRole": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    },
     "Project": {
       "title": "Project",
       "description": "Represents a software project managed by the agency.",
@@ -108,6 +132,14 @@
     "/testing_groups/{groupId}": {
       "schema": "TestingGroup",
       "description": "Testing assignments and tester schedules."
+    },
+    "/support_threads/{threadId}": {
+      "schema": "SupportThread",
+      "description": "Support chat threads, where threadId is client uid."
+    },
+    "/support_threads/{threadId}/messages/{msgId}": {
+      "schema": "ChatMessage",
+      "description": "Individual messages within a support thread."
     }
   }
 }

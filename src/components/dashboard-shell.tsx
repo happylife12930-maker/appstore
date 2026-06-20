@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from "react";
@@ -40,7 +41,9 @@ import { useTranslation } from "@/components/language-provider";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth-provider";
 import { signOut } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
+import { collection, query, onSnapshot, doc, getDoc } from "firebase/firestore";
+import { Badge } from "@/components/ui/badge";
 
 // تعريف العناصر مع تحديد من يمكنه رؤيتها وصلاحيتها المطلوبة
 const navItems = [
@@ -58,6 +61,28 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { t, language, setLanguage, dir } = useTranslation();
   const { profile, loading } = useAuth();
+  const [unreadCount, setUnreadCount] = React.useState(0);
+
+  // مراقبة الرسائل غير المقروءة للإشعارات
+  React.useEffect(() => {
+    if (!db || !profile) return;
+
+    if (profile.role === 'admin') {
+      const q = query(collection(db, "support_threads"));
+      const unsub = onSnapshot(q, (snap) => {
+        const total = snap.docs.reduce((acc, d) => acc + (d.data().unreadAdmin || 0), 0);
+        setUnreadCount(total);
+      });
+      return () => unsub();
+    } else {
+      const unsub = onSnapshot(doc(db, "support_threads", profile.uid), (docSnap) => {
+        if (docSnap.exists()) {
+          setUnreadCount(docSnap.data().unreadClient || 0);
+        }
+      });
+      return () => unsub();
+    }
+  }, [profile]);
 
   if (pathname === '/login') return <>{children}</>;
   if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
@@ -111,9 +136,14 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                       isActive={pathname === item.url}
                       tooltip={t(item.title)}
                     >
-                      <Link href={item.url}>
+                      <Link href={item.url} className="relative">
                         <item.icon />
                         <span>{t(item.title)}</span>
+                        {item.title === 'support' && unreadCount > 0 && (
+                          <Badge className="absolute left-2 bg-rose-500 text-white rounded-full h-5 min-w-5 flex items-center justify-center p-1 text-[10px] border-2 border-white">
+                            {unreadCount}
+                          </Badge>
+                        )}
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

@@ -24,25 +24,13 @@ service cloud.firestore {
       allow list, delete: if isAdmin();
     }
 
-    match /users_provision/{email} {
-      allow get: if true;
-      allow list, write, delete: if isAdmin();
-    }
-
-    match /clients/{clientId} {
-      allow read, list: if isAdmin() || (isAuthenticated() && getUserData() != null && getUserData().clientId == clientId);
-      allow write: if isAdmin();
-    }
-
     match /projects/{projectId} {
       allow read, list: if isAdmin() || (isAuthenticated() && getUserData() != null && (resource == null || resource.data.clientId == getUserData().clientId));
       allow write: if isAdmin();
     }
 
     match /quotations/{quotationId} {
-      // السماح لجميع المسجلين (مديرين وعملاء) بالقراءة لرؤية المعرض
       allow read, list: if isAuthenticated();
-      // الكتابة والحذف مقتصرة على المدير فقط
       allow write, delete: if isAdmin();
     }
 
@@ -50,14 +38,12 @@ service cloud.firestore {
       allow read, write, list, delete: if isAdmin();
     }
 
-    match /invoices/{invoiceId} {
-      allow read, list: if isAdmin() || (isAuthenticated() && getUserData() != null && resource.data.clientId == getUserData().clientId);
-      allow write: if isAdmin();
-    }
-    
-    match /payments/{paymentId} {
-      allow read, list: if isAdmin() || (isAuthenticated() && getUserData() != null && resource.data.clientId == getUserData().clientId);
-      allow write: if isAdmin();
+    match /support_threads/{threadId} {
+      allow read, write: if isAdmin() || (isAuthenticated() && request.auth.uid == threadId);
+      
+      match /messages/{msgId} {
+        allow read, write: if isAdmin() || (isAuthenticated() && request.auth.uid == threadId);
+      }
     }
   }
 }
