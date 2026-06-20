@@ -23,7 +23,7 @@ import {
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc } from "firebase/firestore";
+import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, query, limit } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { AddClientModal, ClientData } from "@/components/modals/add-client-modal";
 import { useRouter } from "next/navigation";
@@ -34,12 +34,14 @@ export default function ClientsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<any | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
 
   useEffect(() => {
     if (!db) return;
-    const unsub = onSnapshot(collection(db, "clients"), (snapshot) => {
+    const q = query(collection(db, "clients"), limit(50));
+    const unsub = onSnapshot(q, (snapshot) => {
       const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       list.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
       setClients(list);
@@ -49,6 +51,7 @@ export default function ClientsPage() {
   }, []);
 
   const handleSaveClient = async (data: ClientData) => {
+    setIsSubmitting(true);
     try {
       if (editingClient) {
         await updateDoc(doc(db!, "clients", editingClient.id), { ...data });
@@ -64,6 +67,10 @@ export default function ClientsPage() {
       setEditingClient(null);
     } catch (error) {
       toast({ title: "خطأ", description: "فشل حفظ البيانات.", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+      // التأكد من إزالة أي حالة تجمد في الشاشة
+      document.body.style.pointerEvents = 'auto';
     }
   };
 
@@ -71,7 +78,7 @@ export default function ClientsPage() {
     const s = searchQuery.toLowerCase();
     return clients.filter(c => 
       (c.name || "").toLowerCase().includes(s) ||
-      (c.phone || "").includes(searchQuery) ||
+      (c.phone || "").toLowerCase().includes(s) ||
       (c.projectName || "").toLowerCase().includes(s)
     );
   }, [clients, searchQuery]);
@@ -158,7 +165,7 @@ export default function ClientsPage() {
         isOpen={isModalOpen} 
         onClose={() => { setIsModalOpen(false); setEditingClient(null); }} 
         onSave={handleSaveClient}
-        isLoading={false}
+        isLoading={isSubmitting}
         initialData={editingClient}
       />
     </div>

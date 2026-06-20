@@ -5,7 +5,6 @@ import { useSearchParams } from "next/navigation";
 import { 
   Briefcase, 
   Search, 
-  CheckCircle2, 
   Clock, 
   ChevronRight,
   Eye,
@@ -74,17 +73,16 @@ function ProjectsContent() {
     const doneCount = updatedSteps.filter((s: any) => s.completed).length;
     const prog = Math.round((doneCount / updatedSteps.length) * 100);
 
-    // Optimistic UI for instant feedback
-    setSelectedProject((prev: any) => ({ ...prev, steps: updatedSteps, progress: prog }));
-
     try {
       await updateDoc(doc(db!, "projects", projectId), {
         steps: updatedSteps,
         progress: prog,
         status: prog === 100 ? "مكتمل" : "قيد التنفيذ"
       });
+      // تحديث الحالة محلياً فوراً للتفاعل اللحظي
+      setSelectedProject((prev: any) => ({ ...prev, steps: updatedSteps, progress: prog }));
     } catch (err) {
-      toast({ title: "خطأ", description: "فشل تحديث البيانات.", variant: "destructive" });
+      toast({ title: "خطأ", description: "فشل تحديث المرحلة.", variant: "destructive" });
     }
   };
 
@@ -184,7 +182,7 @@ function ProjectsContent() {
                 ))}
               </div>
 
-              {/* زر الإغلاق الموحد أسفل قائمة المراحل مباشرة كما طلب العميل */}
+              {/* زر الإغلاق الموحد أسفل قائمة المراحل مباشرة لسهولة الاستخدام */}
               <div className="pt-6">
                 <Button 
                   onClick={() => setIsViewModalOpen(false)}
