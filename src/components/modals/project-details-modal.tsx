@@ -22,7 +22,8 @@ import {
   Layers,
   DollarSign,
   Users,
-  ExternalLink
+  ExternalLink,
+  Maximize2
 } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { ProjectData } from './project-modal';
@@ -124,12 +125,22 @@ export function ProjectDetailsModal({ isOpen, onClose, project, db }: ProjectDet
             <div className="space-y-4">
               <h3 className="font-black text-slate-800 text-xl flex items-center gap-2">
                 <ImageIcon className="h-5 w-5 text-primary" /> واجهات النظام
+                <span className="text-xs font-bold text-slate-400 mr-2">(انقر على الصورة للعرض بالحجم الكامل)</span>
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {project.images.map((img, idx) => (
-                  <div key={idx} className="aspect-video rounded-2xl overflow-hidden border-2 border-white shadow-sm hover:shadow-md transition-shadow">
-                    <img src={img} className="w-full h-full object-cover" alt="" />
-                  </div>
+                  <a 
+                    key={idx} 
+                    href={img} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="group relative aspect-video rounded-2xl overflow-hidden border-2 border-white shadow-sm hover:shadow-xl transition-all block cursor-zoom-in"
+                  >
+                    <img src={img} className="w-full h-full object-cover transition-transform group-hover:scale-105" alt={`Interface ${idx + 1}`} />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <Maximize2 className="text-white h-8 w-8 drop-shadow-lg" />
+                    </div>
+                  </a>
                 ))}
               </div>
             </div>
@@ -176,9 +187,9 @@ export function ProjectDetailsModal({ isOpen, onClose, project, db }: ProjectDet
                   {localSteps.map((step) => (
                     <div 
                       key={step.id} 
-                      onClick={() => handleToggleStep(step.id)}
+                      onClick={() => isAdmin && handleToggleStep(step.id)}
                       className={`flex items-center gap-4 p-4 rounded-xl transition-all border-2 ${
-                        isAdmin ? 'cursor-pointer hover:border-primary/20' : 'cursor-default'
+                        isAdmin ? 'cursor-pointer hover:border-primary/20' : 'cursor-default opacity-80'
                       } ${
                         step.completed ? 'bg-green-50 border-green-100' : 'bg-white border-slate-50'
                       }`}
