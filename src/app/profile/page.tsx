@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -7,15 +6,10 @@ import {
   User, 
   Mail, 
   Phone, 
-  Building, 
   Wallet, 
-  CreditCard, 
   Briefcase, 
   Loader2, 
   ShieldCheck, 
-  LayoutDashboard,
-  Printer,
-  Calendar,
   FileText,
   BadgeCheck
 } from "lucide-react";
@@ -73,10 +67,6 @@ export default function ProfilePage() {
     };
   }, [profile, authLoading]);
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   if (loading || authLoading) return (
     <div className="flex flex-col items-center justify-center py-20 gap-4">
       <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -87,7 +77,7 @@ export default function ProfilePage() {
   return (
     <div className="max-w-5xl mx-auto space-y-8 pb-20" dir="rtl">
       {/* رأس الصفحة */}
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-8 rounded-[2.5rem] shadow-sm border no-print">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-8 rounded-[2.5rem] shadow-sm border">
         <div className="flex items-center gap-4">
           <div className="p-4 bg-primary/10 rounded-2xl text-primary">
             <User className="h-8 w-8" />
@@ -97,13 +87,6 @@ export default function ProfilePage() {
             <p className="text-slate-500 font-bold">إدارة بياناتك ومتابعة كشف الحساب المالي</p>
           </div>
         </div>
-        <Button 
-          variant="outline"
-          onClick={handlePrint}
-          className="rounded-2xl h-14 px-8 font-black text-lg gap-2 shadow-sm border-slate-200"
-        >
-          <Printer className="h-5 w-5" /> طباعة كشف الحساب
-        </Button>
       </header>
 
       {/* المحتوى الرئيسي */}
@@ -221,7 +204,7 @@ export default function ProfilePage() {
           </Card>
 
           {/* نصائح أو تواصل سريع */}
-          <div className="p-8 bg-slate-900 rounded-[2.5rem] text-white flex flex-col md:flex-row items-center justify-between gap-6 no-print">
+          <div className="p-8 bg-slate-900 rounded-[2.5rem] text-white flex flex-col md:flex-row items-center justify-between gap-6">
             <div>
               <h4 className="text-xl font-black mb-2">هل لديك استفسار حول كشف الحساب؟</h4>
               <p className="opacity-70 font-bold text-sm">فريق الدعم المالي متاح دائماً لمراجعة أي تفاصيل معك.</p>
