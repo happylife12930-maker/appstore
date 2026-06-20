@@ -19,7 +19,9 @@ import {
   Download,
   FileSpreadsheet,
   FileText,
-  Phone
+  Phone,
+  MessageCircle,
+  Send
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -99,6 +101,46 @@ export default function TestersManagementPage() {
     } catch (err) {
       toast({ title: "خطأ", variant: "destructive" });
     }
+  };
+
+  const handleSendWhatsAppNotifications = (group: TestingGroupData) => {
+    if (!group.testers || group.testers.length === 0) {
+      toast({ title: "تنبيه", description: "لا يوجد مختبرين في هذا المشروع للإرسال لهم.", variant: "destructive" });
+      return;
+    }
+
+    group.testers.forEach((tester, index) => {
+      if (!tester.phone) return;
+
+      const cleanPhone = tester.phone.replace(/[^0-9]/g, '');
+      const message = `*تنبيه مهمة اختبار - APP STORE* 🚀
+
+مرحباً، يسرنا إبلاغكم بأنه قد تم تكليفكم بمهمة اختبار لمشروع: *${group.projectName}*
+
+*تفاصيل المواعيد المحددة لكم:*
+📅 ${tester.assignedDays.join('، ')}
+
+*رابط نسخة الاختبار والمرفقات:*
+🔗 ${group.resourceLink || 'سيتم تزويدكم به لاحقاً'}
+
+${group.notes ? `*تعليمات إضافية:*
+📝 ${group.notes}` : ''}
+
+يرجى البدء في الاختبار وموافاتنا بالتقارير في المواعيد المحددة.
+بالتوفيق، فريق إدارة الجودة.`;
+
+      const encodedMessage = encodeURIComponent(message);
+      
+      // تأخير بسيط بين كل نافذة لتجنب حظر المتصفح للنوافذ المنبثقة المتعددة
+      setTimeout(() => {
+        window.open(`https://wa.me/${cleanPhone}?text=${encodedMessage}`, '_blank');
+      }, index * 1000);
+    });
+
+    toast({ 
+      title: "جاري فتح المحادثات", 
+      description: `يتم الآن فتح ${group.testers.length} محادثة واتساب لإرسال التنبيهات.` 
+    });
   };
 
   const handleExportCSV = (specificGroup?: TestingGroupData) => {
@@ -278,6 +320,13 @@ export default function TestersManagementPage() {
                   )}
                 </div>
               )}
+
+              <Button 
+                onClick={() => handleSendWhatsAppNotifications(group)}
+                className="w-full h-12 rounded-2xl font-black text-xs gap-2 bg-green-500 hover:bg-green-600 text-white shadow-lg active:scale-95 transition-all mt-4"
+              >
+                <MessageCircle className="h-4 w-4" /> إرسال تنبيهات واتساب للفريق
+              </Button>
             </CardContent>
             <div className="p-4 bg-slate-50 border-t flex gap-2">
               <Button 
