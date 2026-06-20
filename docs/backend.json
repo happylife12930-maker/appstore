@@ -60,6 +60,7 @@
             "type": "object",
             "properties": {
               "email": { "type": "string" },
+              "phone": { "type": "string" },
               "assignedDays": { "type": "array", "items": { "type": "string" } }
             }
           }

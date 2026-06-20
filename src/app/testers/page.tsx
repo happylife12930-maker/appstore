@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -7,7 +8,6 @@ import {
   Plus, 
   Search, 
   Clock, 
-  CheckCircle2, 
   Calendar, 
   Link as LinkIcon, 
   Mail, 
@@ -18,7 +18,8 @@ import {
   ExternalLink,
   Download,
   FileSpreadsheet,
-  FileText
+  FileText,
+  Phone
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -63,7 +64,7 @@ export default function TestersManagementPage() {
     if (!s) return testingGroups;
     return testingGroups.filter(g => 
       g.projectName.toLowerCase().includes(s) || 
-      g.testers.some(t => t.email.toLowerCase().includes(s))
+      g.testers.some(t => t.email.toLowerCase().includes(s) || (t.phone && t.phone.includes(s)))
     );
   }, [testingGroups, searchQuery]);
 
@@ -183,7 +184,7 @@ export default function TestersManagementPage() {
       <div className="relative">
         <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5" />
         <Input 
-          placeholder="ابحث باسم المشروع أو إيميل المختبر..." 
+          placeholder="ابحث باسم المشروع أو بيانات المختبر (إيميل/هاتف)..." 
           className="pr-12 h-16 rounded-2xl font-bold text-lg border-none shadow-sm bg-white focus-visible:ring-primary/20"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
@@ -224,9 +225,17 @@ export default function TestersManagementPage() {
                 <div className="space-y-3">
                   {group.testers.map((tester, idx) => (
                     <div key={idx} className="p-3 rounded-2xl bg-white border border-slate-100 flex flex-col gap-2">
-                      <div className="flex items-center gap-2">
-                        <Mail className="h-3 w-3 text-primary" />
-                        <span className="text-xs font-bold text-slate-700">{tester.email}</span>
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                          <Mail className="h-3 w-3 text-primary" />
+                          <span className="text-xs font-bold text-slate-700">{tester.email}</span>
+                        </div>
+                        {tester.phone && (
+                          <div className="flex items-center gap-2">
+                            <Phone className="h-3 w-3 text-slate-400" />
+                            <span className="text-[10px] font-bold text-slate-400" dir="ltr">{tester.phone}</span>
+                          </div>
+                        )}
                       </div>
                       <div className="flex flex-wrap gap-1">
                         {tester.assignedDays.map(day => (
