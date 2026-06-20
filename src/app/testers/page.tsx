@@ -16,7 +16,8 @@ import {
   Edit3, 
   Loader2,
   AlertCircle,
-  ExternalLink
+  ExternalLink,
+  Download
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -98,6 +99,41 @@ export default function TestersManagementPage() {
     }
   };
 
+  const handleExportCSV = () => {
+    if (filteredGroups.length === 0) {
+      toast({ title: "تنبيه", description: "لا توجد بيانات لتصديرها حالياً", variant: "destructive" });
+      return;
+    }
+
+    // تجهيز البيانات
+    const headers = ["المشروع", "بريد المختبر", "أيام العمل", "حالة المهمة"];
+    const rows = filteredGroups.flatMap(group => 
+      group.testers.map(tester => [
+        group.projectName,
+        tester.email,
+        tester.assignedDays.join(" - "),
+        group.status === 'completed' ? 'تم الاختبار' : group.status === 'in_progress' ? 'جارِ الاختبار' : 'في الانتظار'
+      ])
+    );
+
+    // بناء المحتوى بصيغة CSV مع دعم اللغة العربية (UTF-8 BOM)
+    const csvContent = "\uFEFF" + [
+      headers.join(","),
+      ...rows.map(e => e.join(","))
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `قائمة_المختبرين_${new Date().toLocaleDateString('ar-EG')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast({ title: "تم التصدير", description: "تم تحميل ملف المختبرين بنجاح" });
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'completed': return <Badge className="bg-green-500 rounded-lg font-black">تم الاختبار</Badge>;
@@ -125,12 +161,21 @@ export default function TestersManagementPage() {
             <p className="text-slate-500 font-bold">ربط المشاريع بالمختبرين، تحديد المواعيد، ومتابعة الجودة</p>
           </div>
         </div>
-        <Button 
-          onClick={() => { setEditingGroup(null); setIsModalOpen(true); }}
-          className="rounded-2xl h-14 px-8 font-black text-lg gap-2 shadow-xl hover:scale-105 transition-all"
-        >
-          <Plus className="h-6 w-6" /> تعيين مشروع للاختبار
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline"
+            onClick={handleExportCSV}
+            className="rounded-2xl h-14 px-6 font-black text-lg gap-2 border-primary text-primary hover:bg-primary/5"
+          >
+            <Download className="h-5 w-5" /> تصدير CSV
+          </Button>
+          <Button 
+            onClick={() => { setEditingGroup(null); setIsModalOpen(true); }}
+            className="rounded-2xl h-14 px-8 font-black text-lg gap-2 shadow-xl hover:scale-105 transition-all"
+          >
+            <Plus className="h-6 w-6" /> تعيين مشروع للاختبار
+          </Button>
+        </div>
       </header>
 
       <div className="relative">
