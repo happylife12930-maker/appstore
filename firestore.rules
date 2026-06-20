@@ -26,9 +26,10 @@ service cloud.firestore {
     match /users_provision/{email} {
       // السماح بجلب وثيقة التفعيل بالبريد الإلكتروني للتحقق قبل أو أثناء تسجيل الدخول
       allow get: if true;
-      // المدير يمكنه القراءة والكتابة والمسح، والعميل يمكنه المسح بعد الدخول (للتنظيف)
-      allow delete: if isAdmin() || (isAuthenticated() && request.auth.token.email.lower() == email.lower());
+      // المدير يمكنه القراءة والكتابة والمسح
       allow list, write: if isAdmin();
+      // السماح للمستفيد بالمسح إذا كان يملك نفس البريد (للتنظيف الذاتي بعد الدخول)
+      allow delete: if isAdmin() || (isAuthenticated() && request.auth.token.email.lower() == email.lower());
     }
 
     match /clients/{clientId} {

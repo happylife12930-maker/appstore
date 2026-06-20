@@ -95,6 +95,11 @@ export default function UsersPermissionsPage() {
 
   const handleConfirmGrantAccess = async () => {
     if (!db || !selectedClient || !tempPassword) return;
+    if (!selectedClient.email) {
+      toast({ title: "خطأ", description: "العميل لا يملك بريداً إلكترونياً مسجلاً.", variant: "destructive" });
+      return;
+    }
+    
     setIsSubmitting(true);
     try {
       const emailLower = selectedClient.email.toLowerCase().trim();
@@ -112,6 +117,7 @@ export default function UsersPermissionsPage() {
       
       toast({ title: "تم التفعيل", description: "تم تزويد العميل بصلاحيات الدخول بنجاح." });
       setIsPasswordModalOpen(false);
+      setTempPassword("");
     } catch (err) {
       toast({ title: "خطأ", description: "فشل تفعيل العميل. تأكد من اتصال الإنترنت.", variant: "destructive" });
     } finally {
@@ -141,20 +147,25 @@ export default function UsersPermissionsPage() {
 
   // حذف الحساب النشط
   const handleRevokeActiveAccess = async (uid: string, email: string) => {
-    if (!db || !confirm("تحذير: هل أنت متأكد من حذف حساب العميل نهائياً؟ سيتم منعه من الدخول فوراً.")) return;
+    if (!db) return;
+    if (!confirm("تحذير: هل أنت متأكد من حذف حساب العميل نهائياً؟ سيتم منعه من الدخول فوراً.")) return;
+    
     try {
       await deleteDoc(doc(db, "users", uid));
-      // محاولة حذف مستند التفعيل أيضاً إذا كان موجوداً
-      await deleteDoc(doc(db, "users_provision", email.toLowerCase().trim())).catch(() => {});
+      if (email) {
+        await deleteDoc(doc(db, "users_provision", email.toLowerCase().trim())).catch(() => {});
+      }
       toast({ title: "تم الحذف", description: "تم إلغاء حساب العميل من النظام نهائياً." });
     } catch (err) {
-      toast({ title: "خطأ في الصلاحيات", description: "لم يتم الحذف. تأكد من أنك تملك صلاحية المدير.", variant: "destructive" });
+      toast({ title: "خطأ", description: "فشل الحذف، يرجى التحقق من الصلاحيات.", variant: "destructive" });
     }
   };
 
   // إلغاء طلب التفعيل المعلق
   const handleCancelProvision = async (email: string) => {
-    if (!db || !confirm("هل تريد إلغاء طلب التفعيل لهذا العميل؟")) return;
+    if (!db || !email) return;
+    if (!confirm("هل تريد إلغاء طلب التفعيل لهذا العميل؟")) return;
+    
     try {
       await deleteDoc(doc(db, "users_provision", email.toLowerCase().trim()));
       toast({ title: "تم الإلغاء", description: "تم سحب طلب التفعيل المعلق بنجاح." });
