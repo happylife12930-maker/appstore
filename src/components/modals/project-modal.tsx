@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Briefcase, Search, Image as ImageIcon, Plus, Trash2, Save, Phone, UserCheck } from 'lucide-react';
+import { Loader2, Briefcase, Search, Image as ImageIcon, Plus, Trash2, Save, Phone, UserCheck, DollarSign } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
@@ -28,6 +28,7 @@ export interface ProjectData {
   clientName: string;
   requirements: string;
   status: string;
+  cost: number;
   images: string[];
   progress: number;
   steps: { id: number; title: string; completed: boolean }[];
@@ -60,6 +61,7 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
     clientName: '',
     requirements: '',
     status: 'قيد التنفيذ',
+    cost: 0,
     images: [],
     progress: 0,
     steps: [
@@ -96,6 +98,7 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
         clientName: '',
         requirements: '',
         status: 'قيد التنفيذ',
+        cost: 0,
         images: [],
         progress: 0,
         steps: [
@@ -237,19 +240,34 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label className="font-black text-slate-700 pr-2">حالة المشروع</Label>
-              <Select value={formData.status} onValueChange={(val) => setFormData({...formData, status: val})}>
-                <SelectTrigger className="rounded-2xl h-12 border-slate-200 font-black">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="rounded-2xl font-bold">
-                  <SelectItem value="قيد التنفيذ">قيد التنفيذ</SelectItem>
-                  <SelectItem value="في انتظار المراجعة">في انتظار المراجعة</SelectItem>
-                  <SelectItem value="مكتمل">مكتمل</SelectItem>
-                  <SelectItem value="متوقف مؤقتاً">متوقف مؤقتاً</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label className="font-black text-slate-700 pr-2">حالة المشروع</Label>
+                <Select value={formData.status} onValueChange={(val) => setFormData({...formData, status: val})}>
+                  <SelectTrigger className="rounded-2xl h-12 border-slate-200 font-black">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-2xl font-bold">
+                    <SelectItem value="قيد التنفيذ">قيد التنفيذ</SelectItem>
+                    <SelectItem value="في انتظار المراجعة">في انتظار المراجعة</SelectItem>
+                    <SelectItem value="مكتمل">مكتمل</SelectItem>
+                    <SelectItem value="متوقف مؤقتاً">متوقف مؤقتاً</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="font-black text-slate-700 pr-2 flex items-center gap-2">
+                  <DollarSign className="h-4 w-4 text-primary" /> التكلفة المتفق عليها (ج.م)
+                </Label>
+                <Input 
+                  type="number"
+                  value={formData.cost} 
+                  onChange={(e) => setFormData({...formData, cost: Number(e.target.value)})} 
+                  placeholder="0.00" 
+                  className="rounded-2xl h-12 border-slate-200 font-black text-lg focus-visible:ring-primary/20"
+                />
+              </div>
             </div>
 
             <div className="space-y-2">

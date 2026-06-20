@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -20,10 +21,13 @@ import {
   FileText,
   User,
   Layers,
-  Layout
+  Layout,
+  DollarSign,
+  Users
 } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { ProjectData } from './project-modal';
+import Link from 'next/link';
 
 interface ProjectDetailsModalProps {
   isOpen: boolean;
@@ -92,9 +96,16 @@ export function ProjectDetailsModal({ isOpen, onClose, project, db }: ProjectDet
                 </div>
                 <div className="text-right">
                   <DialogTitle className="text-2xl font-black">{project.name}</DialogTitle>
-                  <DialogDescription className="text-primary-foreground/80 font-bold flex items-center gap-2 mt-1">
-                    <User className="h-4 w-4" /> العميل: {project.clientName}
-                  </DialogDescription>
+                  <div className="flex flex-wrap items-center gap-3 mt-1">
+                    <DialogDescription className="text-primary-foreground/80 font-bold flex items-center gap-2">
+                      <User className="h-4 w-4" /> العميل: {project.clientName}
+                    </DialogDescription>
+                    <Link href="/clients">
+                      <Button variant="outline" size="sm" className="h-7 rounded-lg text-[10px] font-black bg-white/10 border-white/20 hover:bg-white/20 text-white gap-1">
+                        <Users className="h-3 w-3" /> عرض ملف العميل
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
               </div>
               <div className="bg-white/10 px-4 py-2 rounded-2xl border border-white/20">
@@ -124,18 +135,30 @@ export function ProjectDetailsModal({ isOpen, onClose, project, db }: ProjectDet
             </div>
           )}
 
-          {/* المتطلبات والمراحل */}
+          {/* التكلفة و المتطلبات و المراحل */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             
-            {/* المتطلبات */}
-            <div className="lg:col-span-5 space-y-4">
-              <h3 className="font-black text-slate-800 text-lg flex items-center gap-2">
-                <FileText className="h-5 w-5 text-primary" /> المتطلبات
-              </h3>
-              <div className="p-6 bg-white rounded-3xl border border-slate-100 shadow-sm min-h-[150px]">
-                <p className="text-slate-600 font-bold leading-relaxed text-sm whitespace-pre-line">
-                  {project.requirements || 'لا توجد متطلبات محددة.'}
-                </p>
+            {/* المتطلبات و التكلفة */}
+            <div className="lg:col-span-5 space-y-6">
+              <div className="space-y-4">
+                <h3 className="font-black text-slate-800 text-lg flex items-center gap-2">
+                  <DollarSign className="h-5 w-5 text-primary" /> التكلفة المتفق عليها
+                </h3>
+                <div className="p-6 bg-primary/5 border border-primary/10 rounded-3xl flex items-center justify-between">
+                  <span className="font-black text-slate-500 text-sm">إجمالي المشروع</span>
+                  <span className="text-2xl font-black text-primary">{(project.cost || 0).toLocaleString('ar-EG')} ج.م</span>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="font-black text-slate-800 text-lg flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-primary" /> المتطلبات
+                </h3>
+                <div className="p-6 bg-white rounded-3xl border border-slate-100 shadow-sm min-h-[150px]">
+                  <p className="text-slate-600 font-bold leading-relaxed text-sm whitespace-pre-line">
+                    {project.requirements || 'لا توجد متطلبات محددة.'}
+                  </p>
+                </div>
               </div>
             </div>
 
