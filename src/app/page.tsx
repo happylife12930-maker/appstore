@@ -17,9 +17,12 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!db || authLoading || !profile) return;
 
+    let unsubP = () => {};
+    let unsubC = () => {};
+
     if (profile.role === 'admin') {
-      const unsubC = onSnapshot(collection(db, "clients"), (s) => setStats(p => ({ ...p, clients: s.size })));
-      const unsubP = onSnapshot(collection(db, "projects"), (s) => {
+      unsubC = onSnapshot(collection(db, "clients"), (s) => setStats(p => ({ ...p, clients: s.size })));
+      unsubP = onSnapshot(collection(db, "projects"), (s) => {
         setStats(p => ({ 
           ...p, 
           projects: s.docs.filter(d => d.data().status !== 'مكتمل').length,
@@ -27,36 +30,39 @@ export default function DashboardPage() {
         }));
         setLoading(false);
       });
-      return () => { unsubC(); unsubP(); };
     } 
     else if (profile.role === 'client') {
-      // استخدام Query بـ OR لضمان جلب المشاريع المسموح بها فقط وتجنب خطأ Permission Denied
-      const projectsRef = collection(db, "projects");
-      const q = query(
-        projectsRef,
-        or(
-          where("clientId", "==", profile.clientId || "NONE"),
-          where("clientEmail", "==", profile.email || "NONE"),
-          where("clientPhone", "==", profile.phone || "NONE")
-        )
-      );
+      // بناء الاستعلام بناءً على البيانات المتوفرة فقط لتجنب أخطاء الصلاحيات
+      const conditions = [];
+      if (profile.clientId) conditions.push(where("clientId", "==", profile.clientId));
+      if (profile.email) conditions.push(where("clientEmail", "==", profile.email));
+      if (profile.phone) conditions.push(where("clientPhone", "==", profile.phone));
 
-      const unsubP = onSnapshot(q, (s) => {
-        const myProjects = s.docs;
-        setStats({
-          clients: 0,
-          projects: myProjects.filter(p => p.data().status !== 'مكتمل').length,
-          finished: myProjects.filter(p => p.data().status === 'مكتمل').length
+      if (conditions.length > 0) {
+        const q = query(collection(db, "projects"), or(...conditions));
+        unsubP = onSnapshot(q, (s) => {
+          const myProjects = s.docs;
+          setStats({
+            clients: 0,
+            projects: myProjects.filter(p => p.data().status !== 'مكتمل').length,
+            finished: myProjects.filter(p => p.data().status === 'مكتمل').length
+          });
+          setLoading(false);
+        }, (error) => {
+          console.error("Dashboard Client Query Error:", error);
+          setLoading(false);
         });
+      } else {
         setLoading(false);
-      }, (error) => {
-        console.error("Dashboard Snapshot Error:", error);
-        setLoading(false);
-      });
-      return () => unsubP();
+      }
     } else {
       setLoading(false);
     }
+
+    return () => {
+      unsubP();
+      unsubC();
+    };
   }, [profile, authLoading]);
 
   if (loading || authLoading) return (

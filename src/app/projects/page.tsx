@@ -44,8 +44,8 @@ function ProjectsContent() {
   const { profile } = useAuth();
 
   useEffect(() => {
-    const q = searchParams.get('q');
-    if (q) setSearchQuery(q);
+    const qParam = searchParams.get('q');
+    if (qParam) setSearchQuery(qParam);
   }, [searchParams]);
 
   useEffect(() => {
@@ -53,17 +53,20 @@ function ProjectsContent() {
 
     let q;
     if (profile.role === 'admin') {
-      q = collection(db, "projects");
+      q = query(collection(db, "projects"));
     } else {
-      // استخدام استعلام مفلتر لتجنب خطأ Permission Denied
-      q = query(
-        collection(db, "projects"),
-        or(
-          where("clientId", "==", profile.clientId || "NONE"),
-          where("clientEmail", "==", profile.email || "NONE"),
-          where("clientPhone", "==", profile.phone || "NONE")
-        )
-      );
+      // بناء الاستعلام بناءً على بيانات العميل لضمان الصلاحيات
+      const conditions = [];
+      if (profile.clientId) conditions.push(where("clientId", "==", profile.clientId));
+      if (profile.email) conditions.push(where("clientEmail", "==", profile.email));
+      if (profile.phone) conditions.push(where("clientPhone", "==", profile.phone));
+
+      if (conditions.length > 0) {
+        q = query(collection(db, "projects"), or(...conditions));
+      } else {
+        setLoading(false);
+        return;
+      }
     }
 
     const unsub = onSnapshot(q, (snap) => {
@@ -71,7 +74,7 @@ function ProjectsContent() {
       setProjects(docs);
       setLoading(false);
     }, (error) => {
-      console.error("Projects Snapshot Error:", error);
+      console.error("Projects Query Error:", error);
       setLoading(false);
     });
     

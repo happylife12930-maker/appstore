@@ -20,12 +20,13 @@ service cloud.firestore {
     
     // قواعد جدول المشاريع
     match /projects/{projectId} {
-      allow read: if isAdmin() || (request.auth != null && (
+      // السماح بالقراءة للأدمن، أو للعميل إذا كان المشروع يخصه بناءً على المعرف أو البريد أو الهاتف
+      allow read: if request.auth != null && (
+        isAdmin() || 
         resource.data.clientId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.clientId ||
-        resource.data.clientEmail == request.auth.token.email || 
-        resource.data.clientPhone == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.phone ||
-        resource.data.clientPhone == request.auth.token.phone_number
-      ));
+        resource.data.clientEmail == request.auth.token.email ||
+        resource.data.clientPhone == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.phone
+      );
       allow write: if isAdmin();
     }
     
