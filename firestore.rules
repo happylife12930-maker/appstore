@@ -40,7 +40,10 @@ service cloud.firestore {
     }
 
     match /quotations/{quotationId} {
-      allow read, write, list, delete: if isAdmin();
+      // السماح لجميع المسجلين (مديرين وعملاء) بالقراءة لرؤية المعرض
+      allow read, list: if isAuthenticated();
+      // الكتابة والحذف مقتصرة على المدير فقط
+      allow write, delete: if isAdmin();
     }
 
     match /testing_groups/{groupId} {
