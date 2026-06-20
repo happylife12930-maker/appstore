@@ -20,7 +20,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, deleteDoc, doc, setDoc, addDoc, query, where } from "firebase/firestore";
+import { collection, onSnapshot, deleteDoc, doc, setDoc, addDoc, query, where, or } from "firebase/firestore";
 import { ProjectModal, type ProjectData } from "@/components/modals/project-modal";
 import { ProjectDetailsModal } from "@/components/modals/project-details-modal";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -53,14 +53,15 @@ function ProjectsContent() {
     if (profile.role === 'admin') {
       q = query(collection(db, "projects"));
     } else {
-      const clientId = profile.clientId;
-      if (clientId) {
-        // الفلترة الصارمة باستخدام clientId لضمان التوافق مع قواعد الأمان
-        q = query(collection(db, "projects"), where("clientId", "==", clientId));
-      } else {
-        setLoading(false);
-        return;
-      }
+      // الربط الثلاثي الذكي لضمان أعلى دقة في جلب المشاريع
+      q = query(
+        collection(db, "projects"),
+        or(
+          where("clientId", "==", profile.clientId || "---"),
+          where("clientEmail", "==", profile.email || "---"),
+          where("clientPhone", "==", profile.phone || "---")
+        )
+      );
     }
 
     const unsub = onSnapshot(q, (snap) => {

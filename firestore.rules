@@ -22,11 +22,15 @@ service cloud.firestore {
     
     // قواعد جدول المشاريع
     match /projects/{projectId} {
-      // السماح بالقراءة للأدمن، أو للعميل إذا تطابق clientId المشروع مع clientId المسجل في بروفايله
+      // السماح بالقراءة للأدمن، أو للعميل بناءً على الربط الثلاثي (ID، بريد، هاتف)
       allow read: if request.auth != null && (
         isAdmin() || 
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-         resource.data.clientId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.clientId)
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
+          let user = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+          resource.data.clientId == user.clientId || 
+          resource.data.clientEmail == user.email || 
+          resource.data.clientPhone == user.phone
+        ))
       );
       allow write: if isAdmin();
     }

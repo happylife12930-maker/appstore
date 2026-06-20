@@ -5,7 +5,7 @@ import { Users, Briefcase, CheckCircle, LayoutDashboard, ShieldCheck, Clock, Loa
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, where, Unsubscribe } from "firebase/firestore";
+import { collection, onSnapshot, query, where, or, Unsubscribe } from "firebase/firestore";
 import { useAuth } from "@/components/auth-provider";
 
 export default function DashboardPage() {
@@ -37,25 +37,28 @@ export default function DashboardPage() {
       });
     } 
     else if (profile.role === 'client') {
-      const clientId = profile.clientId;
-      if (clientId) {
-        // الفلترة الصارمة باستخدام clientId
-        const q = query(collection(db, "projects"), where("clientId", "==", clientId));
-        unsubP = onSnapshot(q, (s) => {
-          const myProjects = s.docs;
-          setStats({
-            clients: 0,
-            projects: myProjects.filter(p => p.data().status !== 'مكتمل').length,
-            finished: myProjects.filter(p => p.data().status === 'مكتمل').length
-          });
-          setLoading(false);
-        }, (error) => {
-          console.error("Dashboard Client Query Error:", error);
-          setLoading(false);
+      // استخدام الربط الثلاثي الذكي لضمان ظهور المشاريع
+      const q = query(
+        collection(db, "projects"),
+        or(
+          where("clientId", "==", profile.clientId || "---"),
+          where("clientEmail", "==", profile.email || "---"),
+          where("clientPhone", "==", profile.phone || "---")
+        )
+      );
+
+      unsubP = onSnapshot(q, (s) => {
+        const myProjects = s.docs;
+        setStats({
+          clients: 0,
+          projects: myProjects.filter(p => p.data().status !== 'مكتمل').length,
+          finished: myProjects.filter(p => p.data().status === 'مكتمل').length
         });
-      } else {
         setLoading(false);
-      }
+      }, (error) => {
+        console.error("Dashboard Client Query Error:", error);
+        setLoading(false);
+      });
     } else {
       setLoading(false);
     }
