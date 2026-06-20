@@ -47,10 +47,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               name: data.name || "مستفيد",
               email: data.email || firebaseUser.email || "",
               phone: data.phone || "",
-              clientId: data.clientId || "", 
+              clientId: data.clientId || "", // التأكد من قراءة المعرف هنا
             });
           } else {
-            // If user is logged in but has no profile in Firestore yet
             setProfile(null);
           }
           setLoading(false);
@@ -63,7 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         setProfile(null);
         setLoading(false);
-        if (window.location.pathname !== '/login') {
+        if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
           router.push('/login');
         }
       }

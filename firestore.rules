@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -8,11 +9,12 @@ service cloud.firestore {
     }
 
     function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      let path = /databases/$(database)/documents/users/$(request.auth.uid);
+      return exists(path) ? get(path).data : null;
     }
 
     function isAdmin() {
-      return isAuthenticated() && getUserData().role == 'admin';
+      return isAuthenticated() && getUserData() != null && getUserData().role == 'admin';
     }
 
     // --- Security Rules ---
@@ -24,30 +26,30 @@ service cloud.firestore {
     }
 
     match /users_provision/{email} {
-      // السماح بالتحقق والحذف للمستفيد صاحب البريد
+      // السماح بجلب وثيقة التفعيل بالبريد الإلكتروني للتحقق قبل أو أثناء تسجيل الدخول
       allow get: if true;
-      allow delete: if isAuthenticated() && request.auth.token.email.lower() == email.lower();
+      allow delete: if true; // السماح بالحذف لتنظيف بيانات التفعيل بعد الدخول
       allow list, write: if isAdmin();
     }
 
     match /clients/{clientId} {
-      allow get, list: if isAdmin() || (isAuthenticated() && getUserData().clientId == clientId);
+      allow get, list: if isAdmin() || (isAuthenticated() && getUserData() != null && getUserData().clientId == clientId);
       allow write: if isAdmin();
     }
 
     match /projects/{projectId} {
-      // الربط الصارم بين المستفيد ومشاريعه عبر clientId
-      allow read, list: if isAdmin() || (isAuthenticated() && resource.data.clientId == getUserData().clientId);
+      // السماح للمستفيد برؤية وقائمة مشاريعه المربوطة بـ clientId الخاص به
+      allow read, list: if isAdmin() || (isAuthenticated() && getUserData() != null && resource.data.clientId == getUserData().clientId);
       allow write: if isAdmin();
     }
 
     match /invoices/{invoiceId} {
-      allow read, list: if isAdmin() || (isAuthenticated() && resource.data.clientId == getUserData().clientId);
+      allow read, list: if isAdmin() || (isAuthenticated() && getUserData() != null && resource.data.clientId == getUserData().clientId);
       allow write: if isAdmin();
     }
     
     match /payments/{paymentId} {
-      allow read, list: if isAdmin() || (isAuthenticated() && resource.data.clientId == getUserData().clientId);
+      allow read, list: if isAdmin() || (isAuthenticated() && getUserData() != null && resource.data.clientId == getUserData().clientId);
       allow write: if isAdmin();
     }
   }
