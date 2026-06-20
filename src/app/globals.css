@@ -35,14 +35,21 @@
   body {
     @apply bg-background text-foreground;
     font-family: 'Cairo', sans-serif;
-    /* حل مشكلة الفريز عبر إجبار قبول الأحداث دائماً */
+    /* إجبار الصفحة على قبول التفاعل دائماً لحل مشكلة الفريز */
     pointer-events: auto !important;
   }
 }
 
 /* حل جذري لمشكلة تجمد الشاشة بعد إغلاق المودال في Shadcn */
+/* هذا الكود يعيد تفعيل اللمس حتى لو نسى المودال حذف السمة */
 body[style*="pointer-events: none"] {
   pointer-events: auto !important;
+  overflow: auto !important;
+}
+
+body.modal-open {
+  pointer-events: auto !important;
+  overflow: hidden !important;
 }
 
 .modal-open {

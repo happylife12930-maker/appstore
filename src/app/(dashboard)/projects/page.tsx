@@ -1,8 +1,5 @@
 
 /**
- * هذا الملف معطل لتجنب تعارض المسارات (Parallel Pages)
- * الكود النشط موجود في src/app/projects/page.tsx
+ * هذا الملف معطل لمنع تعارض المسارات مع src/app/projects/page.tsx
  */
-export default function ObsoleteProjectsPage() {
-  return null;
-}
+export const ObsoleteProjectsPage = () => null;

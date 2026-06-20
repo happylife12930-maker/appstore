@@ -32,6 +32,14 @@ export default function ClientsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
 
+  // حل مشكلة الفريز: التأكد من استعادة التحكم في الشاشة عند إغلاق المودال
+  useEffect(() => {
+    if (!isModalOpen) {
+      document.body.style.pointerEvents = 'auto';
+      document.body.style.overflow = 'auto';
+    }
+  }, [isModalOpen]);
+
   useEffect(() => {
     if (!db) return;
     const unsub = onSnapshot(collection(db, "clients"), (snap) => {
@@ -65,10 +73,11 @@ export default function ClientsPage() {
       setIsModalOpen(false);
       setEditingClient(null);
       
-      // حل مشكلة الفريز عبر التأكد من إعادة تفعيل الـ pointer-events برمجياً
+      // حل إضافي لمشكلة الفريز: إجبار المتصفح على استعادة التفاعل
       setTimeout(() => {
         document.body.style.pointerEvents = 'auto';
-      }, 200);
+        document.body.style.overflow = 'auto';
+      }, 100);
     } catch (err) {
       toast({ title: "خطأ", description: "فشل في حفظ البيانات", variant: "destructive" });
     } finally {
