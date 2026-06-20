@@ -1,7 +1,8 @@
+
 'use client';
 
 import * as React from 'react';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -15,17 +16,19 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Briefcase, Search, Image as ImageIcon, Plus, Trash2, Save, Phone, UserCheck, DollarSign } from 'lucide-react';
+import { Loader2, Briefcase, Search, Image as ImageIcon, Plus, Trash2, Save, Phone, UserCheck, DollarSign, Upload } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { db } from '@/lib/firebase';
+import { db, storage } from '@/lib/firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { useToast } from '@/hooks/use-toast';
 
 export interface ProjectData {
   id?: string;
   name: string;
   clientId: string;
   clientName: string;
-  clientPhone?: string; // مضاف لضمان الربط الدقيق
+  clientPhone?: string;
   requirements: string;
   status: string;
   cost: number;
@@ -52,6 +55,10 @@ const normalizeForSearch = (text: any) => {
 export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }: ProjectModalProps) {
   const [clients, setClients] = useState<{ id: string; name: string; phone: string }[]>([]);
   const [clientSearch, setClientSearch] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+
   const [formData, setFormData] = useState<ProjectData>({
     name: '',
     clientId: '',
@@ -144,6 +151,25 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
     }
   };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !storage) return;
+
+    setIsUploading(true);
+    try {
+      const storageRef = ref(storage, `projects/${Date.now()}-${file.name}`);
+      await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(storageRef);
+      setFormData(prev => ({ ...prev, images: [...prev.images, url] }));
+      toast({ title: "تم الرفع", description: "تم رفع الصورة بنجاح من جهازك" });
+    } catch (error) {
+      toast({ title: "خطأ", description: "فشل في رفع الصورة، تأكد من اتصالك", variant: "destructive" });
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   const removeImage = (index: number) => {
     setFormData(prev => ({ ...prev, images: prev.images.filter((_, i) => i !== index) }));
   };
@@ -169,7 +195,7 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
               <Briefcase className="h-6 w-6" /> {initialData ? 'تعديل بيانات المشروع' : 'بدء مشروع جديد'}
             </DialogTitle>
             <DialogDescription className="text-primary-foreground/80 font-bold">
-              اربط المشروع بالعميل من خلال البحث بالاسم أو رقم الهاتف
+              اربط المشروع بالعميل وحدد التكلفة والواجهات
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -266,23 +292,52 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
                 value={formData.requirements} 
                 onChange={(e) => setFormData({...formData, requirements: e.target.value})} 
                 placeholder="صف هنا مميزات التطبيق والمتطلبات التقنية بالتفصيل..."
-                className="rounded-2xl min-h-[140px] border-slate-200 font-bold leading-relaxed"
+                className="rounded-2xl min-h-[140px] border-input font-bold leading-relaxed"
               />
             </div>
 
             <div className="space-y-4 p-6 bg-slate-50 rounded-[2.5rem] border border-slate-100 shadow-inner">
-              <Label className="font-black flex items-center gap-2 text-slate-700 pr-2">
-                <ImageIcon className="h-4 w-4 text-primary" /> صور وواجهات المشروع
-              </Label>
+              <div className="flex items-center justify-between pr-2">
+                <Label className="font-black flex items-center gap-2 text-slate-700">
+                  <ImageIcon className="h-4 w-4 text-primary" /> صور وواجهات المشروع
+                </Label>
+                <div className="flex gap-2">
+                  <input 
+                    type="file" 
+                    className="hidden" 
+                    ref={fileInputRef} 
+                    accept="image/*" 
+                    onChange={handleFileUpload}
+                  />
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                    className="rounded-xl font-black gap-2 border-primary text-primary hover:bg-primary/5"
+                  >
+                    {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                    رفع من الجهاز
+                  </Button>
+                </div>
+              </div>
+
               <div className="flex gap-2">
                 <Input 
                   value={newImageUrl} 
                   onChange={(e) => setNewImageUrl(e.target.value)} 
-                  placeholder="ضع رابط الصورة هنا..." 
+                  placeholder="أو ضع رابط صورة مباشر..." 
                   className="rounded-xl h-12 border-slate-200 bg-white"
                 />
                 <Button onClick={handleAddImage} className="rounded-xl h-12 px-6 shadow-md"><Plus className="h-5 w-5" /></Button>
               </div>
+
+              {isUploading && (
+                <div className="flex items-center gap-2 text-primary font-bold text-xs p-2">
+                  <Loader2 className="h-3 w-3 animate-spin" /> جاري رفع الصورة إلى السيرفر...
+                </div>
+              )}
+
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 {formData.images.map((img, idx) => (
                   <div key={idx} className="relative group aspect-video rounded-2xl overflow-hidden border-2 border-white shadow-md bg-white">
@@ -303,7 +358,7 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
         <DialogFooter className="p-8 bg-slate-50 border-t">
           <Button 
             onClick={handleSubmit} 
-            disabled={isLoading || !formData.name || !formData.clientId}
+            disabled={isLoading || isUploading || !formData.name || !formData.clientId}
             className="w-full h-16 rounded-[1.5rem] font-black text-xl gap-3 shadow-2xl hover:scale-[1.02] active:scale-95 transition-all"
           >
             {isLoading ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />}
