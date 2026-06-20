@@ -4,14 +4,12 @@
 import * as React from "react";
 import { useState, useEffect, Suspense } from "react";
 import { 
-  Calculator, 
   Plus, 
   Edit3, 
   Trash2, 
   ExternalLink, 
   Image as ImageIcon,
   Loader2,
-  FileText,
   X
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -144,12 +142,12 @@ function QuotationsContent() {
                 </div>
               </div>
 
-              {/* معرض الصور المرفق */}
+              {/* معرض الصور المرفق - Preview Card with Dynamic Height */}
               <Card className="rounded-[2.5rem] border-none shadow-xl overflow-hidden bg-white group-hover:scale-[1.01] transition-all cursor-pointer" onClick={() => { setViewingQuotation(q); setIsDetailsOpen(true); }}>
-                <div className="relative h-[400px] bg-slate-100 flex items-center justify-center">
+                <div className="relative min-h-[300px] max-h-[600px] bg-slate-100 flex items-center justify-center overflow-hidden">
                   {q.images?.[0] ? (
                     <>
-                      <img src={q.images[0]} className="w-full h-full object-cover" alt="" />
+                      <img src={q.images[0]} className="w-full h-auto object-contain" alt="" />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                       <div className="absolute bottom-6 right-6 flex items-center gap-3">
                         <Badge className="bg-white/20 backdrop-blur-md text-white border-none px-4 py-2 rounded-xl font-black">
