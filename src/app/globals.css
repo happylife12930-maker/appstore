@@ -34,7 +34,7 @@
   body {
     @apply bg-background text-foreground;
     font-family: 'Cairo', sans-serif;
-    /* حل مشكلة تجمد الشاشة بعد إغلاق المودال */
+    /* حل قاطع لمشكلة التجمد */
     pointer-events: auto !important;
   }
   h1, h2, h3, h4, h5, h6 {
@@ -43,11 +43,11 @@
   }
 }
 
-/* إصلاح مشكلة قفل التمرير التي تسبب الفريز */
-.modal-open {
-  overflow: hidden;
-}
-
+/* إصلاح مشكلة قفل التمرير واللمس بعد إغلاق المودال */
 body[style*="pointer-events: none"] {
   pointer-events: auto !important;
+}
+
+.modal-open {
+  overflow: hidden !important;
 }
