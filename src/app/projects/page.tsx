@@ -9,7 +9,6 @@ import {
   Edit3, 
   Trash2, 
   ExternalLink, 
-  Clock, 
   Image as ImageIcon,
   Loader2,
   X
@@ -21,7 +20,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, deleteDoc, doc, setDoc, addDoc, query, where, or, Unsubscribe } from "firebase/firestore";
+import { collection, onSnapshot, deleteDoc, doc, setDoc, addDoc, query, where } from "firebase/firestore";
 import { ProjectModal, type ProjectData } from "@/components/modals/project-modal";
 import { ProjectDetailsModal } from "@/components/modals/project-details-modal";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -41,7 +40,7 @@ function ProjectsContent() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { profile, user } = useAuth();
+  const { profile } = useAuth();
 
   useEffect(() => {
     const qParam = searchParams.get('q');
@@ -50,28 +49,24 @@ function ProjectsContent() {
 
   useEffect(() => {
     if (!db) return;
-    if (!profile && loading === false) return;
+    
+    // الانتظار حتى اكتمال تحميل البروفايل
+    if (!profile) {
+      // إذا لم يكن هناك تحميل جاري، فهذا يعني أن المستخدم لم يسجل دخول
+      return;
+    }
 
     let q;
-    if (profile?.role === 'admin') {
+    if (profile.role === 'admin') {
       q = query(collection(db, "projects"));
     } else {
-      const userEmail = user?.email || profile?.email;
-      const userPhone = profile?.phone;
-      const clientId = profile?.clientId;
-
-      const conditions = [];
-      if (userEmail) conditions.push(where("clientEmail", "==", userEmail));
-      if (clientId) conditions.push(where("clientId", "==", clientId));
-      if (userPhone) conditions.push(where("clientPhone", "==", userPhone));
-
-      if (conditions.length > 0) {
-        q = query(collection(db, "projects"), or(...conditions));
-      } else if (profile || user) {
-        // إذا كان هناك مستخدم ولكن بدون بيانات ربط، لا تعرض شيئاً
-        setLoading(false);
-        return;
+      // الربط الصارم بـ clientId للمستفيد لضمان التوافق مع قواعد الأمان
+      const clientId = profile.clientId;
+      if (clientId) {
+        q = query(collection(db, "projects"), where("clientId", "==", clientId));
       } else {
+        // إذا لم يكن هناك clientId في البروفايل، لا جلب للبيانات (يمنع خطأ Permission Denied)
+        setLoading(false);
         return;
       }
     }
@@ -82,11 +77,12 @@ function ProjectsContent() {
       setLoading(false);
     }, (error) => {
       console.error("Projects Query Error:", error);
+      // في حالة وجود خطأ صلاحيات، نتوقف عن التحميل لمنع تجميد الشاشة
       setLoading(false);
     });
     
     return () => unsub();
-  }, [profile, user]);
+  }, [profile]);
 
   const filteredProjects = useMemo(() => {
     const s = searchQuery.toLowerCase().trim();

@@ -5,17 +5,19 @@ import { Users, Briefcase, CheckCircle, LayoutDashboard, ShieldCheck, Clock, Loa
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, where, or, Unsubscribe } from "firebase/firestore";
+import { collection, onSnapshot, query, where, Unsubscribe } from "firebase/firestore";
 import { useAuth } from "@/components/auth-provider";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { profile, loading: authLoading, user } = useAuth();
+  const { profile, loading: authLoading } = useAuth();
   const [stats, setStats] = useState({ clients: 0, projects: 0, finished: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!db || authLoading) return;
+    
+    // إذا انتهى التحميل ولم نجد بروفايل (أو لم يسجل دخول)، نتوقف
     if (!profile && !authLoading) {
       setLoading(false);
       return;
@@ -35,19 +37,12 @@ export default function DashboardPage() {
         setLoading(false);
       });
     } 
-    else if (profile?.role === 'client' || (user && !profile)) {
-      // العميل يعتمد على البريد الإلكتروني الموثق أولاً ثم بيانات البروفايل
-      const userEmail = user?.email || profile?.email;
-      const userPhone = profile?.phone;
+    else if (profile?.role === 'client') {
+      // العميل يعتمد بشكل صارم على clientId المربوط في بروفايله
       const clientId = profile?.clientId;
 
-      const conditions = [];
-      if (userEmail) conditions.push(where("clientEmail", "==", userEmail));
-      if (clientId) conditions.push(where("clientId", "==", clientId));
-      if (userPhone) conditions.push(where("clientPhone", "==", userPhone));
-
-      if (conditions.length > 0) {
-        const q = query(collection(db, "projects"), or(...conditions));
+      if (clientId) {
+        const q = query(collection(db, "projects"), where("clientId", "==", clientId));
         unsubP = onSnapshot(q, (s) => {
           const myProjects = s.docs;
           setStats({
@@ -71,7 +66,7 @@ export default function DashboardPage() {
       unsubP();
       unsubC();
     };
-  }, [profile, authLoading, user]);
+  }, [profile, authLoading]);
 
   if (loading || authLoading) return (
     <div className="flex flex-col items-center justify-center py-20 gap-4">
