@@ -152,18 +152,32 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !storage) return;
+    const files = e.target.files;
+    if (!files || files.length === 0 || !storage) return;
 
     setIsUploading(true);
+    const uploadedUrls: string[] = [];
+    
     try {
-      const storageRef = ref(storage, `projects/${Date.now()}-${file.name}`);
-      await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(storageRef);
-      setFormData(prev => ({ ...prev, images: [...prev.images, url] }));
-      toast({ title: "تم الرفع", description: "تم رفع الصورة بنجاح من جهازك" });
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const storageRef = ref(storage, `projects/${Date.now()}-${file.name}`);
+        await uploadBytes(storageRef, file);
+        const url = await getDownloadURL(storageRef);
+        uploadedUrls.push(url);
+      }
+      
+      setFormData(prev => ({ ...prev, images: [...prev.images, ...uploadedUrls] }));
+      toast({ 
+        title: "تم الرفع", 
+        description: `تم رفع ${files.length} صور بنجاح من جهازك` 
+      });
     } catch (error) {
-      toast({ title: "خطأ", description: "فشل في رفع الصورة، تأكد من اتصالك", variant: "destructive" });
+      toast({ 
+        title: "خطأ", 
+        description: "فشل في رفع بعض أو كل الصور، تأكد من اتصالك", 
+        variant: "destructive" 
+      });
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -307,6 +321,7 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
                     className="hidden" 
                     ref={fileInputRef} 
                     accept="image/*" 
+                    multiple
                     onChange={handleFileUpload}
                   />
                   <Button 
@@ -334,7 +349,7 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
 
               {isUploading && (
                 <div className="flex items-center gap-2 text-primary font-bold text-xs p-2">
-                  <Loader2 className="h-3 w-3 animate-spin" /> جاري رفع الصورة إلى السيرفر...
+                  <Loader2 className="h-3 w-3 animate-spin" /> جاري رفع الصور إلى السيرفر...
                 </div>
               )}
 
