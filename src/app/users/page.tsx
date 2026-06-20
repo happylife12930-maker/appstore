@@ -14,11 +14,13 @@ import {
   CheckCircle2,
   Settings2,
   Lock,
-  Unlock
+  Unlock,
+  Link2
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
@@ -132,10 +134,11 @@ export default function UsersPermissionsPage() {
       await updateDoc(userRef, {
         status: editingUser.status,
         permissions: editingUser.permissions,
-        name: editingUser.name
+        name: editingUser.name,
+        clientId: editingUser.clientId // حفظ المعرف المعدل
       });
       
-      toast({ title: "تم التحديث", description: "تم تعديل صلاحيات وحالة المستخدم بنجاح." });
+      toast({ title: "تم التحديث", description: "تم تعديل صلاحيات وبيانات المستخدم بنجاح." });
       setIsEditModalOpen(false);
     } catch (err: any) {
       console.error("Update Error:", err);
@@ -379,49 +382,81 @@ export default function UsersPermissionsPage() {
             </DialogHeader>
           </div>
           
-          <div className="p-8 space-y-8">
-            <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className={`p-3 rounded-2xl ${editingUser?.status === 'active' ? 'bg-green-500 text-white' : 'bg-rose-500 text-white'}`}>
-                  {editingUser?.status === 'active' ? <Unlock className="h-5 w-5" /> : <Lock className="h-5 w-5" />}
-                </div>
-                <div>
-                  <p className="font-black text-slate-800">حالة الحساب</p>
-                  <p className="text-[10px] font-bold text-slate-400">تحكم في قدرة العميل على الدخول</p>
-                </div>
+          <ScrollArea className="max-h-[60vh]">
+            <div className="p-8 space-y-8">
+              {/* تعديل الاسم */}
+              <div className="space-y-2">
+                <Label className="font-black text-slate-700 pr-2">اسم المستفيد</Label>
+                <Input 
+                  value={editingUser?.name || ""} 
+                  onChange={(e) => setEditingUser({...editingUser, name: e.target.value})}
+                  className="rounded-2xl h-12 font-bold"
+                />
               </div>
-              <Switch 
-                checked={editingUser?.status === 'active'}
-                onCheckedChange={(checked) => setEditingUser({...editingUser, status: checked ? 'active' : 'inactive'})}
-              />
-            </div>
 
-            <div className="space-y-4">
-              <h3 className="font-black text-slate-800 flex items-center gap-2 pr-2 text-sm uppercase">الصلاحيات المتاحة</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {availablePermissions.map((perm) => (
-                  <div 
-                    key={perm.id} 
-                    onClick={() => togglePermission(perm.id)}
-                    className={`flex items-center gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all ${
-                      editingUser?.permissions?.includes(perm.id) 
-                        ? 'bg-primary/5 border-primary shadow-sm' 
-                        : 'bg-white border-slate-100 hover:border-slate-200'
-                    }`}
-                  >
-                    <Checkbox 
-                      checked={editingUser?.permissions?.includes(perm.id)} 
-                      onCheckedChange={() => togglePermission(perm.id)}
-                      className="rounded-md h-5 w-5"
-                    />
-                    <span className={`font-black text-sm ${editingUser?.permissions?.includes(perm.id) ? 'text-primary' : 'text-slate-600'}`}>
-                      {perm.label}
-                    </span>
+              {/* تعديل معرف الربط (clientId) */}
+              <div className="p-6 bg-primary/5 rounded-3xl border border-primary/10 space-y-4">
+                <div className="flex items-center gap-2 text-primary">
+                  <Link2 className="h-5 w-5" />
+                  <h3 className="font-black text-sm uppercase">بيانات الربط التقني</h3>
+                </div>
+                <div className="space-y-2">
+                  <Label className="font-black text-slate-600 text-xs">معرف العميل (clientId)</Label>
+                  <Input 
+                    value={editingUser?.clientId || ""} 
+                    onChange={(e) => setEditingUser({...editingUser, clientId: e.target.value})}
+                    placeholder="أدخل معرف العميل للربط بالمشاريع..."
+                    className="rounded-xl h-10 font-mono text-xs border-primary/20 bg-white"
+                  />
+                  <p className="text-[10px] text-slate-400 font-bold leading-tight pr-1">
+                    هذا المعرف يربط المستخدم بمشاريعه وفواتيره. تأكد من تطابقه مع معرف العميل في صفحة العملاء.
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`p-3 rounded-2xl ${editingUser?.status === 'active' ? 'bg-green-500 text-white' : 'bg-rose-500 text-white'}`}>
+                    {editingUser?.status === 'active' ? <Unlock className="h-5 w-5" /> : <Lock className="h-5 w-5" />}
                   </div>
-                ))}
+                  <div>
+                    <p className="font-black text-slate-800">حالة الحساب</p>
+                    <p className="text-[10px] font-bold text-slate-400">تحكم في قدرة العميل على الدخول</p>
+                  </div>
+                </div>
+                <Switch 
+                  checked={editingUser?.status === 'active'}
+                  onCheckedChange={(checked) => setEditingUser({...editingUser, status: checked ? 'active' : 'inactive'})}
+                />
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="font-black text-slate-800 flex items-center gap-2 pr-2 text-sm uppercase">الصلاحيات المتاحة</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {availablePermissions.map((perm) => (
+                    <div 
+                      key={perm.id} 
+                      onClick={() => togglePermission(perm.id)}
+                      className={`flex items-center gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all ${
+                        editingUser?.permissions?.includes(perm.id) 
+                          ? 'bg-primary/5 border-primary shadow-sm' 
+                          : 'bg-white border-slate-100 hover:border-slate-200'
+                      }`}
+                    >
+                      <Checkbox 
+                        checked={editingUser?.permissions?.includes(perm.id)} 
+                        onCheckedChange={() => togglePermission(perm.id)}
+                        className="rounded-md h-5 w-5"
+                      />
+                      <span className={`font-black text-sm ${editingUser?.permissions?.includes(perm.id) ? 'text-primary' : 'text-slate-600'}`}>
+                        {perm.label}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
+          </ScrollArea>
 
           <DialogFooter className="p-8 bg-slate-50 border-t flex flex-col sm:flex-row gap-3">
             <Button 
@@ -430,7 +465,7 @@ export default function UsersPermissionsPage() {
               className="w-full h-14 rounded-2xl font-black text-lg shadow-xl"
             >
               {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle2 className="h-5 w-5" />}
-              حفظ التعديلات
+              حفظ كافة التعديلات
             </Button>
           </DialogFooter>
         </DialogContent>
