@@ -15,7 +15,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Calculator, Sparkles, Image as ImageIcon, Plus, Trash2, Save, User, Building, DollarSign, Clock, Upload } from 'lucide-react';
+import { Loader2, Calculator, Sparkles, Image as ImageIcon, Plus, Trash2, Save, Upload, Info } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { generateProjectQuotation } from '@/ai/flows/generate-project-quotation-flow';
@@ -38,7 +38,7 @@ export function QuotationModal({ isOpen, onClose, onSave, isLoading, initialData
     executionTimelineDays: 0,
     notes: '',
     images: [] as string[],
-    status: 'معلق'
+    status: 'مكتمل'
   });
 
   const [isGenerating, setIsGenerating] = useState(false);
@@ -59,14 +59,14 @@ export function QuotationModal({ isOpen, onClose, onSave, isLoading, initialData
         executionTimelineDays: 0,
         notes: '',
         images: [],
-        status: 'معلق'
+        status: 'مكتمل'
       });
     }
   }, [initialData, isOpen]);
 
   const handleGenerateAI = async () => {
     if (!formData.clientRequestDescription) {
-      toast({ title: "تنبيه", description: "يرجى كتابة وصف لطلب العميل أولاً.", variant: "destructive" });
+      toast({ title: "تنبيه", description: "اكتب وصفاً مختصراً للذكاء الاصطناعي.", variant: "destructive" });
       return;
     }
 
@@ -84,9 +84,9 @@ export function QuotationModal({ isOpen, onClose, onSave, isLoading, initialData
         notes: result.notes
       }));
       
-      toast({ title: "تم التوليد", description: "تم إنشاء عرض سعر ذكي بناءً على الوصف." });
+      toast({ title: "تم التوليد", description: "تم استكمال البيانات المالية ذكياً." });
     } catch (err) {
-      toast({ title: "خطأ", description: "فشل توليد عرض السعر بالذكاء الاصطناعي.", variant: "destructive" });
+      toast({ title: "خطأ", description: "فشل توليد البيانات.", variant: "destructive" });
     } finally {
       setIsGenerating(false);
     }
@@ -116,7 +116,7 @@ export function QuotationModal({ isOpen, onClose, onSave, isLoading, initialData
       }
       
       setFormData(prev => ({ ...prev, images: [...prev.images, ...uploadedUrls] }));
-      toast({ title: "تم الرفع", description: `تم رفع ${uploadedUrls.length} صور بنجاح.` });
+      toast({ title: "تم الرفع", description: `تمت إضافة ${uploadedUrls.length} صور للمعرض.` });
     } catch (error) {
       toast({ title: "خطأ في الرفع", variant: "destructive" });
     } finally {
@@ -131,152 +131,102 @@ export function QuotationModal({ isOpen, onClose, onSave, isLoading, initialData
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[800px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white" dir="rtl">
+      <DialogContent className="sm:max-w-[700px] rounded-[3rem] border-none shadow-2xl p-0 overflow-hidden bg-white" dir="rtl">
         <div className="bg-primary p-8 text-primary-foreground">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-black flex items-center gap-3">
-              <Calculator className="h-6 w-6" /> {initialData ? 'تعديل عرض السعر' : 'إنشاء عرض سعر جديد'}
+            <DialogTitle className="text-3xl font-black flex items-center gap-3">
+              <ImageIcon className="h-8 w-8" /> {initialData ? 'تعديل المعرض' : 'إضافة صور ومعرض جديد'}
             </DialogTitle>
-            <DialogDescription className="text-primary-foreground/80 font-bold">
-              استخدم الذكاء الاصطناعي لتوليد متطلبات وتكلفة المشروع بدقة
+            <DialogDescription className="text-primary-foreground/80 font-bold text-lg">
+              ارفع الصور واكتب اسم العرض بشكل واضح
             </DialogDescription>
           </DialogHeader>
         </div>
 
-        <ScrollArea className="max-h-[75vh] p-8">
-          <div className="space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label className="font-black text-slate-700 pr-2">اسم المشروع المتوقع</Label>
-                <Input 
-                  value={formData.projectName} 
-                  onChange={(e) => setFormData({...formData, projectName: e.target.value})} 
-                  placeholder="مثال: متجر إلكتروني للملابس" 
-                  className="rounded-2xl h-12 border-slate-200 font-bold"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="font-black text-slate-700 pr-2">اسم العميل المرتقب</Label>
-                <Input 
-                  value={formData.clientName} 
-                  onChange={(e) => setFormData({...formData, clientName: e.target.value})} 
-                  placeholder="اسم العميل أو الشركة" 
-                  className="rounded-2xl h-12 border-slate-200 font-bold"
-                />
-              </div>
+        <ScrollArea className="max-h-[70vh] p-8">
+          <div className="space-y-10">
+            {/* صندوق الاسم - Box */}
+            <div className="space-y-3">
+              <Label className="font-black text-xl text-slate-800 pr-2">اسم العرض (سيظهر فوق الصور)</Label>
+              <Input 
+                value={formData.projectName} 
+                onChange={(e) => setFormData({...formData, projectName: e.target.value})} 
+                placeholder="مثال: تصميم تطبيق مطعم - عرض العميل" 
+                className="rounded-2xl h-16 border-2 border-primary/20 font-black text-xl px-6 focus-visible:ring-primary shadow-sm"
+              />
             </div>
 
-            <div className="space-y-4 p-6 bg-slate-50 rounded-[2.5rem] border border-slate-100">
-              <Label className="font-black text-slate-700 pr-2 flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-primary" /> وصف طلب العميل (للذكاء الاصطناعي)
-              </Label>
+            {/* رفع الصور - Gallery Upload */}
+            <div className="p-8 bg-slate-50 rounded-[2.5rem] border-2 border-dashed border-slate-200 space-y-6">
+              <div className="flex flex-col items-center gap-4">
+                <div className="h-16 w-16 rounded-full bg-white flex items-center justify-center shadow-md">
+                  <Upload className="h-8 w-8 text-primary" />
+                </div>
+                <div className="text-center">
+                  <h3 className="font-black text-lg text-slate-800">تحميل الصور للمعرض</h3>
+                  <p className="text-sm font-bold text-slate-400">يمكنك اختيار عدة صور معاً (PNG, JPG)</p>
+                </div>
+                <input type="file" ref={fileInputRef} className="hidden" accept="image/*" multiple onChange={handleFileUpload} />
+                <Button 
+                  onClick={() => fileInputRef.current?.click()} 
+                  disabled={isUploading}
+                  className="rounded-2xl h-12 px-8 font-black gap-2 shadow-lg"
+                >
+                  {isUploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Plus className="h-5 w-5" />}
+                  اختر الصور الآن
+                </Button>
+              </div>
+
+              {formData.images.length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-6 border-t border-slate-200">
+                  {formData.images.map((img, idx) => (
+                    <div key={idx} className="relative aspect-square rounded-2xl overflow-hidden border-2 border-white shadow-md group">
+                      <img src={img} className="w-full h-full object-cover" alt="" />
+                      <button 
+                        onClick={() => removeImage(idx)}
+                        className="absolute inset-0 bg-rose-600/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Trash2 className="h-6 w-6" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* خيارات متقدمة - AI */}
+            <div className="p-6 bg-primary/5 rounded-[2rem] border border-primary/10 space-y-4">
+              <div className="flex items-center gap-2 text-primary font-black">
+                <Sparkles className="h-5 w-5" /> 
+                <span>ذكاء اصطناعي (اختياري لوصف المتطلبات والتكلفة)</span>
+              </div>
               <Textarea 
                 value={formData.clientRequestDescription} 
                 onChange={(e) => setFormData({...formData, clientRequestDescription: e.target.value})} 
-                placeholder="اكتب هنا ما طلبه العميل بالضبط ليقوم النظام بتحليله..."
-                className="rounded-2xl min-h-[120px] border-slate-200 font-bold leading-relaxed"
+                placeholder="اكتب هنا وصفاً إذا أردت توليد تكلفة تقديرية..."
+                className="rounded-2xl min-h-[100px] border-none shadow-inner bg-white font-bold"
               />
               <Button 
+                variant="outline"
                 onClick={handleGenerateAI} 
                 disabled={isGenerating || !formData.clientRequestDescription}
-                className="w-full h-14 rounded-2xl font-black bg-gradient-to-r from-primary to-accent text-white gap-2 shadow-xl hover:scale-[1.02] transition-all"
+                className="w-full h-12 rounded-xl font-black border-primary/20 text-primary hover:bg-primary/5 gap-2"
               >
-                {isGenerating ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />}
-                توليد عرض السعر بالذكاء الاصطناعي
+                {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                تحليل وتوليد بيانات إضافية
               </Button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label className="font-black text-slate-700 pr-2 flex items-center gap-2">
-                  <DollarSign className="h-4 w-4 text-primary" /> التكلفة التقديرية (ج.م)
-                </Label>
-                <Input 
-                  type="number"
-                  value={formData.estimatedCost} 
-                  onChange={(e) => setFormData({...formData, estimatedCost: Number(e.target.value)})} 
-                  className="rounded-2xl h-12 border-slate-200 font-black text-lg"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="font-black text-slate-700 pr-2 flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-primary" /> مدة التنفيذ (أيام)
-                </Label>
-                <Input 
-                  type="number"
-                  value={formData.executionTimelineDays} 
-                  onChange={(e) => setFormData({...formData, executionTimelineDays: Number(e.target.value)})} 
-                  className="rounded-2xl h-12 border-slate-200 font-black text-lg"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <Label className="font-black text-slate-700 pr-2 flex items-center gap-2">
-                <ImageIcon className="h-4 w-4 text-primary" /> معرض الصور والأصول المبدئية
-              </Label>
-              <div className="flex gap-2">
-                <input type="file" ref={fileInputRef} className="hidden" accept="image/*" multiple onChange={handleFileUpload} />
-                <Button 
-                  variant="outline" 
-                  onClick={() => fileInputRef.current?.click()} 
-                  disabled={isUploading}
-                  className="w-full h-14 rounded-2xl border-dashed border-2 font-black gap-2 text-slate-500 hover:text-primary hover:border-primary transition-all"
-                >
-                  {isUploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Upload className="h-5 w-5" />}
-                  رفع صور للمعرض (تصاميم، مراجع، الخ)
-                </Button>
-              </div>
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-4">
-                {formData.images.map((img, idx) => (
-                  <div key={idx} className="relative aspect-square rounded-2xl overflow-hidden border-2 border-white shadow-sm group">
-                    <img src={img} className="w-full h-full object-cover" alt="" />
-                    <button 
-                      onClick={() => removeImage(idx)}
-                      className="absolute inset-0 bg-rose-600/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <Trash2 className="h-5 w-5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="font-black text-slate-700 pr-2">المتطلبات المقترحة</Label>
-              <div className="space-y-2">
-                {formData.suggestedRequirements.map((req, idx) => (
-                  <div key={idx} className="flex gap-2">
-                    <Input 
-                      value={req} 
-                      onChange={(e) => {
-                        const newReqs = [...formData.suggestedRequirements];
-                        newReqs[idx] = e.target.value;
-                        setFormData({...formData, suggestedRequirements: newReqs});
-                      }}
-                      className="rounded-xl h-10 border-slate-100 font-bold"
-                    />
-                    <Button variant="ghost" size="icon" onClick={() => setFormData({...formData, suggestedRequirements: formData.suggestedRequirements.filter((_, i) => i !== idx)})} className="text-rose-500">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-                <Button variant="outline" size="sm" onClick={() => setFormData({...formData, suggestedRequirements: [...formData.suggestedRequirements, '']})} className="rounded-xl font-black gap-1 mt-2">
-                  <Plus className="h-4 w-4" /> إضافة متطلب يدوياً
-                </Button>
-              </div>
             </div>
           </div>
         </ScrollArea>
 
-        <DialogFooter className="p-8 bg-slate-50 border-t">
+        <DialogFooter className="p-10 bg-slate-50 border-t">
           <Button 
             onClick={() => onSave(formData)} 
-            disabled={isLoading || !formData.projectName}
-            className="w-full h-16 rounded-2xl font-black text-xl gap-3 shadow-2xl active:scale-95 transition-all"
+            disabled={isLoading || isUploading || !formData.projectName}
+            className="w-full h-20 rounded-[1.5rem] font-black text-2xl gap-3 shadow-2xl active:scale-95 transition-all"
           >
-            {isLoading ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />}
-            {initialData ? 'حفظ التعديلات' : 'تأكيد وحفظ عرض السعر'}
+            {isLoading ? <Loader2 className="animate-spin h-8 w-8" /> : <Save className="h-8 w-8" />}
+            {initialData ? 'حفظ التغييرات' : 'تأكيد وحفظ المعرض'}
           </Button>
         </DialogFooter>
       </DialogContent>

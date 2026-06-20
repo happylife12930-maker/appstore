@@ -12,8 +12,7 @@ import {
   Image as ImageIcon,
   Loader2,
   FileText,
-  DollarSign,
-  Clock
+  X
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -70,25 +69,25 @@ function QuotationsContent() {
 
       if (data.id) {
         await setDoc(doc(db, "quotations", data.id), quotationData);
-        toast({ title: "تم التحديث", description: "تم تعديل عرض السعر بنجاح" });
+        toast({ title: "تم التحديث", description: "تم تعديل العرض بنجاح" });
       } else {
         await addDoc(collection(db, "quotations"), quotationData);
-        toast({ title: "تم الإرسال", description: "تم إنشاء عرض السعر الجديد بنجاح" });
+        toast({ title: "تم الحفظ", description: "تم إنشاء العرض الجديد بنجاح" });
       }
       setIsModalOpen(false);
       setEditingQuotation(null);
     } catch (err) {
-      toast({ title: "خطأ", description: "فشل في حفظ عرض السعر", variant: "destructive" });
+      toast({ title: "خطأ", description: "فشل في حفظ البيانات", variant: "destructive" });
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleDeleteQuotation = async (id: string) => {
-    if (!db || !confirm("هل أنت متأكد من حذف عرض السعر هذا؟")) return;
+    if (!db || !confirm("هل أنت متأكد من حذف هذا العرض؟")) return;
     try {
       await deleteDoc(doc(db, "quotations", id));
-      toast({ title: "تم الحذف", description: "تمت إزالة عرض السعر نهائياً" });
+      toast({ title: "تم الحذف", description: "تمت إزالة العرض نهائياً" });
     } catch (err) {
       toast({ title: "خطأ", variant: "destructive" });
     }
@@ -97,100 +96,79 @@ function QuotationsContent() {
   if (loading || authLoading) return (
     <div className="flex flex-col items-center justify-center py-20 gap-4">
       <Loader2 className="h-12 w-12 animate-spin text-primary" />
-      <p className="font-bold text-slate-500">جاري تحميل عروض الأسعار...</p>
+      <p className="font-bold text-slate-500">جاري تحميل المعرض...</p>
     </div>
   );
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 pb-20" dir="rtl">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100">
-        <div className="flex items-center gap-4">
-          <div className="p-4 bg-primary/10 rounded-2xl text-primary">
-            <Calculator className="h-8 w-8" />
+    <div className="max-w-7xl mx-auto space-y-12 pb-20" dir="rtl">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-10 rounded-[3rem] shadow-sm border border-slate-100">
+        <div className="flex items-center gap-5">
+          <div className="p-5 bg-primary/10 rounded-[2rem] text-primary">
+            <ImageIcon className="h-10 w-10" />
           </div>
           <div>
-            <h1 className="text-3xl font-black text-slate-800 tracking-tight">إدارة عروض الأسعار</h1>
-            <p className="text-slate-500 font-bold">إنشاء وتحليل عروض الأسعار الذكية وإدارة الأصول المرفقة</p>
+            <h1 className="text-4xl font-black text-slate-800 tracking-tight">معرض عروض الأسعار</h1>
+            <p className="text-slate-500 font-bold text-lg">ارفع صور التصاميم والعروض وقدمها بشكل احترافي</p>
           </div>
         </div>
         <Button 
           onClick={() => { setEditingQuotation(null); setIsModalOpen(true); }}
-          className="rounded-2xl h-14 px-8 font-black text-lg gap-2 shadow-xl hover:scale-105 transition-all"
+          className="rounded-3xl h-16 px-10 font-black text-xl gap-3 shadow-xl hover:scale-105 transition-all bg-primary"
         >
-          <Plus className="h-6 w-6" /> إنشاء عرض سعر جديد
+          <Plus className="h-7 w-7" /> إضافة عرض جديد
         </Button>
       </header>
 
       {quotations.length === 0 ? (
-        <Card className="rounded-[2.5rem] border-none shadow-sm py-20 text-center bg-white">
-          <div className="flex flex-col items-center gap-4 opacity-40">
-            <FileText className="h-20 w-20" />
-            <p className="text-xl font-black">لا توجد عروض أسعار حالياً</p>
+        <Card className="rounded-[3rem] border-none shadow-sm py-32 text-center bg-white border-2 border-dashed border-slate-200">
+          <div className="flex flex-col items-center gap-6 opacity-30">
+            <ImageIcon className="h-24 w-24" />
+            <p className="text-2xl font-black">لا توجد صور أو عروض مرفوعة حالياً</p>
           </div>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
           {quotations.map((q) => (
-            <Card key={q.id} className="rounded-[2.5rem] border-none shadow-sm hover:shadow-xl transition-all bg-white overflow-hidden flex flex-col border border-slate-50 group">
-              <div className="relative h-48 bg-slate-100 overflow-hidden">
-                {q.images?.[0] ? (
-                  <img src={q.images[0]} className="w-full h-full object-cover transition-transform group-hover:scale-110" alt="" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-slate-300">
-                    <ImageIcon className="h-10 w-10" />
-                  </div>
-                )}
-                <div className="absolute top-4 right-4 flex gap-2">
-                   <Badge className="rounded-xl font-black bg-white/90 text-primary border-none shadow-sm backdrop-blur-sm">
-                    {q.images?.length || 0} صور
-                  </Badge>
-                  <Badge className="rounded-xl font-black bg-primary/90 text-white border-none shadow-sm backdrop-blur-sm">
-                    {q.status || 'معلق'}
-                  </Badge>
+            <div key={q.id} className="space-y-4 group">
+              {/* صندوق الاسم فوق الصورة */}
+              <div className="bg-white p-6 rounded-[2rem] shadow-md border-r-8 border-primary flex items-center justify-between group-hover:shadow-lg transition-all">
+                <h2 className="text-2xl font-black text-slate-800 truncate">{q.projectName}</h2>
+                <div className="flex gap-2">
+                  <Button variant="ghost" size="icon" onClick={() => { setEditingQuotation(q); setIsModalOpen(true); }} className="h-10 w-10 rounded-xl hover:bg-primary/5">
+                    <Edit3 className="h-5 w-5 text-slate-400 group-hover:text-primary transition-colors" />
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={() => handleDeleteQuotation(q.id)} className="h-10 w-10 rounded-xl hover:bg-rose-50">
+                    <Trash2 className="h-5 w-5 text-rose-300 group-hover:text-rose-500 transition-colors" />
+                  </Button>
                 </div>
               </div>
 
-              <CardHeader className="p-6 pb-2">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="text-xl font-black truncate max-w-[200px]">{q.projectName}</CardTitle>
-                    <p className="text-xs font-bold text-slate-400 mt-1">المستفيد: {q.clientName || '---'}</p>
-                  </div>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => { setEditingQuotation(q); setIsModalOpen(true); }} className="h-9 w-9 rounded-xl">
-                      <Edit3 className="h-4 w-4 text-slate-500" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDeleteQuotation(q.id)} className="h-9 w-9 rounded-xl hover:bg-rose-50 text-rose-500">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+              {/* معرض الصور المرفق */}
+              <Card className="rounded-[2.5rem] border-none shadow-xl overflow-hidden bg-white group-hover:scale-[1.01] transition-all cursor-pointer" onClick={() => { setViewingQuotation(q); setIsDetailsOpen(true); }}>
+                <div className="relative h-[400px] bg-slate-100 flex items-center justify-center">
+                  {q.images?.[0] ? (
+                    <>
+                      <img src={q.images[0]} className="w-full h-full object-cover" alt="" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                      <div className="absolute bottom-6 right-6 flex items-center gap-3">
+                        <Badge className="bg-white/20 backdrop-blur-md text-white border-none px-4 py-2 rounded-xl font-black">
+                          {q.images.length} صور في العرض
+                        </Badge>
+                        <div className="h-12 w-12 rounded-full bg-primary text-white flex items-center justify-center shadow-lg">
+                          <ExternalLink className="h-6 w-6" />
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center gap-4 text-slate-300">
+                      <ImageIcon className="h-20 w-20" />
+                      <p className="font-black">لا توجد صور في هذا العرض</p>
+                    </div>
+                  )}
                 </div>
-              </CardHeader>
-
-              <CardContent className="p-6 pt-2 space-y-4 flex-1">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100">
-                    <p className="text-[10px] font-black text-slate-400 uppercase mb-1 flex items-center gap-1">
-                      <DollarSign className="h-3 w-3" /> التكلفة
-                    </p>
-                    <p className="text-sm font-black text-slate-800">{(q.estimatedCost || 0).toLocaleString('ar-EG')} ج.م</p>
-                  </div>
-                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100">
-                    <p className="text-[10px] font-black text-slate-400 uppercase mb-1 flex items-center gap-1">
-                      <Clock className="h-3 w-3" /> المدة
-                    </p>
-                    <p className="text-sm font-black text-slate-800">{q.executionTimelineDays || 0} يوم</p>
-                  </div>
-                </div>
-
-                <Button 
-                  onClick={() => { setViewingQuotation(q); setIsDetailsOpen(true); }}
-                  className="w-full rounded-2xl h-12 font-black border-slate-200 gap-2 hover:bg-primary transition-all shadow-md group-hover:scale-[1.02]"
-                >
-                  <ExternalLink className="h-4 w-4" /> عرض الجاليري والتفاصيل
-                </Button>
-              </CardContent>
-            </Card>
+              </Card>
+            </div>
           ))}
         </div>
       )}
