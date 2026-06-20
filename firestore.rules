@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -30,15 +31,12 @@ service cloud.firestore {
     }
 
     match /projects/{projectId} {
-      // السماح بالقراءة (get + list) إذا كان المستخدم أدمن 
-      // أو إذا كان المشروع مرتبطاً بـ clientId الخاص بالمستخدم
+      // السماح للقراءة إذا كان الأدمن أو إذا كان clientId الخاص بالمشروع يطابق clientId الخاص بالمستخدم
       allow read: if isAdmin() || (
         isAuthenticated() && (
-          resource.data.clientId == getUserData().clientId ||
-          resource.data.clientEmail == request.auth.token.email
+          resource.data.clientId == getUserData().clientId
         )
       );
-      // الإضافة والحذف والتعديل للأدمن فقط
       allow write: if isAdmin();
     }
   }

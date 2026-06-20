@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -10,7 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updatePassword } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
-import { doc, setDoc, getDoc, deleteDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc, deleteDoc, updateDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 
 const getFriendlyErrorMessage = (errorCode: string) => {
@@ -39,64 +40,64 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      // 1. محاولة الدخول العادي أولاً
+      // 1. فحص وجود بيانات تجهيز أولاً لضمان الربط (حتى لو الحساب موجود)
+      const provisionDocRef = doc(db, "users_provision", email);
+      const provisionSnap = await getDoc(provisionDocRef);
+      const provisionData = provisionSnap.exists() ? provisionSnap.data() : null;
+
       try {
-        await signInWithEmailAndPassword(auth, email, password);
+        const loginRes = await signInWithEmailAndPassword(auth, email, password);
+        const user = loginRes.user;
+
+        // إذا كان هناك بيانات تجهيز، نقوم بتحديث ملف المستخدم لضمان وجود clientId
+        if (provisionData && user) {
+          await setDoc(doc(db, "users", user.uid), {
+            uid: user.uid,
+            name: provisionData.name || "مستفيد",
+            email: email,
+            phone: provisionData.phone || "",
+            clientId: provisionData.clientId || "", 
+            role: "client",
+            status: "active",
+            permissions: ["p_projects"],
+            lastLogin: new Date().toLocaleString('ar-EG')
+          }, { merge: true });
+          
+          await deleteDoc(provisionDocRef);
+        }
+
         toast({ title: "تم الدخول بنجاح", description: "مرحباً بك مجدداً في APP STORE" });
         router.push("/");
         return;
       } catch (loginError: any) {
-        // 2. إذا فشل الدخول العادي، نفحص جدول التجهيز (للعملاء الجدد)
-        const provisionDocRef = doc(db, "users_provision", email);
-        const provisionSnap = await getDoc(provisionDocRef);
-
-        if (provisionSnap.exists()) {
-          const provisionData = provisionSnap.data();
-          
-          if (password === provisionData.tempPassword) {
-            let user;
-            try {
-              // محاولة إنشاء حساب جديد في Firebase Auth
-              const createRes = await createUserWithEmailAndPassword(auth, email, password);
-              user = createRes.user;
-            } catch (createError: any) {
-              if (createError.code === 'auth/email-already-in-use') {
-                // إذا كان الحساب موجوداً في Auth ولكن بدون بروفايل، نقوم بتسجيل الدخول وتحديث الباسورد
-                const signInRes = await signInWithEmailAndPassword(auth, email, provisionData.tempPassword).catch(async () => {
-                   return await signInWithEmailAndPassword(auth, email, password);
-                });
-                user = signInRes.user;
-                if (user) await updatePassword(user, password);
-              } else {
-                throw createError;
-              }
-            }
+        // 2. إذا كان الحساب جديداً تماماً (لم يسجل من قبل)
+        if (provisionData && password === provisionData.tempPassword) {
+          try {
+            const createRes = await createUserWithEmailAndPassword(auth, email, password);
+            const user = createRes.user;
 
             if (user) {
-              // 3. الربط الصارم والشامل: نسخ كافة البيانات لجدول المستخدمين
               await setDoc(doc(db, "users", user.uid), {
                 uid: user.uid,
                 name: provisionData.name || "مستفيد",
                 email: email,
                 phone: provisionData.phone || "",
-                clientId: provisionData.clientId || "", // هذا أهم حقل للربط مع المشاريع
-                role: provisionData.role || "client",
+                clientId: provisionData.clientId || "", 
+                role: "client",
                 status: "active",
                 permissions: ["p_projects"],
                 createdAt: new Date().toISOString(),
-                lastLogin: new Date().toLocaleString('ar-EG'),
-                tempPassword: password // حفظه للرجوع إليه من الأدمن
+                lastLogin: new Date().toLocaleString('ar-EG')
               });
 
-              // مسح بيانات التجهيز لضمان الأمان
               await deleteDoc(provisionDocRef);
               
               toast({ title: "تم تفعيل الحساب", description: "تم ربط بياناتك بنجاح، مرحباً بك!" });
               router.push("/");
               return;
             }
-          } else {
-            throw { code: 'auth/wrong-password' };
+          } catch (createError: any) {
+            throw createError;
           }
         } else {
           throw loginError;

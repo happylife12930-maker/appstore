@@ -1,3 +1,4 @@
+
 "use client";
 import * as React from "react";
 import { useState, useEffect } from "react";
@@ -37,7 +38,6 @@ export default function DashboardPage() {
       });
     } 
     else if (profile.role === 'client') {
-      // الاعتماد الحصري والصارم على clientId للربط مع مشاريع العميل
       const clientId = profile.clientId;
       
       if (!clientId) {
@@ -45,6 +45,7 @@ export default function DashboardPage() {
         return;
       }
 
+      // البحث عن المشاريع التي تطابق clientId الخاص بالعميل
       const q = query(
         collection(db, "projects"),
         where("clientId", "==", clientId)
@@ -59,6 +60,7 @@ export default function DashboardPage() {
         });
         setLoading(false);
       }, (error) => {
+        console.error("Dashboard Client Query Error:", error);
         setLoading(false);
       });
     } else {
@@ -136,6 +138,10 @@ export default function DashboardPage() {
           />
         )}
       </div>
+
+      {!isAdmin && profile?.clientId && (
+        <p className="text-[10px] text-slate-300 font-bold text-center">معرف الربط النشط: {profile.clientId}</p>
+      )}
       
       <Card className="rounded-[2.5rem] border-none shadow-sm bg-primary p-12 text-primary-foreground text-center relative overflow-hidden">
         <div className="absolute top-0 right-0 p-10 opacity-10">
