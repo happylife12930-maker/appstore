@@ -61,10 +61,8 @@ export default function LoginPage() {
               user = createRes.user;
             } catch (createError: any) {
               if (createError.code === 'auth/email-already-in-use') {
-                // إذا كان الحساب موجوداً مسبقاً، نقوم بتسجيل الدخول وتحديث كلمة المرور
-                const signInRes = await signInWithEmailAndPassword(auth, email, provisionData.tempPassword).catch(async () => {
-                  // إذا فشل الدخول بالباسورد القديم، ربما تم تغييره، لكننا هنا بصدد "التفعيل"
-                  return await signInWithEmailAndPassword(auth, email, password);
+                const signInRes = await signInWithEmailAndPassword(auth, email, password).catch(async () => {
+                  return await signInWithEmailAndPassword(auth, email, provisionData.tempPassword);
                 });
                 user = signInRes.user;
                 if (user) await updatePassword(user, password);
@@ -74,7 +72,7 @@ export default function LoginPage() {
             }
 
             if (user) {
-              // إنشاء أو تحديث بروفايل المستخدم بالبيانات الكاملة للربط
+              // الربط الصارم باستخدام clientId
               await setDoc(doc(db, "users", user.uid), {
                 uid: user.uid,
                 name: provisionData.name,
@@ -83,13 +81,12 @@ export default function LoginPage() {
                 clientId: provisionData.clientId || "", 
                 role: provisionData.role || "client",
                 status: "active",
-                permissions: provisionData.permissions || ["p_projects"],
+                permissions: ["p_projects"],
                 createdAt: new Date().toISOString(),
                 lastLogin: new Date().toLocaleString('ar-EG'),
-                tempPassword: password // نحتفظ به لرؤية الأدمن كما طلبت
+                tempPassword: password
               });
 
-              // حذف بيانات التجهيز بعد النجاح
               await deleteDoc(provisionDocRef);
               
               toast({ title: "تم تفعيل الحساب", description: "تم ربط بياناتك بنجاح، مرحباً بك!" });

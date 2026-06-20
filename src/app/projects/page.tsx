@@ -32,11 +32,10 @@ function ProjectsContent() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<ProjectData | null>(null);
-  
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [viewingProject, setViewingProject] = useState<ProjectData | null>(null);
-
   const [isSaving, setIsSaving] = useState(false);
+  
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -48,24 +47,17 @@ function ProjectsContent() {
   }, [searchParams]);
 
   useEffect(() => {
-    if (!db) return;
+    if (!db || !profile) return;
     
-    // الانتظار حتى اكتمال تحميل البروفايل
-    if (!profile) {
-      // إذا لم يكن هناك تحميل جاري، فهذا يعني أن المستخدم لم يسجل دخول
-      return;
-    }
-
     let q;
     if (profile.role === 'admin') {
       q = query(collection(db, "projects"));
     } else {
-      // الربط الصارم بـ clientId للمستفيد لضمان التوافق مع قواعد الأمان
       const clientId = profile.clientId;
       if (clientId) {
+        // الفلترة الصارمة باستخدام clientId لضمان التوافق مع قواعد الأمان
         q = query(collection(db, "projects"), where("clientId", "==", clientId));
       } else {
-        // إذا لم يكن هناك clientId في البروفايل، لا جلب للبيانات (يمنع خطأ Permission Denied)
         setLoading(false);
         return;
       }
@@ -77,7 +69,6 @@ function ProjectsContent() {
       setLoading(false);
     }, (error) => {
       console.error("Projects Query Error:", error);
-      // في حالة وجود خطأ صلاحيات، نتوقف عن التحميل لمنع تجميد الشاشة
       setLoading(false);
     });
     

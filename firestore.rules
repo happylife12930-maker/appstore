@@ -22,7 +22,7 @@ service cloud.firestore {
     
     // قواعد جدول المشاريع
     match /projects/{projectId} {
-      // السماح بالقراءة للأدمن، أو للعميل إذا تطابق معرف العميل (clientId) مع المعرف المسجل في بروفايله
+      // السماح بالقراءة للأدمن، أو للعميل إذا تطابق clientId المشروع مع clientId المسجل في بروفايله
       allow read: if request.auth != null && (
         isAdmin() || 
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 

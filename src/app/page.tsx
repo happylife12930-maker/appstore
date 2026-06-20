@@ -17,8 +17,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!db || authLoading) return;
     
-    // إذا انتهى التحميل ولم نجد بروفايل (أو لم يسجل دخول)، نتوقف
-    if (!profile && !authLoading) {
+    if (!profile) {
       setLoading(false);
       return;
     }
@@ -26,7 +25,7 @@ export default function DashboardPage() {
     let unsubP: Unsubscribe = () => {};
     let unsubC: Unsubscribe = () => {};
 
-    if (profile?.role === 'admin') {
+    if (profile.role === 'admin') {
       unsubC = onSnapshot(collection(db, "clients"), (s) => setStats(p => ({ ...p, clients: s.size })));
       unsubP = onSnapshot(collection(db, "projects"), (s) => {
         setStats(p => ({ 
@@ -37,11 +36,10 @@ export default function DashboardPage() {
         setLoading(false);
       });
     } 
-    else if (profile?.role === 'client') {
-      // العميل يعتمد بشكل صارم على clientId المربوط في بروفايله
-      const clientId = profile?.clientId;
-
+    else if (profile.role === 'client') {
+      const clientId = profile.clientId;
       if (clientId) {
+        // الفلترة الصارمة باستخدام clientId
         const q = query(collection(db, "projects"), where("clientId", "==", clientId));
         unsubP = onSnapshot(q, (s) => {
           const myProjects = s.docs;
