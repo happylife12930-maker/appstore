@@ -109,7 +109,9 @@ const translations = {
     fri: "Fri",
     sat: "Sat",
     taskDone: "Done",
-    taskPending: "Pending"
+    taskPending: "Pending",
+    profile: "My Profile",
+    accountStatement: "Account Statement"
   },
   ar: {
     dashboard: "لوحة التحكم",
@@ -207,7 +209,9 @@ const translations = {
     fri: "جمعة",
     sat: "سبت",
     taskDone: "تم",
-    taskPending: "معلق"
+    taskPending: "معلق",
+    profile: "الملف الشخصي",
+    accountStatement: "كشف الحساب"
   }
 };
 

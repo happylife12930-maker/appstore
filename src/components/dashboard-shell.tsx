@@ -20,7 +20,9 @@ import {
   LogOut,
   Languages,
   UserCheck,
-  ShieldAlert
+  ShieldAlert,
+  User,
+  Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -48,6 +50,7 @@ import { auth } from "@/lib/firebase";
 // تعريف العناصر مع تحديد من يمكنه رؤيتها
 const navItems = [
   { title: "dashboard", url: "/", icon: LayoutDashboard, permission: "p_dashboard", roles: ['admin', 'tester'] },
+  { title: "profile", url: "/profile", icon: User, permission: "p_dashboard", roles: ['client', 'admin'] },
   { title: "clients", url: "/clients", icon: Users, permission: "p_clients", roles: ['admin'] },
   { title: "projects", url: "/projects", icon: Briefcase, permission: "p_projects", roles: ['admin', 'tester', 'client'] },
   { title: "testers", url: "/testers", icon: UserCheck, permission: "p_testers", roles: ['admin'] },
@@ -145,17 +148,19 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         <SidebarFooter className="border-t border-sidebar-border/50 p-4">
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton size="lg">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={`https://picsum.photos/seed/${profile?.uid}/100/100`} />
-                  <AvatarFallback>{profile?.name?.[0] || 'U'}</AvatarFallback>
-                </Avatar>
-                <div className="flex flex-col items-start transition-all group-data-[collapsible=icon]:hidden overflow-hidden">
-                  <span className="font-medium text-sm truncate max-w-[120px]">{profile?.name || 'مستفيد'}</span>
-                  <span className="text-xs text-sidebar-foreground/50">
-                    {profile?.role === 'client' ? 'عميل نشط' : t(profile?.role || 'admin')}
-                  </span>
-                </div>
+              <SidebarMenuButton size="lg" asChild>
+                <Link href="/profile">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={`https://picsum.photos/seed/${profile?.uid}/100/100`} />
+                    <AvatarFallback>{profile?.name?.[0] || 'U'}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col items-start transition-all group-data-[collapsible=icon]:hidden overflow-hidden">
+                    <span className="font-medium text-sm truncate max-w-[120px]">{profile?.name || 'مستفيد'}</span>
+                    <span className="text-xs text-sidebar-foreground/50">
+                      {profile?.role === 'client' ? 'عميل نشط' : t(profile?.role || 'admin')}
+                    </span>
+                  </div>
+                </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
@@ -186,5 +191,3 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     </SidebarProvider>
   );
 }
-
-import { Loader2 } from "lucide-react";
