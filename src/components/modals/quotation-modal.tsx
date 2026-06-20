@@ -14,11 +14,9 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Calculator, Sparkles, Image as ImageIcon, Plus, Trash2, Save, Upload, Info } from 'lucide-react';
+import { Loader2, ImageIcon, Plus, Trash2, Save, Upload } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import { generateProjectQuotation } from '@/ai/flows/generate-project-quotation-flow';
 
 interface QuotationModalProps {
   isOpen: boolean;
@@ -41,7 +39,6 @@ export function QuotationModal({ isOpen, onClose, onSave, isLoading, initialData
     status: 'مكتمل'
   });
 
-  const [isGenerating, setIsGenerating] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -63,34 +60,6 @@ export function QuotationModal({ isOpen, onClose, onSave, isLoading, initialData
       });
     }
   }, [initialData, isOpen]);
-
-  const handleGenerateAI = async () => {
-    if (!formData.clientRequestDescription) {
-      toast({ title: "تنبيه", description: "اكتب وصفاً مختصراً للذكاء الاصطناعي.", variant: "destructive" });
-      return;
-    }
-
-    setIsGenerating(true);
-    try {
-      const result = await generateProjectQuotation({ 
-        clientRequestDescription: formData.clientRequestDescription 
-      });
-      
-      setFormData(prev => ({
-        ...prev,
-        suggestedRequirements: result.suggestedRequirements,
-        estimatedCost: result.estimatedCost,
-        executionTimelineDays: result.executionTimelineDays,
-        notes: result.notes
-      }));
-      
-      toast({ title: "تم التوليد", description: "تم استكمال البيانات المالية ذكياً." });
-    } catch (err) {
-      toast({ title: "خطأ", description: "فشل توليد البيانات.", variant: "destructive" });
-    } finally {
-      setIsGenerating(false);
-    }
-  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -192,29 +161,6 @@ export function QuotationModal({ isOpen, onClose, onSave, isLoading, initialData
                   ))}
                 </div>
               )}
-            </div>
-
-            {/* خيارات متقدمة - AI */}
-            <div className="p-6 bg-primary/5 rounded-[2rem] border border-primary/10 space-y-4">
-              <div className="flex items-center gap-2 text-primary font-black">
-                <Sparkles className="h-5 w-5" /> 
-                <span>ذكاء اصطناعي (اختياري لوصف المتطلبات والتكلفة)</span>
-              </div>
-              <Textarea 
-                value={formData.clientRequestDescription} 
-                onChange={(e) => setFormData({...formData, clientRequestDescription: e.target.value})} 
-                placeholder="اكتب هنا وصفاً إذا أردت توليد تكلفة تقديرية..."
-                className="rounded-2xl min-h-[100px] border-none shadow-inner bg-white font-bold"
-              />
-              <Button 
-                variant="outline"
-                onClick={handleGenerateAI} 
-                disabled={isGenerating || !formData.clientRequestDescription}
-                className="w-full h-12 rounded-xl font-black border-primary/20 text-primary hover:bg-primary/5 gap-2"
-              >
-                {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                تحليل وتوليد بيانات إضافية
-              </Button>
             </div>
           </div>
         </ScrollArea>
