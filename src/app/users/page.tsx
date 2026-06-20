@@ -14,8 +14,7 @@ import {
   CheckCircle2,
   Settings2,
   Lock,
-  Unlock,
-  AlertTriangle
+  Unlock
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -119,7 +118,7 @@ export default function UsersPermissionsPage() {
       setIsPasswordModalOpen(false);
       setTempPassword("");
     } catch (err) {
-      toast({ title: "خطأ", description: "فشل تفعيل العميل. تأكد من اتصال الإنترنت.", variant: "destructive" });
+      toast({ title: "خطأ", description: "فشل تفعيل العميل.", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
@@ -138,39 +137,42 @@ export default function UsersPermissionsPage() {
       
       toast({ title: "تم التحديث", description: "تم تعديل صلاحيات وحالة المستخدم بنجاح." });
       setIsEditModalOpen(false);
-    } catch (err) {
-      toast({ title: "خطأ", description: "فشل تحديث البيانات.", variant: "destructive" });
+    } catch (err: any) {
+      console.error("Update Error:", err);
+      toast({ 
+        title: "فشل في التحديث", 
+        description: "تأكد من صلاحيات النظام وحاول مرة أخرى.", 
+        variant: "destructive" 
+      });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // حذف الحساب النشط
   const handleRevokeActiveAccess = async (uid: string, email: string) => {
     if (!db) return;
-    if (!confirm("تحذير: هل أنت متأكد من حذف حساب العميل نهائياً؟ سيتم منعه من الدخول فوراً.")) return;
+    if (!confirm("تحذير: هل أنت متأكد من حذف حساب العميل نهائياً؟")) return;
     
     try {
       await deleteDoc(doc(db, "users", uid));
       if (email) {
         await deleteDoc(doc(db, "users_provision", email.toLowerCase().trim())).catch(() => {});
       }
-      toast({ title: "تم الحذف", description: "تم إلغاء حساب العميل من النظام نهائياً." });
+      toast({ title: "تم الحذف", description: "تم إلغاء حساب العميل بنجاح." });
     } catch (err) {
-      toast({ title: "خطأ", description: "فشل الحذف، يرجى التحقق من الصلاحيات.", variant: "destructive" });
+      toast({ title: "خطأ في الحذف", variant: "destructive" });
     }
   };
 
-  // إلغاء طلب التفعيل المعلق
   const handleCancelProvision = async (email: string) => {
     if (!db || !email) return;
-    if (!confirm("هل تريد إلغاء طلب التفعيل لهذا العميل؟")) return;
+    if (!confirm("هل تريد إلغاء طلب التفعيل المعلق؟")) return;
     
     try {
       await deleteDoc(doc(db, "users_provision", email.toLowerCase().trim()));
-      toast({ title: "تم الإلغاء", description: "تم سحب طلب التفعيل المعلق بنجاح." });
+      toast({ title: "تم الإلغاء", description: "تم سحب طلب التفعيل." });
     } catch (err) {
-      toast({ title: "خطأ", description: "فشل إلغاء الطلب.", variant: "destructive" });
+      toast({ title: "خطأ", variant: "destructive" });
     }
   };
 
@@ -211,7 +213,6 @@ export default function UsersPermissionsPage() {
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* قائمة العملاء لتفعيلهم */}
         <Card className="lg:col-span-4 rounded-[2.5rem] border-none shadow-sm bg-white overflow-hidden border">
           <CardHeader className="bg-slate-50/50 border-b p-6">
             <CardTitle className="text-lg font-black mb-4">تفعيل عملاء جدد</CardTitle>
@@ -267,7 +268,6 @@ export default function UsersPermissionsPage() {
           </CardContent>
         </Card>
 
-        {/* قائمة الحسابات النشطة */}
         <Card className="lg:col-span-8 rounded-[2.5rem] border-none shadow-sm bg-white overflow-hidden border">
           <CardHeader className="bg-primary p-8 text-primary-foreground">
             <CardTitle className="text-2xl font-black flex items-center gap-3">الحسابات النشطة حالياً</CardTitle>
@@ -329,12 +329,6 @@ export default function UsersPermissionsPage() {
                   </div>
                 </div>
               ))}
-              {activeUsers.filter(u => u.role === 'client').length === 0 && (
-                <div className="p-20 text-center opacity-40">
-                  <Users className="h-16 w-16 mx-auto mb-4" />
-                  <p className="font-black text-lg">لا توجد حسابات مستفيدين نشطة</p>
-                </div>
-              )}
             </div>
           </CardContent>
         </Card>
