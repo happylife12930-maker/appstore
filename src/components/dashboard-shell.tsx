@@ -44,12 +44,11 @@ import { auth } from "@/lib/firebase";
 // تعريف العناصر مع تحديد من يمكنه رؤيتها وصلاحيتها المطلوبة
 const navItems = [
   { title: "dashboard", url: "/", icon: LayoutDashboard, permission: "p_dashboard", roles: ['admin', 'tester'] },
-  { title: "profile", url: "/profile", icon: User, permission: "p_always", roles: ['client', 'admin'] }, // الملف الشخصي متاح دائماً
+  { title: "profile", url: "/profile", icon: User, permission: "p_always", roles: ['client', 'admin'] },
   { title: "clients", url: "/clients", icon: Users, permission: "p_clients", roles: ['admin'] },
   { title: "projects", url: "/projects", icon: Briefcase, permission: "p_projects", roles: ['admin', 'tester', 'client'] },
   { title: "testers", url: "/testers", icon: UserCheck, permission: "p_testers", roles: ['admin'] },
   { title: "quotations", url: "/quotations", icon: Calculator, permission: "p_projects", roles: ['admin'] },
-  { title: "invoices", url: "/invoices", icon: FileText, permission: "p_finances", roles: ['admin'] },
   { title: "payments", url: "/payments", icon: CreditCard, permission: "p_finances", roles: ['admin'] },
   { title: "support", url: "/support", icon: LifeBuoy, permission: "p_support", roles: ['admin', 'client'] },
 ];
@@ -70,16 +69,13 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     await signOut(auth);
   };
 
-  // تصفية القائمة بناءً على دور المستخدم وصلاحياته المحددة من الإدمن
   const filteredNavItems = navItems.filter(item => {
     if (!profile) return false;
     if (profile.role === 'admin') return true;
     
-    // التحقق من الدور أولاً
     const hasRole = item.roles.includes(profile.role);
     if (!hasRole) return false;
 
-    // التحقق من الصلاحية البرمجية (Permissions Array)
     if (item.permission === 'p_always') return true;
     if (item.permission === 'p_dashboard' && profile.role !== 'client') return true;
     
