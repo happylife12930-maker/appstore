@@ -50,13 +50,17 @@ function ProjectsContent() {
   }, [searchParams]);
 
   useEffect(() => {
-    if (!db) return;
+    if (!db || !profile) return;
     const unsub = onSnapshot(collection(db, "projects"), (snap) => {
       let docs = snap.docs.map(d => ({ id: d.id, ...d.data() } as ProjectData));
       
       // إذا كان المستخدم عميلاً (مستفيد)، لا يرى إلا مشاريعه فقط
-      if (profile?.role === 'client') {
-        docs = docs.filter(p => p.clientEmail === profile.email || p.clientPhone === profile.phone);
+      if (profile.role === 'client') {
+        docs = docs.filter(p => 
+          p.clientEmail === profile.email || 
+          (p.clientPhone && profile.phone && p.clientPhone === profile.phone) ||
+          p.clientId === profile.uid
+        );
       }
       
       setProjects(docs);

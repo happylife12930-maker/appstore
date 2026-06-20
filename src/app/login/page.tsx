@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updatePassword } from "firebase/auth";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { doc, setDoc, getDoc, deleteDoc } from "firebase/firestore";
@@ -67,7 +67,7 @@ export default function LoginPage() {
             } catch (createError: any) {
               // إذا كان الحساب موجوداً بالفعل في Auth ولكن بكلمة مرور مختلفة
               if (createError.code === 'auth/email-already-in-use') {
-                const signInRes = await signInWithEmailAndPassword(auth, email, provisionData.tempPassword);
+                const signInRes = await signInWithEmailAndPassword(auth, email, password);
                 user = signInRes.user;
               } else {
                 throw createError;
@@ -75,11 +75,12 @@ export default function LoginPage() {
             }
 
             if (user) {
-              // إنشاء/تحديث بروفايل المستخدم النهائي
+              // إنشاء/تحديث بروفايل المستخدم النهائي - إضافة الهاتف هنا
               await setDoc(doc(db, "users", user.uid), {
                 uid: user.uid,
                 name: provisionData.name,
                 email: email,
+                phone: provisionData.phone || "", // حفظ الهاتف لضمان الربط
                 role: provisionData.role || "client",
                 status: "active",
                 permissions: provisionData.permissions || ["p_projects"],
@@ -96,11 +97,9 @@ export default function LoginPage() {
               return;
             }
           } else {
-            // كلمة المرور لا تطابق الموجودة في التجهيز
             throw { code: 'auth/wrong-password' };
           }
         } else {
-          // لا يوجد حساب ولا يوجد طلب تجهيز
           throw loginError;
         }
       }

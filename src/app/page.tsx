@@ -6,7 +6,7 @@ import { Users, Briefcase, CheckCircle, LayoutDashboard, ShieldCheck, Clock } fr
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { collection, onSnapshot } from "firebase/firestore";
 import { useAuth } from "@/components/auth-provider";
 import { Loader2 } from "lucide-react";
 
@@ -37,7 +37,12 @@ export default function DashboardPage() {
       const unsubP = onSnapshot(collection(db, "projects"), (s) => {
         const myProjects = s.docs.filter(d => {
           const data = d.data();
-          return data.clientEmail === profile.email || data.clientPhone === (profile as any).phone;
+          // الربط عبر البريد الإلكتروني أو الهاتف أو معرف العميل
+          return (
+            data.clientEmail === profile.email || 
+            (data.clientPhone && profile.phone && data.clientPhone === profile.phone) ||
+            data.clientId === profile.uid
+          );
         });
         
         setStats({

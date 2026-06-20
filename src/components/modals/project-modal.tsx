@@ -28,6 +28,7 @@ export interface ProjectData {
   clientId: string;
   clientName: string;
   clientPhone?: string;
+  clientEmail?: string;
   requirements: string;
   status: string;
   cost: number;
@@ -52,7 +53,7 @@ const normalizeForSearch = (text: any) => {
 };
 
 export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }: ProjectModalProps) {
-  const [clients, setClients] = useState<{ id: string; name: string; phone: string }[]>([]);
+  const [clients, setClients] = useState<{ id: string; name: string; phone: string; email: string }[]>([]);
   const [clientSearch, setClientSearch] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -63,6 +64,7 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
     clientId: '',
     clientName: '',
     clientPhone: '',
+    clientEmail: '',
     requirements: '',
     status: 'قيد التنفيذ',
     cost: 0,
@@ -84,7 +86,8 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
       setClients(snap.docs.map(doc => ({ 
         id: doc.id, 
         name: String(doc.data().name || ''), 
-        phone: String(doc.data().phone || '') 
+        phone: String(doc.data().phone || ''),
+        email: String(doc.data().email || '')
       })));
     });
     return () => unsub();
@@ -100,6 +103,7 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
         clientId: '',
         clientName: '',
         clientPhone: '',
+        clientEmail: '',
         requirements: '',
         status: 'قيد التنفيذ',
         cost: 0,
@@ -196,7 +200,8 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
     await onSave({ 
       ...formData, 
       clientName: selectedClient?.name || '', 
-      clientPhone: selectedClient?.phone || '' 
+      clientPhone: selectedClient?.phone || '',
+      clientEmail: selectedClient?.email || ''
     });
     
     setTimeout(() => { document.body.style.pointerEvents = 'auto'; }, 500);
