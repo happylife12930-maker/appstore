@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -317,7 +318,7 @@ function ClientsContent() {
                     <div className="flex flex-wrap gap-2">
                       {client.associatedProjects && client.associatedProjects.length > 0 ? (
                         client.associatedProjects.map((p: any) => (
-                          <Link key={p.id} href="/projects">
+                          <Link key={p.id} href={`/projects?q=${encodeURIComponent(p.name)}`}>
                             <Button variant="outline" size="sm" className="h-8 rounded-xl text-[10px] font-black border-slate-100 hover:bg-primary/5 hover:text-primary gap-1 px-3 shadow-sm">
                               {p.name} <ExternalLink className="h-2 w-2" />
                             </Button>

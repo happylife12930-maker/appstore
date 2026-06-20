@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 import { 
   Briefcase, 
   Plus, 
@@ -12,7 +12,8 @@ import {
   ExternalLink, 
   Clock, 
   Image as ImageIcon,
-  Loader2
+  Loader2,
+  X
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,8 +25,9 @@ import { db } from "@/lib/firebase";
 import { collection, onSnapshot, deleteDoc, doc, setDoc, addDoc } from "firebase/firestore";
 import { ProjectModal, type ProjectData } from "@/components/modals/project-modal";
 import { ProjectDetailsModal } from "@/components/modals/project-details-modal";
+import { useSearchParams, useRouter } from "next/navigation";
 
-export default function ProjectsPage() {
+function ProjectsContent() {
   const [projects, setProjects] = useState<ProjectData[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -37,6 +39,13 @@ export default function ProjectsPage() {
 
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  useEffect(() => {
+    const q = searchParams.get('q');
+    if (q) setSearchQuery(q);
+  }, [searchParams]);
 
   useEffect(() => {
     if (!db) return;
@@ -48,10 +57,12 @@ export default function ProjectsPage() {
   }, []);
 
   const filteredProjects = useMemo(() => {
-    const s = searchQuery.toLowerCase();
+    const s = searchQuery.toLowerCase().trim();
+    if (!s) return projects;
     return projects.filter(p => 
       p.name?.toLowerCase().includes(s) || 
-      p.clientName?.toLowerCase().includes(s)
+      p.clientName?.toLowerCase().includes(s) ||
+      p.clientPhone?.includes(s)
     );
   }, [projects, searchQuery]);
 
@@ -68,7 +79,6 @@ export default function ProjectsPage() {
       }
       setIsModalOpen(false);
       setEditingProject(null);
-      // تأمين التفاعل
       setTimeout(() => { document.body.style.pointerEvents = 'auto'; }, 200);
     } catch (err) {
       toast({ title: "خطأ", description: "فشل في حفظ المشروع", variant: "destructive" });
@@ -90,6 +100,11 @@ export default function ProjectsPage() {
   const handleOpenDetails = (project: ProjectData) => {
     setViewingProject(project);
     setIsDetailsOpen(true);
+  };
+
+  const clearSearch = () => {
+    setSearchQuery("");
+    router.push("/projects");
   };
 
   if (loading) return (
@@ -123,67 +138,87 @@ export default function ProjectsPage() {
         <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5" />
         <Input 
           placeholder="ابحث باسم المشروع أو اسم العميل..." 
-          className="pr-12 h-16 rounded-2xl font-bold text-lg border-none shadow-sm bg-white"
+          className="pr-12 h-16 rounded-2xl font-bold text-lg border-none shadow-sm bg-white focus-visible:ring-primary/20"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
+        {searchQuery && (
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={clearSearch}
+            className="absolute left-4 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full hover:bg-slate-100"
+          >
+            <X className="h-4 w-4 text-slate-400" />
+          </Button>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredProjects.map((project) => (
-          <Card key={project.id} className="rounded-[2.5rem] border-none shadow-sm hover:shadow-xl transition-all bg-white overflow-hidden flex flex-col border border-slate-50 group">
-            <div className="relative h-44 bg-slate-100 overflow-hidden">
-              {project.images?.[0] ? (
-                <img src={project.images[0]} className="w-full h-full object-cover transition-transform group-hover:scale-110" alt="" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-slate-300">
-                  <ImageIcon className="h-10 w-10" />
-                </div>
-              )}
-              <Badge className={`absolute top-4 right-4 rounded-xl font-black ${
-                project.status === 'مكتمل' ? 'bg-green-500' : 'bg-primary'
-              }`}>
-                {project.status}
-              </Badge>
-            </div>
-
-            <CardHeader className="p-6 pb-2">
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle className="text-xl font-black">{project.name}</CardTitle>
-                  <p className="text-xs font-bold text-slate-400 mt-1">العميل: {project.clientName}</p>
-                </div>
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" onClick={() => { setEditingProject(project); setIsModalOpen(true); }} className="h-9 w-9 rounded-xl">
-                    <Edit3 className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => handleDeleteProject(project.id!)} className="h-9 w-9 rounded-xl hover:bg-rose-50 text-rose-500">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-
-            <CardContent className="p-6 pt-2 space-y-4">
-              <div className="space-y-2">
-                <div className="flex justify-between text-xs font-black">
-                  <span className="text-slate-400">الإنجاز</span>
-                  <span className="text-primary">{project.progress}%</span>
-                </div>
-                <Progress value={project.progress} className="h-2 rounded-full" />
+      {filteredProjects.length === 0 ? (
+        <Card className="rounded-[2.5rem] border-none shadow-sm py-20 text-center bg-white">
+          <div className="flex flex-col items-center gap-4 opacity-40">
+            <Briefcase className="h-20 w-20" />
+            <p className="text-xl font-black">لم يتم العثور على مشاريع بهذا الاسم</p>
+            {searchQuery && <Button variant="link" onClick={clearSearch}>عرض كل المشاريع</Button>}
+          </div>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredProjects.map((project) => (
+            <Card key={project.id} className="rounded-[2.5rem] border-none shadow-sm hover:shadow-xl transition-all bg-white overflow-hidden flex flex-col border border-slate-50 group">
+              <div className="relative h-44 bg-slate-100 overflow-hidden">
+                {project.images?.[0] ? (
+                  <img src={project.images[0]} className="w-full h-full object-cover transition-transform group-hover:scale-110" alt="" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-slate-300">
+                    <ImageIcon className="h-10 w-10" />
+                  </div>
+                )}
+                <Badge className={`absolute top-4 right-4 rounded-xl font-black ${
+                  project.status === 'مكتمل' ? 'bg-green-500' : 'bg-primary'
+                }`}>
+                  {project.status}
+                </Badge>
               </div>
 
-              <Button 
-                onClick={() => handleOpenDetails(project)}
-                variant="outline" 
-                className="w-full rounded-2xl h-12 font-black border-slate-200 gap-2 hover:bg-primary hover:text-white transition-all"
-              >
-                <ExternalLink className="h-4 w-4" /> عرض ملف المشروع
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              <CardHeader className="p-6 pb-2">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle className="text-xl font-black">{project.name}</CardTitle>
+                    <p className="text-xs font-bold text-slate-400 mt-1">العميل: {project.clientName}</p>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" onClick={() => { setEditingProject(project); setIsModalOpen(true); }} className="h-9 w-9 rounded-xl">
+                      <Edit3 className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleDeleteProject(project.id!)} className="h-9 w-9 rounded-xl hover:bg-rose-50 text-rose-500">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+
+              <CardContent className="p-6 pt-2 space-y-4">
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs font-black">
+                    <span className="text-slate-400">الإنجاز</span>
+                    <span className="text-primary">{project.progress}%</span>
+                  </div>
+                  <Progress value={project.progress} className="h-2 rounded-full" />
+                </div>
+
+                <Button 
+                  onClick={() => handleOpenDetails(project)}
+                  variant="outline" 
+                  className="w-full rounded-2xl h-12 font-black border-slate-200 gap-2 hover:bg-primary hover:text-white transition-all"
+                >
+                  <ExternalLink className="h-4 w-4" /> عرض ملف المشروع
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       <ProjectModal 
         isOpen={isModalOpen} 
@@ -200,5 +235,13 @@ export default function ProjectsPage() {
         db={db}
       />
     </div>
+  );
+}
+
+export default function ProjectsPage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>}>
+      <ProjectsContent />
+    </Suspense>
   );
 }
