@@ -19,21 +19,15 @@ service cloud.firestore {
     // --- Security Rules ---
 
     match /users/{userId} {
-      // يسمح للمستخدم برؤية وإنشاء ملفه، وللمدير بالتحكم الكامل
-      allow get, create: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
-      // يسمح للمدير بتحديث الحالة والصلاحيات، وللمستخدم بتحديث بياناته
-      allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
-      // يسمح للمدير فقط برؤية القائمة أو الحذف النهائي
+      // يسمح للمستخدم برؤية وتحديث بياناته، وللمدير بالتحكم الكامل بما في ذلك الحذف
+      allow get, create, update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
       allow list, delete: if isAdmin();
     }
 
     match /users_provision/{email} {
-      // التحقق من التفعيل متاح للجميع بالبريد
+      // التحقق من التفعيل متاح بالبريد، والمدير يتحكم في الطلبات وحذفها
       allow get: if true;
-      // المدير يتحكم في طلبات التفعيل
-      allow list, write: if isAdmin();
-      // السماح بالحذف للمدير أو للمستخدم بعد نجاح الربط (للتنظيف)
-      allow delete: if isAdmin() || (isAuthenticated() && request.auth.token.email.lower() == email.lower());
+      allow list, write, delete: if isAdmin();
     }
 
     match /clients/{clientId} {

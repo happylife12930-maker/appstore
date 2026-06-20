@@ -10,12 +10,11 @@ import {
   Trash2,
   UserPlus,
   ShieldCheck,
-  Users,
-  CheckCircle2,
   Settings2,
   Lock,
   Unlock,
-  Link2
+  Link2,
+  CheckCircle2
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -135,13 +134,12 @@ export default function UsersPermissionsPage() {
         status: editingUser.status,
         permissions: editingUser.permissions,
         name: editingUser.name,
-        clientId: editingUser.clientId // حفظ المعرف المعدل
+        clientId: editingUser.clientId
       });
       
       toast({ title: "تم التحديث", description: "تم تعديل صلاحيات وبيانات المستخدم بنجاح." });
       setIsEditModalOpen(false);
     } catch (err: any) {
-      console.error("Update Error:", err);
       toast({ 
         title: "فشل في التحديث", 
         description: "تأكد من صلاحيات النظام وحاول مرة أخرى.", 
@@ -154,28 +152,33 @@ export default function UsersPermissionsPage() {
 
   const handleRevokeActiveAccess = async (uid: string, email: string) => {
     if (!db) return;
-    if (!confirm("تحذير: هل أنت متأكد من حذف حساب العميل نهائياً؟")) return;
+    if (!confirm("تحذير نهائي: هل أنت متأكد من مسح حساب هذا العميل تماماً من النظام؟")) return;
     
     try {
+      // 1. حذف حساب المستخدم النشط
       await deleteDoc(doc(db, "users", uid));
+      
+      // 2. محاولة حذف مستند التفعيل إذا كان موجوداً
       if (email) {
-        await deleteDoc(doc(db, "users_provision", email.toLowerCase().trim())).catch(() => {});
+        const emailLower = email.toLowerCase().trim();
+        await deleteDoc(doc(db, "users_provision", emailLower)).catch(() => {});
       }
-      toast({ title: "تم الحذف", description: "تم إلغاء حساب العميل بنجاح." });
+      
+      toast({ title: "تم الحذف النهائي", description: "تمت إزالة كافة بيانات الدخول المرتبطة بالعميل." });
     } catch (err) {
-      toast({ title: "خطأ في الحذف", variant: "destructive" });
+      toast({ title: "خطأ في الحذف", description: "تأكد من اتصالك بالإنترنت وصلاحياتك.", variant: "destructive" });
     }
   };
 
   const handleCancelProvision = async (email: string) => {
     if (!db || !email) return;
-    if (!confirm("هل تريد إلغاء طلب التفعيل المعلق؟")) return;
+    if (!confirm("هل تريد سحب وإلغاء طلب التفعيل المعلق؟")) return;
     
     try {
       await deleteDoc(doc(db, "users_provision", email.toLowerCase().trim()));
-      toast({ title: "تم الإلغاء", description: "تم سحب طلب التفعيل." });
+      toast({ title: "تم الإلغاء", description: "تم سحب طلب التفعيل بنجاح." });
     } catch (err) {
-      toast({ title: "خطأ", variant: "destructive" });
+      toast({ title: "خطأ في الإلغاء", variant: "destructive" });
     }
   };
 
@@ -211,7 +214,7 @@ export default function UsersPermissionsPage() {
         </div>
         <div>
           <h1 className="text-3xl font-black text-slate-800 tracking-tight">بوابة المستفيدين</h1>
-          <p className="text-slate-500 font-bold">إدارة حسابات الدخول، التنشيط، وتعديل الصلاحيات</p>
+          <p className="text-slate-500 font-bold">إدارة حسابات الدخول، التنشيط، ومسح الحسابات نهائياً</p>
         </div>
       </header>
 
@@ -223,7 +226,7 @@ export default function UsersPermissionsPage() {
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 h-4 w-4" />
               <input 
                 placeholder="ابحث بالاسم أو الهاتف..." 
-                className="w-full pr-10 h-12 rounded-2xl font-bold bg-white border outline-none px-4"
+                className="w-full pr-10 h-12 rounded-2xl font-bold bg-white border outline-none px-4 text-sm"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -273,7 +276,7 @@ export default function UsersPermissionsPage() {
 
         <Card className="lg:col-span-8 rounded-[2.5rem] border-none shadow-sm bg-white overflow-hidden border">
           <CardHeader className="bg-primary p-8 text-primary-foreground">
-            <CardTitle className="text-2xl font-black flex items-center gap-3">الحسابات النشطة حالياً</CardTitle>
+            <CardTitle className="text-2xl font-black flex items-center gap-3">الحسابات النشطة (تحكم كامل)</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <div className="divide-y divide-slate-100">
@@ -332,6 +335,12 @@ export default function UsersPermissionsPage() {
                   </div>
                 </div>
               ))}
+              {activeUsers.filter(u => u.role === 'client').length === 0 && (
+                <div className="p-20 text-center opacity-20">
+                  <Users className="h-20 w-20 mx-auto mb-4" />
+                  <p className="font-black">لا توجد حسابات نشطة حالياً</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -384,7 +393,6 @@ export default function UsersPermissionsPage() {
           
           <ScrollArea className="max-h-[60vh]">
             <div className="p-8 space-y-8">
-              {/* تعديل الاسم */}
               <div className="space-y-2">
                 <Label className="font-black text-slate-700 pr-2">اسم المستفيد</Label>
                 <Input 
@@ -394,7 +402,6 @@ export default function UsersPermissionsPage() {
                 />
               </div>
 
-              {/* تعديل معرف الربط (clientId) */}
               <div className="p-6 bg-primary/5 rounded-3xl border border-primary/10 space-y-4">
                 <div className="flex items-center gap-2 text-primary">
                   <Link2 className="h-5 w-5" />
@@ -405,11 +412,11 @@ export default function UsersPermissionsPage() {
                   <Input 
                     value={editingUser?.clientId || ""} 
                     onChange={(e) => setEditingUser({...editingUser, clientId: e.target.value})}
-                    placeholder="أدخل معرف العميل للربط بالمشاريع..."
+                    placeholder="أدخل معرف العميل للربط..."
                     className="rounded-xl h-10 font-mono text-xs border-primary/20 bg-white"
                   />
                   <p className="text-[10px] text-slate-400 font-bold leading-tight pr-1">
-                    هذا المعرف يربط المستخدم بمشاريعه وفواتيره. تأكد من تطابقه مع معرف العميل في صفحة العملاء.
+                    هذا المعرف يربط المستخدم بمشاريعه وفواتيره.
                   </p>
                 </div>
               </div>
@@ -421,7 +428,7 @@ export default function UsersPermissionsPage() {
                   </div>
                   <div>
                     <p className="font-black text-slate-800">حالة الحساب</p>
-                    <p className="text-[10px] font-bold text-slate-400">تحكم في قدرة العميل على الدخول</p>
+                    <p className="text-[10px] font-bold text-slate-400">تحكم في نشاط العميل</p>
                   </div>
                 </div>
                 <Switch 
@@ -465,7 +472,7 @@ export default function UsersPermissionsPage() {
               className="w-full h-14 rounded-2xl font-black text-lg shadow-xl"
             >
               {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle2 className="h-5 w-5" />}
-              حفظ كافة التعديلات
+              حفظ التعديلات
             </Button>
           </DialogFooter>
         </DialogContent>
