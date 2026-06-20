@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -14,14 +15,23 @@ import {
   Key,
   Users,
   Clock,
-  AlertCircle
+  ShieldAlert,
+  X
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, doc, setDoc, deleteDoc } from "firebase/firestore";
+import { collection, onSnapshot, doc, setDoc, deleteDoc, query, where } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/auth-provider";
 import { useRouter } from "next/navigation";
@@ -39,6 +49,13 @@ export default function UsersPermissionsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
+  
+  // حالات نافذة كلمة المرور
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<any>(null);
+  const [tempPassword, setTempPassword] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const { profile } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
@@ -61,9 +78,6 @@ export default function UsersPermissionsPage() {
     const unsubProvision = onSnapshot(collection(db, "users_provision"), (snap) => {
       setProvisionedUsers(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       setLoading(false);
-    }, (error) => {
-      console.error("Provisioning Load Error:", error);
-      setLoading(false);
     });
 
     return () => {
@@ -73,52 +87,49 @@ export default function UsersPermissionsPage() {
     };
   }, [profile, router]);
 
-  const handleGrantAccess = async (client: any) => {
-    if (!db) {
-      toast({ title: "خطأ في الاتصال", description: "قاعدة البيانات غير متصلة.", variant: "destructive" });
-      return;
-    }
-    
+  const openGrantModal = (client: any) => {
     if (!client.email) {
       toast({ 
         title: "بيانات ناقصة", 
-        description: "العميل ليس له بريد إلكتروني مسجل. يرجى تعديله من قائمة العملاء.", 
+        description: "العميل ليس له بريد إلكتروني مسجل. يرجى تعديله أولاً.", 
         variant: "destructive" 
       });
       return;
     }
+    setSelectedClient(client);
+    setTempPassword("");
+    setIsPasswordModalOpen(true);
+  };
 
-    const password = prompt(`أدخل كلمة مرور الدخول للعميل (${client.name}):`);
-    if (!password) return;
-    
-    if (password.length < 4) {
-      alert("كلمة المرور قصيرة جداً، يرجى إدخال 4 رموز على الأقل.");
+  const handleConfirmGrantAccess = async () => {
+    if (!db || !selectedClient || !tempPassword) return;
+    if (tempPassword.length < 4) {
+      toast({ title: "خطأ", description: "كلمة المرور يجب أن تكون 4 رموز على الأقل.", variant: "destructive" });
       return;
     }
 
+    setIsSubmitting(true);
     try {
-      await setDoc(doc(db, "users_provision", client.email), {
-        name: client.name,
-        email: client.email,
-        phone: client.phone || "",
+      await setDoc(doc(db, "users_provision", selectedClient.email), {
+        name: selectedClient.name,
+        email: selectedClient.email,
+        phone: selectedClient.phone || "",
         role: "client",
         status: "active",
-        tempPassword: password,
+        tempPassword: tempPassword,
         permissions: ["p_projects"],
         createdAt: new Date().toISOString()
       });
       
       toast({ 
-        title: "تم إرسال الصلاحية", 
-        description: `أصبح العميل (${client.name}) جاهزاً للدخول الآن بالباسورد الذي حددته.` 
+        title: "تم التفعيل", 
+        description: `أصبح العميل (${selectedClient.name}) جاهزاً للدخول الآن.` 
       });
+      setIsPasswordModalOpen(false);
     } catch (err: any) {
-      console.error("Grant Access Error:", err);
-      toast({ 
-        title: "فشل التفعيل", 
-        description: "تأكد من صلاحيات الأدمن أو اتصال الإنترنت.", 
-        variant: "destructive" 
-      });
+      toast({ title: "فشل العملية", description: "حدث خطأ أثناء حفظ البيانات.", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -127,11 +138,10 @@ export default function UsersPermissionsPage() {
     if (confirm("هل تريد سحب صلاحية الدخول نهائياً؟")) {
       try {
         await deleteDoc(doc(db, "users", id));
-        // حذف من جدول التجهيز أيضاً لو وجد
         await deleteDoc(doc(db, "users_provision", email));
         toast({ title: "تم السحب", description: "تم إلغاء حساب العميل بنجاح." });
       } catch (err) {
-        toast({ title: "خطأ", variant: "destructive" });
+        toast({ title: "خطأ في السحب", variant: "destructive" });
       }
     }
   };
@@ -196,7 +206,7 @@ export default function UsersPermissionsPage() {
                       <Button 
                         size="sm" 
                         disabled={isActive || !client.email}
-                        onClick={() => handleGrantAccess(client)} 
+                        onClick={() => openGrantModal(client)} 
                         className={`rounded-xl font-black gap-2 h-9 px-4 transition-all ${
                           isActive 
                           ? 'bg-green-500 hover:bg-green-600 text-white' 
@@ -275,6 +285,48 @@ export default function UsersPermissionsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* نافذة طلب كلمة المرور */}
+      <Dialog open={isPasswordModalOpen} onOpenChange={setIsPasswordModalOpen}>
+        <DialogContent className="rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white max-w-md" dir="rtl">
+          <div className="bg-primary p-8 text-primary-foreground">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-black">منح صلاحية الدخول</DialogTitle>
+              <DialogDescription className="text-primary-foreground/80 font-bold mt-2">
+                حدد كلمة المرور التي سيستخدمها العميل ({selectedClient?.name}) للدخول.
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+          <div className="p-8 space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-black text-slate-700 pr-2">كلمة المرور المؤقتة</label>
+              <div className="relative">
+                <Key className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                <Input 
+                  type="text" 
+                  placeholder="أدخل 4 رموز على الأقل..." 
+                  className="rounded-2xl h-14 pr-12 font-black border-slate-200"
+                  value={tempPassword}
+                  onChange={(e) => setTempPassword(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="p-8 bg-slate-50 border-t flex flex-col sm:flex-row gap-3">
+            <Button 
+              onClick={handleConfirmGrantAccess} 
+              disabled={isSubmitting || tempPassword.length < 4}
+              className="w-full h-14 rounded-2xl font-black text-lg gap-2 shadow-xl transition-all"
+            >
+              {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <UserPlus className="h-5 w-5" />}
+              تأكيد وتفعيل الحساب
+            </Button>
+            <Button variant="outline" onClick={() => setIsPasswordModalOpen(false)} className="w-full h-14 rounded-2xl font-black text-lg border-slate-200">
+              إلغاء
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
