@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -15,10 +15,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Briefcase, FileText, Image as ImageIcon, Plus, Trash2, Save } from 'lucide-react';
+import { Loader2, Briefcase, Search, Image as ImageIcon, Plus, Trash2, Save, Phone } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { db } from '@/lib/firebase';
-import { collection, onSnapshot, query } from 'firebase/firestore';
+import { collection, onSnapshot } from 'firebase/firestore';
 
 export interface ProjectData {
   id?: string;
@@ -41,7 +41,8 @@ interface ProjectModalProps {
 }
 
 export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }: ProjectModalProps) {
-  const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
+  const [clients, setClients] = useState<{ id: string; name: string; phone: string }[]>([]);
+  const [clientSearch, setClientSearch] = useState('');
   const [formData, setFormData] = useState<ProjectData>({
     name: '',
     clientId: '',
@@ -64,7 +65,11 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
   useEffect(() => {
     if (!db) return;
     const unsub = onSnapshot(collection(db, "clients"), (snap) => {
-      setClients(snap.docs.map(doc => ({ id: doc.id, name: doc.data().name })));
+      setClients(snap.docs.map(doc => ({ 
+        id: doc.id, 
+        name: doc.data().name, 
+        phone: doc.data().phone || '' 
+      })));
     });
     return () => unsub();
   }, []);
@@ -90,8 +95,17 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
           { id: 6, title: 'التسليم النهائي', completed: false },
         ]
       });
+      setClientSearch('');
     }
   }, [initialData, isOpen]);
+
+  const filteredClients = useMemo(() => {
+    const s = clientSearch.toLowerCase();
+    return clients.filter(c => 
+      c.name?.toLowerCase().includes(s) || 
+      c.phone?.includes(clientSearch)
+    );
+  }, [clients, clientSearch]);
 
   const handleAddImage = () => {
     if (newImageUrl.trim()) {
@@ -119,7 +133,7 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
               <Briefcase className="h-6 w-6" /> {initialData ? 'تعديل المشروع' : 'مشروع جديد'}
             </DialogTitle>
             <DialogDescription className="text-primary-foreground/80 font-bold">
-              أدخل تفاصيل المشروع والمتطلبات التقنية والصور
+              اربط المشروع بالعميل من خلال البحث بالاسم أو رقم الهاتف
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -137,15 +151,34 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
                 />
               </div>
               <div className="space-y-2">
-                <Label className="font-black">اختيار العميل</Label>
-                <Select value={formData.clientId} onValueChange={(val) => setFormData({...formData, clientId: val})}>
-                  <SelectTrigger className="rounded-2xl h-12 border-slate-200 font-bold">
-                    <SelectValue placeholder="اختر العميل" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-2xl font-bold">
-                    {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <Label className="font-black">ربط العميل (بحث بالاسم/الهاتف)</Label>
+                <div className="space-y-2">
+                  <div className="relative">
+                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <Input 
+                      placeholder="ابحث بالاسم أو رقم الهاتف..." 
+                      value={clientSearch}
+                      onChange={(e) => setClientSearch(e.target.value)}
+                      className="rounded-2xl h-12 pr-10 border-slate-200 font-bold text-sm"
+                    />
+                  </div>
+                  <Select value={formData.clientId} onValueChange={(val) => setFormData({...formData, clientId: val})}>
+                    <SelectTrigger className="rounded-2xl h-12 border-slate-200 font-bold">
+                      <SelectValue placeholder="اختر العميل من النتائج" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-2xl font-bold">
+                      {filteredClients.map(c => (
+                        <SelectItem key={c.id} value={c.id}>
+                          <div className="flex flex-col items-start">
+                            <span>{c.name}</span>
+                            <span className="text-[10px] text-slate-400" dir="ltr">{c.phone}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                      {filteredClients.length === 0 && <div className="p-2 text-center text-xs text-slate-400">لا توجد نتائج</div>}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
 

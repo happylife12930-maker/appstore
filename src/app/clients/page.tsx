@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -13,18 +12,21 @@ import {
   Edit3, 
   Wallet,
   Loader2,
-  Briefcase
+  Briefcase,
+  ExternalLink
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, deleteDoc, doc, setDoc, addDoc } from "firebase/firestore";
+import { collection, onSnapshot, deleteDoc, doc, setDoc, addDoc, query, where } from "firebase/firestore";
 import { AddClientModal, type ClientData } from "@/components/modals/add-client-modal";
+import Link from "next/link";
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<ClientData[]>([]);
+  const [projects, setProjects] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -32,32 +34,42 @@ export default function ClientsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
 
-  // حل مشكلة الفريز: التأكد من استعادة التحكم في الشاشة عند إغلاق المودال
-  useEffect(() => {
-    if (!isModalOpen) {
-      document.body.style.pointerEvents = 'auto';
-      document.body.style.overflow = 'auto';
-    }
-  }, [isModalOpen]);
-
   useEffect(() => {
     if (!db) return;
-    const unsub = onSnapshot(collection(db, "clients"), (snap) => {
+    
+    // جلب العملاء
+    const unsubClients = onSnapshot(collection(db, "clients"), (snap) => {
       setClients(snap.docs.map(d => ({ id: d.id, ...d.data() } as ClientData)));
       setLoading(false);
     });
-    return () => unsub();
+
+    // جلب المشاريع لربطها بالعملاء في العرض
+    const unsubProjects = onSnapshot(collection(db, "projects"), (snap) => {
+      setProjects(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+
+    return () => { unsubClients(); unsubProjects(); };
   }, []);
 
-  // تحسين البحث ليشمل الاسم والهاتف واسم المشروع
+  // ربط المشاريع بكل عميل
+  const clientsWithProjects = useMemo(() => {
+    return clients.map(client => {
+      const clientProjects = projects.filter(p => p.clientId === client.id);
+      return {
+        ...client,
+        associatedProjects: clientProjects
+      };
+    });
+  }, [clients, projects]);
+
   const filteredClients = useMemo(() => {
     const s = searchQuery.toLowerCase();
-    return clients.filter(c => 
+    return clientsWithProjects.filter(c => 
       (c.name || "").toLowerCase().includes(s) || 
       (c.phone || "").includes(searchQuery) ||
-      (c.projectName || "").toLowerCase().includes(s)
+      c.associatedProjects.some(p => p.name.toLowerCase().includes(s))
     );
-  }, [clients, searchQuery]);
+  }, [clientsWithProjects, searchQuery]);
 
   const handleSaveClient = async (data: ClientData) => {
     if (!db) return;
@@ -72,12 +84,7 @@ export default function ClientsPage() {
       }
       setIsModalOpen(false);
       setEditingClient(null);
-      
-      // حل إضافي لمشكلة الفريز: إجبار المتصفح على استعادة التفاعل
-      setTimeout(() => {
-        document.body.style.pointerEvents = 'auto';
-        document.body.style.overflow = 'auto';
-      }, 100);
+      setTimeout(() => { document.body.style.pointerEvents = 'auto'; }, 100);
     } catch (err) {
       toast({ title: "خطأ", description: "فشل في حفظ البيانات", variant: "destructive" });
     } finally {
@@ -111,7 +118,7 @@ export default function ClientsPage() {
           </div>
           <div>
             <h1 className="text-3xl font-black text-slate-800 tracking-tight">إدارة العملاء</h1>
-            <p className="text-slate-500 font-bold">ابحث بالاسم، الهاتف، أو اسم المشروع</p>
+            <p className="text-slate-500 font-bold">ابحث بالاسم، الهاتف، أو اسم المشروع المرتبط</p>
           </div>
         </div>
         <Button 
@@ -151,8 +158,8 @@ export default function ClientsPage() {
                   <div className="overflow-hidden">
                     <CardTitle className="text-lg font-black truncate max-w-[150px]">{client.name}</CardTitle>
                     <div className="flex items-center gap-1 mt-1">
-                      <Briefcase className="h-3 w-3 text-slate-400" />
-                      <span className="text-[10px] font-bold text-slate-500 truncate max-w-[120px]">{client.projectName || 'بدون مشروع'}</span>
+                      <Phone className="h-3 w-3 text-slate-400" />
+                      <span className="text-[10px] font-bold text-slate-500 truncate" dir="ltr">{client.phone}</span>
                     </div>
                   </div>
                 </div>
@@ -168,12 +175,29 @@ export default function ClientsPage() {
               <CardContent className="p-6 space-y-4">
                 <div className="space-y-3">
                   <div className="flex items-center gap-3 text-slate-600">
-                    <Phone className="h-4 w-4 text-primary" />
-                    <span className="font-bold text-sm" dir="ltr">{client.phone || '---'}</span>
-                  </div>
-                  <div className="flex items-center gap-3 text-slate-600">
                     <Mail className="h-4 w-4 text-primary" />
                     <span className="font-bold text-sm truncate max-w-[200px]">{client.email || '---'}</span>
+                  </div>
+                  
+                  {/* قسم المشاريع المرتبطة */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-slate-400">
+                      <Briefcase className="h-3.5 w-3.5" />
+                      <span className="text-xs font-black">المشاريع المرتبطة</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {client.associatedProjects.length > 0 ? (
+                        client.associatedProjects.map((p: any) => (
+                          <Link key={p.id} href="/projects">
+                            <Button variant="outline" size="sm" className="h-7 rounded-lg text-[10px] font-bold border-slate-100 hover:bg-primary/5 hover:text-primary gap-1">
+                              {p.name} <ExternalLink className="h-2 w-2" />
+                            </Button>
+                          </Link>
+                        ))
+                      ) : (
+                        <span className="text-[10px] text-slate-400 font-bold italic">لا توجد مشاريع حالياً</span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
