@@ -21,7 +21,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, deleteDoc, doc, setDoc, addDoc, query, where, or } from "firebase/firestore";
+import { collection, onSnapshot, deleteDoc, doc, setDoc, addDoc, query, where, or, Unsubscribe } from "firebase/firestore";
 import { ProjectModal, type ProjectData } from "@/components/modals/project-modal";
 import { ProjectDetailsModal } from "@/components/modals/project-details-modal";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -41,7 +41,7 @@ function ProjectsContent() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
 
   useEffect(() => {
     const qParam = searchParams.get('q');
@@ -49,22 +49,29 @@ function ProjectsContent() {
   }, [searchParams]);
 
   useEffect(() => {
-    if (!db || !profile) return;
+    if (!db) return;
+    if (!profile && loading === false) return;
 
     let q;
-    if (profile.role === 'admin') {
+    if (profile?.role === 'admin') {
       q = query(collection(db, "projects"));
     } else {
-      // بناء الاستعلام بناءً على بيانات العميل لضمان الصلاحيات
+      const userEmail = user?.email || profile?.email;
+      const userPhone = profile?.phone;
+      const clientId = profile?.clientId;
+
       const conditions = [];
-      if (profile.clientId) conditions.push(where("clientId", "==", profile.clientId));
-      if (profile.email) conditions.push(where("clientEmail", "==", profile.email));
-      if (profile.phone) conditions.push(where("clientPhone", "==", profile.phone));
+      if (userEmail) conditions.push(where("clientEmail", "==", userEmail));
+      if (clientId) conditions.push(where("clientId", "==", clientId));
+      if (userPhone) conditions.push(where("clientPhone", "==", userPhone));
 
       if (conditions.length > 0) {
         q = query(collection(db, "projects"), or(...conditions));
-      } else {
+      } else if (profile || user) {
+        // إذا كان هناك مستخدم ولكن بدون بيانات ربط، لا تعرض شيئاً
         setLoading(false);
+        return;
+      } else {
         return;
       }
     }
@@ -79,7 +86,7 @@ function ProjectsContent() {
     });
     
     return () => unsub();
-  }, [profile]);
+  }, [profile, user]);
 
   const filteredProjects = useMemo(() => {
     const s = searchQuery.toLowerCase().trim();
@@ -154,7 +161,7 @@ function ProjectsContent() {
             </p>
           </div>
         </div>
-        {profile?.role !== 'client' && (
+        {profile?.role === 'admin' && (
           <Button 
             onClick={() => { setEditingProject(null); setIsModalOpen(true); }}
             className="rounded-2xl h-14 px-8 font-black text-lg gap-2 shadow-xl hover:scale-105 transition-all"
@@ -164,7 +171,7 @@ function ProjectsContent() {
         )}
       </header>
 
-      {profile?.role !== 'client' && (
+      {profile?.role === 'admin' && (
         <div className="relative">
           <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5" />
           <Input 
@@ -218,7 +225,7 @@ function ProjectsContent() {
                     <CardTitle className="text-xl font-black">{project.name}</CardTitle>
                     <p className="text-xs font-bold text-slate-400 mt-1">العميل: {project.clientName}</p>
                   </div>
-                  {profile?.role !== 'client' && (
+                  {profile?.role === 'admin' && (
                     <div className="flex gap-1">
                       <Button variant="ghost" size="icon" onClick={() => { setEditingProject(project); setIsModalOpen(true); }} className="h-9 w-9 rounded-xl">
                         <Edit3 className="h-4 w-4" />
@@ -253,7 +260,7 @@ function ProjectsContent() {
         </div>
       )}
 
-      {profile?.role !== 'client' && (
+      {profile?.role === 'admin' && (
         <ProjectModal 
           isOpen={isModalOpen} 
           onClose={() => { setIsModalOpen(false); setEditingProject(null); }}

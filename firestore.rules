@@ -5,12 +5,14 @@ service cloud.firestore {
     // دالة للتحقق مما إذا كان المستخدم مديراً
     function isAdmin() {
       return request.auth != null && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
     // قواعد جدول المستخدمين
     match /users/{userId} {
-      allow read, write: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow write: if isAdmin() || (request.auth != null && request.auth.uid == userId);
     }
     
     // قواعد جدول العملاء
@@ -20,12 +22,14 @@ service cloud.firestore {
     
     // قواعد جدول المشاريع
     match /projects/{projectId} {
-      // السماح بالقراءة للأدمن، أو للعميل إذا كان المشروع يخصه بناءً على المعرف أو البريد أو الهاتف
+      // السماح بالقراءة للأدمن، أو للعميل إذا تطابق بريده أو معرفه أو هاتفه
       allow read: if request.auth != null && (
         isAdmin() || 
-        resource.data.clientId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.clientId ||
         resource.data.clientEmail == request.auth.token.email ||
-        resource.data.clientPhone == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.phone
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
+          resource.data.clientId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.clientId ||
+          resource.data.clientPhone == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.phone
+        ))
       );
       allow write: if isAdmin();
     }

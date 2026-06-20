@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -8,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updatePassword } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { doc, setDoc, getDoc, deleteDoc } from "firebase/firestore";
@@ -19,8 +18,7 @@ const getFriendlyErrorMessage = (errorCode: string) => {
     case "auth/invalid-email": return "البريد الإلكتروني غير صالح.";
     case "auth/user-not-found": return "لم يتم العثور على حساب بهذا البريد.";
     case "auth/wrong-password": return "كلمة المرور غير صحيحة.";
-    case "auth/email-already-in-use": return "البريد مُستخدم بالفعل في حساب آخر.";
-    case "auth/weak-password": return "كلمة المرور يجب أن تكون 6 رموز على الأقل.";
+    case "auth/email-already-in-use": return "البريد مُستخدم بالفعل. جرب الدخول بكلمة المرور الخاصة بك.";
     default: return "حدث خطأ غير متوقع. يرجى التأكد من بياناتك والمحاولة مرة أخرى.";
   }
 };
@@ -41,14 +39,14 @@ export default function LoginPage() {
     setError(null);
 
     try {
+      // محاولة الدخول العادي أولاً
       try {
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        if (userCredential) {
-          toast({ title: "تم الدخول بنجاح", description: "مرحباً بك مجدداً في APP STORE" });
-          router.push("/");
-          return;
-        }
+        await signInWithEmailAndPassword(auth, email, password);
+        toast({ title: "تم الدخول بنجاح", description: "مرحباً بك مجدداً في APP STORE" });
+        router.push("/");
+        return;
       } catch (loginError: any) {
+        // إذا فشل الدخول العادي، نفحص جدول التجهيز
         const provisionDocRef = doc(db, "users_provision", email);
         const provisionSnap = await getDoc(provisionDocRef);
 
@@ -58,35 +56,43 @@ export default function LoginPage() {
           if (password === provisionData.tempPassword) {
             let user;
             try {
+              // محاولة إنشاء حساب جديد
               const createRes = await createUserWithEmailAndPassword(auth, email, password);
               user = createRes.user;
             } catch (createError: any) {
               if (createError.code === 'auth/email-already-in-use') {
-                const signInRes = await signInWithEmailAndPassword(auth, email, password);
+                // إذا كان الحساب موجوداً مسبقاً، نقوم بتسجيل الدخول وتحديث كلمة المرور
+                const signInRes = await signInWithEmailAndPassword(auth, email, provisionData.tempPassword).catch(async () => {
+                  // إذا فشل الدخول بالباسورد القديم، ربما تم تغييره، لكننا هنا بصدد "التفعيل"
+                  return await signInWithEmailAndPassword(auth, email, password);
+                });
                 user = signInRes.user;
+                if (user) await updatePassword(user, password);
               } else {
                 throw createError;
               }
             }
 
             if (user) {
+              // إنشاء أو تحديث بروفايل المستخدم بالبيانات الكاملة للربط
               await setDoc(doc(db, "users", user.uid), {
                 uid: user.uid,
                 name: provisionData.name,
                 email: email,
                 phone: provisionData.phone || "",
-                clientId: provisionData.clientId || "", // ترحيل معرف العميل الأصلي للربط
+                clientId: provisionData.clientId || "", 
                 role: provisionData.role || "client",
                 status: "active",
                 permissions: provisionData.permissions || ["p_projects"],
                 createdAt: new Date().toISOString(),
                 lastLogin: new Date().toLocaleString('ar-EG'),
-                tempPassword: password
+                tempPassword: password // نحتفظ به لرؤية الأدمن كما طلبت
               });
 
+              // حذف بيانات التجهيز بعد النجاح
               await deleteDoc(provisionDocRef);
               
-              toast({ title: "تم تفعيل الحساب", description: "تم إنشاء ملفك الشخصي بنجاح، مرحباً بك!" });
+              toast({ title: "تم تفعيل الحساب", description: "تم ربط بياناتك بنجاح، مرحباً بك!" });
               router.push("/");
               return;
             }

@@ -5,22 +5,26 @@ import { Users, Briefcase, CheckCircle, LayoutDashboard, ShieldCheck, Clock, Loa
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, where, or } from "firebase/firestore";
+import { collection, onSnapshot, query, where, or, Unsubscribe } from "firebase/firestore";
 import { useAuth } from "@/components/auth-provider";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { profile, loading: authLoading } = useAuth();
+  const { profile, loading: authLoading, user } = useAuth();
   const [stats, setStats] = useState({ clients: 0, projects: 0, finished: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!db || authLoading || !profile) return;
+    if (!db || authLoading) return;
+    if (!profile && !authLoading) {
+      setLoading(false);
+      return;
+    }
 
-    let unsubP = () => {};
-    let unsubC = () => {};
+    let unsubP: Unsubscribe = () => {};
+    let unsubC: Unsubscribe = () => {};
 
-    if (profile.role === 'admin') {
+    if (profile?.role === 'admin') {
       unsubC = onSnapshot(collection(db, "clients"), (s) => setStats(p => ({ ...p, clients: s.size })));
       unsubP = onSnapshot(collection(db, "projects"), (s) => {
         setStats(p => ({ 
@@ -31,12 +35,16 @@ export default function DashboardPage() {
         setLoading(false);
       });
     } 
-    else if (profile.role === 'client') {
-      // بناء الاستعلام بناءً على البيانات المتوفرة فقط لتجنب أخطاء الصلاحيات
+    else if (profile?.role === 'client' || (user && !profile)) {
+      // العميل يعتمد على البريد الإلكتروني الموثق أولاً ثم بيانات البروفايل
+      const userEmail = user?.email || profile?.email;
+      const userPhone = profile?.phone;
+      const clientId = profile?.clientId;
+
       const conditions = [];
-      if (profile.clientId) conditions.push(where("clientId", "==", profile.clientId));
-      if (profile.email) conditions.push(where("clientEmail", "==", profile.email));
-      if (profile.phone) conditions.push(where("clientPhone", "==", profile.phone));
+      if (userEmail) conditions.push(where("clientEmail", "==", userEmail));
+      if (clientId) conditions.push(where("clientId", "==", clientId));
+      if (userPhone) conditions.push(where("clientPhone", "==", userPhone));
 
       if (conditions.length > 0) {
         const q = query(collection(db, "projects"), or(...conditions));
@@ -63,7 +71,7 @@ export default function DashboardPage() {
       unsubP();
       unsubC();
     };
-  }, [profile, authLoading]);
+  }, [profile, authLoading, user]);
 
   if (loading || authLoading) return (
     <div className="flex flex-col items-center justify-center py-20 gap-4">
