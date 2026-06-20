@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updatePassword } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { doc, setDoc, getDoc, deleteDoc } from "firebase/firestore";
@@ -19,8 +19,9 @@ const getFriendlyErrorMessage = (errorCode: string) => {
     case "auth/invalid-email": return "البريد الإلكتروني غير صالح.";
     case "auth/user-not-found": return "لم يتم العثور على حساب بهذا البريد.";
     case "auth/wrong-password": return "كلمة المرور غير صحيحة.";
-    case "auth/email-already-in-use": return "البريد مُستخدم بالفعل.";
-    default: return "حدث خطأ. يرجى المحاولة مرة أخرى.";
+    case "auth/email-already-in-use": return "البريد مُستخدم بالفعل في حساب آخر.";
+    case "auth/weak-password": return "كلمة المرور يجب أن تكون 6 رموز على الأقل.";
+    default: return "حدث خطأ غير متوقع. يرجى التأكد من بياناتك والمحاولة مرة أخرى.";
   }
 };
 
@@ -40,49 +41,68 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      // 1. محاولة تسجيل الدخول العادي
-      let userCredential;
+      // 1. محاولة تسجيل الدخول العادي أولاً
       try {
-        userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        if (userCredential) {
+          toast({ title: "تم الدخول بنجاح", description: "مرحباً بك مجدداً في APP STORE" });
+          router.push("/");
+          return;
+        }
       } catch (loginError: any) {
-        // 2. إذا فشل (مثلاً الحساب غير موجود في Auth)، نتحقق من جدول التجهيز (users_provision)
+        // 2. إذا فشل الدخول، نتحقق من جدول التجهيز (users_provision)
         const provisionDocRef = doc(db, "users_provision", email);
         const provisionSnap = await getDoc(provisionDocRef);
 
         if (provisionSnap.exists()) {
           const provisionData = provisionSnap.data();
-          // التحقق من كلمة المرور المؤقتة التي حددها الأدمن
+          
+          // التحقق من تطابق كلمة المرور المؤقتة
           if (password === provisionData.tempPassword) {
-            // إنشاء الحساب رسمياً في Firebase Auth
-            userCredential = await createUserWithEmailAndPassword(auth, email, password);
-            const user = userCredential.user;
-            
-            // إنشاء بروفايل المستخدم النهائي في مجموعة users
-            await setDoc(doc(db, "users", user.uid), {
-              uid: user.uid,
-              name: provisionData.name,
-              email: email,
-              role: provisionData.role || "client",
-              status: "active",
-              permissions: provisionData.permissions || ["p_projects"],
-              createdAt: new Date().toISOString(),
-              lastLogin: new Date().toLocaleString('ar-EG'),
-              tempPassword: password // حفظه كما طلب العميل ليسهل على الأدمن رؤيته
-            });
+            let user;
+            try {
+              // محاولة إنشاء حساب جديد
+              const createRes = await createUserWithEmailAndPassword(auth, email, password);
+              user = createRes.user;
+            } catch (createError: any) {
+              // إذا كان الحساب موجوداً بالفعل في Auth ولكن بكلمة مرور مختلفة
+              if (createError.code === 'auth/email-already-in-use') {
+                const signInRes = await signInWithEmailAndPassword(auth, email, provisionData.tempPassword);
+                user = signInRes.user;
+              } else {
+                throw createError;
+              }
+            }
 
-            // حذف طلب التجهيز بعد النجاح
-            await deleteDoc(provisionDocRef);
+            if (user) {
+              // إنشاء/تحديث بروفايل المستخدم النهائي
+              await setDoc(doc(db, "users", user.uid), {
+                uid: user.uid,
+                name: provisionData.name,
+                email: email,
+                role: provisionData.role || "client",
+                status: "active",
+                permissions: provisionData.permissions || ["p_projects"],
+                createdAt: new Date().toISOString(),
+                lastLogin: new Date().toLocaleString('ar-EG'),
+                tempPassword: password
+              });
+
+              // حذف طلب التجهيز بعد النجاح
+              await deleteDoc(provisionDocRef);
+              
+              toast({ title: "تم تفعيل الحساب", description: "تم إنشاء ملفك الشخصي بنجاح، مرحباً بك!" });
+              router.push("/");
+              return;
+            }
           } else {
+            // كلمة المرور لا تطابق الموجودة في التجهيز
             throw { code: 'auth/wrong-password' };
           }
         } else {
+          // لا يوجد حساب ولا يوجد طلب تجهيز
           throw loginError;
         }
-      }
-
-      if (userCredential) {
-        toast({ title: "تم الدخول بنجاح", description: "مرحباً بك في APP STORE" });
-        router.push("/");
       }
     } catch (error: any) {
       const friendlyMessage = getFriendlyErrorMessage(error.code);
@@ -114,7 +134,8 @@ export default function LoginPage() {
               <Input 
                 type="email" 
                 placeholder="example@mail.com" 
-                className="rounded-2xl h-14 font-bold border-slate-200" 
+                className="rounded-2xl h-14 font-bold border-slate-200 text-right" 
+                dir="ltr"
                 required 
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -125,7 +146,8 @@ export default function LoginPage() {
               <Input 
                 type="password" 
                 placeholder="••••••••" 
-                className="rounded-2xl h-14 font-black border-slate-200" 
+                className="rounded-2xl h-14 font-black border-slate-200 text-right" 
+                dir="ltr"
                 required 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -135,8 +157,8 @@ export default function LoginPage() {
               {loading ? <Loader2 className="ml-2 h-6 w-6 animate-spin" /> : <LogIn className="ml-2 h-6 w-6" />}
               دخول البوابة
             </Button>
-            <p className="text-center text-xs font-bold text-slate-400 mt-4">
-              إذا لم يكن لديك حساب، يرجى التواصل مع إدارة APP STORE للحصول على بيانات الدخول.
+            <p className="text-center text-xs font-bold text-slate-400 mt-4 leading-relaxed px-4">
+              إذا لم يتم تفعيل حسابك بعد، يرجى استخدام كلمة المرور التي زودتك بها إدارة APP STORE.
             </p>
           </form>
         </CardContent>
