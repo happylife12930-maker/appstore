@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -202,17 +203,6 @@ export default function ProfilePage() {
               </div>
             </CardContent>
           </Card>
-
-          {/* نصائح أو تواصل سريع */}
-          <div className="p-8 bg-slate-900 rounded-[2.5rem] text-white flex flex-col md:flex-row items-center justify-between gap-6">
-            <div>
-              <h4 className="text-xl font-black mb-2">هل لديك استفسار حول كشف الحساب؟</h4>
-              <p className="opacity-70 font-bold text-sm">فريق الدعم المالي متاح دائماً لمراجعة أي تفاصيل معك.</p>
-            </div>
-            <Button className="rounded-2xl h-14 px-10 font-black text-lg bg-white text-slate-900 hover:bg-slate-100">
-              تحدث مع المحاسب
-            </Button>
-          </div>
         </div>
       </div>
     </div>
