@@ -11,16 +11,8 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
-    function userProfileExists() {
-      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
-    }
-
     function isAdmin() {
-      return isAuthenticated() && userProfileExists() && getUserData().role == 'admin';
-    }
-
-    function isClientOwner(clientId) {
-      return isAuthenticated() && userProfileExists() && getUserData().clientId == clientId;
+      return isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().role == 'admin';
     }
 
     // --- Security Rules ---
@@ -32,31 +24,30 @@ service cloud.firestore {
     }
 
     match /users_provision/{email} {
-      // السماح بجلب مستند تفعيل محدد للتحقق قبل تسجيل الدخول
+      // السماح بجلب وثيقة التفعيل بالبريد الإلكتروني للتحقق قبل تسجيل الدخول
       allow get: if true;
-      allow list: if isAdmin();
-      allow write: if isAdmin();
+      allow list, write: if isAdmin();
     }
 
     match /clients/{clientId} {
-      allow get: if isAdmin() || isClientOwner(clientId);
-      allow list, create, update, delete: if isAdmin();
+      allow get, list: if isAdmin() || (isAuthenticated() && getUserData().clientId == clientId);
+      allow write: if isAdmin();
     }
 
     match /projects/{projectId} {
-      // السماح للعميل برؤية مشاريعه بناءً على clientId المربوط في ملفه
-      allow read, list: if isAdmin() || (isAuthenticated() && userProfileExists() && resource.data.clientId == getUserData().clientId);
+      // السماح للمستفيد برؤية مشاريعه المربوطة بـ clientId الخاص به
+      allow read, list: if isAdmin() || (isAuthenticated() && resource.data.clientId == getUserData().clientId);
       allow write: if isAdmin();
     }
 
     match /invoices/{invoiceId} {
-      allow read, list: if isAdmin() || (isAuthenticated() && userProfileExists() && resource.data.clientId == getUserData().clientId);
-      allow create, update, delete: if isAdmin();
+      allow read, list: if isAdmin() || (isAuthenticated() && resource.data.clientId == getUserData().clientId);
+      allow write: if isAdmin();
     }
     
     match /payments/{paymentId} {
-      allow read, list: if isAdmin() || (isAuthenticated() && userProfileExists() && resource.data.clientId == getUserData().clientId);
-      allow create, update, delete: if isAdmin();
+      allow read, list: if isAdmin() || (isAuthenticated() && resource.data.clientId == getUserData().clientId);
+      allow write: if isAdmin();
     }
   }
 }
