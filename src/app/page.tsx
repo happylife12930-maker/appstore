@@ -1,8 +1,7 @@
-
 "use client";
 import * as React from "react";
 import { useState, useEffect } from "react";
-import { Users, Briefcase, CheckCircle, LayoutDashboard, ShieldCheck, Loader2, RefreshCw } from "lucide-react";
+import { Users, Briefcase, CheckCircle, LayoutDashboard, ShieldCheck, Loader2, RefreshCw, Lock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
@@ -43,6 +42,12 @@ export default function DashboardPage() {
       }, () => setLoading(false));
     } 
     else if (profile.role === 'client' && profile.clientId) {
+      // جلب الإحصائيات فقط إذا كانت صلاحية المشاريع مفعلة
+      if (!profile.permissions.includes('p_projects')) {
+        setLoading(false);
+        return;
+      }
+
       const q = query(
         collection(db, "projects"),
         where("clientId", "==", profile.clientId)
@@ -70,7 +75,6 @@ export default function DashboardPage() {
     };
   }, [profile, authLoading]);
 
-  // دالة لمزامنة الربط إذا كان معلقاً
   const handleSyncLink = async () => {
     if (!profile || !db) return;
     setIsSyncing(true);
@@ -89,10 +93,10 @@ export default function DashboardPage() {
         await deleteDoc(provisionDocRef);
         toast({ title: "تم التفعيل", description: "تم ربط حسابك بالمشاريع بنجاح." });
       } else {
-        toast({ title: "تنبيه", description: "لم يتم العثور على تفعيل جديد. تأكد من قيام الإدارة بتنشيط حسابك.", variant: "destructive" });
+        toast({ title: "تنبيه", description: "لم يتم العثور على تفعيل جديد.", variant: "destructive" });
       }
     } catch (err) {
-      toast({ title: "خطأ", description: "فشلت المزامنة، يرجى المحاولة لاحقاً.", variant: "destructive" });
+      toast({ title: "خطأ", description: "فشلت المزامنة.", variant: "destructive" });
     } finally {
       setIsSyncing(false);
     }
@@ -107,6 +111,7 @@ export default function DashboardPage() {
 
   const isAdmin = profile?.role === 'admin';
   const isLinked = !!profile?.clientId;
+  const canViewProjects = isAdmin || profile?.permissions.includes('p_projects');
 
   return (
     <div className="max-w-7xl mx-auto space-y-8" dir="rtl">
@@ -146,19 +151,27 @@ export default function DashboardPage() {
           />
         )}
         
-        <StatCard 
-          title={isAdmin ? "مشاريع نشطة" : "مشاريعي الجارية"} 
-          icon={<Briefcase className="text-orange-500" />} 
-          value={stats.projects} 
-          onClick={() => router.push('/projects')} 
-        />
-        
-        <StatCard 
-          title={isAdmin ? "مشاريع منتهية" : "مشاريع تم تسليمها"} 
-          icon={<CheckCircle className="text-green-500" />} 
-          value={stats.finished} 
-          onClick={() => router.push('/projects')} 
-        />
+        {canViewProjects ? (
+          <>
+            <StatCard 
+              title={isAdmin ? "مشاريع نشطة" : "مشاريعي الجارية"} 
+              icon={<Briefcase className="text-orange-500" />} 
+              value={stats.projects} 
+              onClick={() => router.push('/projects')} 
+            />
+            <StatCard 
+              title={isAdmin ? "مشاريع منتهية" : "مشاريع تم تسليمها"} 
+              icon={<CheckCircle className="text-green-500" />} 
+              value={stats.finished} 
+              onClick={() => router.push('/projects')} 
+            />
+          </>
+        ) : !isAdmin && (
+          <div className="lg:col-span-2 p-6 bg-slate-50 rounded-[2rem] border border-dashed flex items-center justify-center gap-4 text-slate-400">
+            <Lock className="h-6 w-6" />
+            <span className="font-black text-sm uppercase tracking-wider">قسم المشاريع محجوب</span>
+          </div>
+        )}
         
         {isAdmin ? (
           <StatCard 

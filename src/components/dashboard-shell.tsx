@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from "react";
@@ -9,14 +8,10 @@ import {
   Users, 
   Briefcase, 
   FileText, 
-  MessageSquare, 
   ShieldCheck, 
   Calculator, 
   LifeBuoy, 
-  Star, 
-  BarChart3,
   CreditCard,
-  Settings,
   LogOut,
   Languages,
   UserCheck,
@@ -47,17 +42,17 @@ import { useAuth } from "@/components/auth-provider";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 
-// تعريف العناصر مع تحديد من يمكنه رؤيتها
+// تعريف العناصر مع تحديد من يمكنه رؤيتها وصلاحيتها المطلوبة
 const navItems = [
   { title: "dashboard", url: "/", icon: LayoutDashboard, permission: "p_dashboard", roles: ['admin', 'tester'] },
-  { title: "profile", url: "/profile", icon: User, permission: "p_dashboard", roles: ['client', 'admin'] },
+  { title: "profile", url: "/profile", icon: User, permission: "p_always", roles: ['client', 'admin'] }, // الملف الشخصي متاح دائماً
   { title: "clients", url: "/clients", icon: Users, permission: "p_clients", roles: ['admin'] },
   { title: "projects", url: "/projects", icon: Briefcase, permission: "p_projects", roles: ['admin', 'tester', 'client'] },
   { title: "testers", url: "/testers", icon: UserCheck, permission: "p_testers", roles: ['admin'] },
   { title: "quotations", url: "/quotations", icon: Calculator, permission: "p_projects", roles: ['admin'] },
   { title: "invoices", url: "/invoices", icon: FileText, permission: "p_finances", roles: ['admin'] },
   { title: "payments", url: "/payments", icon: CreditCard, permission: "p_finances", roles: ['admin'] },
-  { title: "support", url: "/support", icon: LifeBuoy, permission: "p_dashboard", roles: ['admin', 'client'] },
+  { title: "support", url: "/support", icon: LifeBuoy, permission: "p_support", roles: ['admin', 'client'] },
 ];
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
@@ -76,11 +71,20 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     await signOut(auth);
   };
 
-  // تصفية القائمة بناءً على دور المستخدم وصلاحياته
+  // تصفية القائمة بناءً على دور المستخدم وصلاحياته المحددة من الإدمن
   const filteredNavItems = navItems.filter(item => {
     if (!profile) return false;
     if (profile.role === 'admin') return true;
-    return item.roles.includes(profile.role);
+    
+    // التحقق من الدور أولاً
+    const hasRole = item.roles.includes(profile.role);
+    if (!hasRole) return false;
+
+    // التحقق من الصلاحية البرمجية (Permissions Array)
+    if (item.permission === 'p_always') return true;
+    if (item.permission === 'p_dashboard' && profile.role !== 'client') return true;
+    
+    return profile.permissions.includes(item.permission);
   });
 
   return (
@@ -91,7 +95,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground font-headline font-bold text-xl">
               A
             </div>
-            <div className="flex flex-col overflow-hidden transition-all group-data-[collapsible=icon]:w-0">
+            <div className="flex flex-col overflow-hidden transition-all group-data-[collapsible=icon]:w-0 text-right">
               <span className="font-headline font-bold text-lg leading-tight uppercase">APP STORE</span>
               <span className="text-[10px] uppercase tracking-wider text-sidebar-foreground/50 font-medium">
                 {profile?.role === 'client' ? 'بوابة المستفيد' : t('agencyAdmin')}
@@ -153,7 +157,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                     <AvatarImage src={`https://picsum.photos/seed/${profile?.uid}/100/100`} />
                     <AvatarFallback>{profile?.name?.[0] || 'U'}</AvatarFallback>
                   </Avatar>
-                  <div className="flex flex-col items-start transition-all group-data-[collapsible=icon]:hidden overflow-hidden">
+                  <div className="flex flex-col items-start transition-all group-data-[collapsible=icon]:hidden overflow-hidden text-right">
                     <span className="font-medium text-sm truncate max-w-[120px]">{profile?.name || 'مستفيد'}</span>
                     <span className="text-xs text-sidebar-foreground/50">
                       {profile?.role === 'client' ? 'عميل نشط' : t(profile?.role || 'admin')}

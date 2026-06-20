@@ -11,7 +11,8 @@ import {
   ExternalLink, 
   Image as ImageIcon,
   Loader2,
-  X
+  X,
+  Lock
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -41,19 +42,23 @@ function ProjectsContent() {
   const router = useRouter();
   const { profile, loading: authLoading } = useAuth();
 
+  const hasProjectPermission = profile?.role === 'admin' || profile?.permissions.includes('p_projects');
+
   useEffect(() => {
     const qParam = searchParams.get('q');
     if (qParam) setSearchQuery(qParam);
   }, [searchParams]);
 
   useEffect(() => {
-    if (!db || authLoading || !profile) return;
+    if (!db || authLoading || !profile || !hasProjectPermission) {
+      if (!authLoading && !hasProjectPermission) setLoading(false);
+      return;
+    }
     
     let q;
     if (profile.role === 'admin') {
       q = query(collection(db, "projects"));
     } else {
-      // الاعتماد الصارم على clientId المربوط بملف المستخدم
       if (!profile.clientId) {
         setLoading(false);
         return;
@@ -74,7 +79,27 @@ function ProjectsContent() {
     });
     
     return () => unsub();
-  }, [profile, authLoading]);
+  }, [profile, authLoading, hasProjectPermission]);
+
+  if (loading || authLoading) return (
+    <div className="flex flex-col items-center justify-center py-20 gap-4">
+      <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      <p className="font-bold text-slate-500">جاري تحميل مشاريعك...</p>
+    </div>
+  );
+
+  if (!hasProjectPermission) {
+    return (
+      <div className="max-w-7xl mx-auto py-20 text-center">
+        <div className="bg-white p-20 rounded-[3rem] shadow-sm border border-dashed border-slate-200">
+          <Lock className="h-20 w-20 mx-auto mb-6 text-slate-200" />
+          <h2 className="text-3xl font-black text-slate-800 mb-2">عذراً، الصلاحية مقيدة</h2>
+          <p className="text-slate-500 font-bold">لم يتم منحك صلاحية الوصول للمشاريع حالياً. يرجى مراجعة الإدارة.</p>
+          <Button onClick={() => router.push("/")} className="mt-8 rounded-2xl h-12 px-8 font-black">العودة للرئيسية</Button>
+        </div>
+      </div>
+    );
+  }
 
   const filteredProjects = useMemo(() => {
     const s = searchQuery.toLowerCase().trim();
@@ -120,18 +145,6 @@ function ProjectsContent() {
     setIsDetailsOpen(true);
   };
 
-  const clearSearch = () => {
-    setSearchQuery("");
-    router.push("/projects");
-  };
-
-  if (loading || authLoading) return (
-    <div className="flex flex-col items-center justify-center py-20 gap-4">
-      <Loader2 className="h-12 w-12 animate-spin text-primary" />
-      <p className="font-bold text-slate-500">جاري تحميل مشاريعك...</p>
-    </div>
-  );
-
   return (
     <div className="max-w-7xl mx-auto space-y-8 pb-20" dir="rtl">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100">
@@ -167,16 +180,6 @@ function ProjectsContent() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-          {searchQuery && (
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={clearSearch}
-              className="absolute left-4 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full hover:bg-slate-100"
-            >
-              <X className="h-4 w-4 text-slate-400" />
-            </Button>
-          )}
         </div>
       )}
 
@@ -218,7 +221,7 @@ function ProjectsContent() {
                         <Edit3 className="h-4 w-4" />
                       </Button>
                       <Button variant="ghost" size="icon" onClick={() => handleDeleteProject(project.id!)} className="h-9 w-9 rounded-xl hover:bg-rose-50 text-rose-500">
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-5 w-5" />
                       </Button>
                     </div>
                   )}
