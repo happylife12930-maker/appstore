@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -21,9 +20,9 @@ import {
   FileText,
   User,
   Layers,
-  Layout,
   DollarSign,
-  Users
+  Users,
+  ExternalLink
 } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { ProjectData } from './project-modal';
@@ -47,10 +46,8 @@ export function ProjectDetailsModal({ isOpen, onClose, project, db }: ProjectDet
     }
   }, [project]);
 
-  // وظيفة الإغلاق مع التأكد من إعادة تفعيل الصفحة
   const handleClose = () => {
     onClose();
-    // تأمين عودة التفاعل للصفحة
     setTimeout(() => {
       document.body.style.pointerEvents = 'auto';
       document.body.style.overflow = 'auto';
@@ -86,7 +83,6 @@ export function ProjectDetailsModal({ isOpen, onClose, project, db }: ProjectDet
         className="sm:max-w-[900px] w-[95vw] rounded-[2rem] border-none shadow-2xl p-0 overflow-hidden bg-white max-h-[90vh] flex flex-col" 
         dir="rtl"
       >
-        {/* Header ثابت */}
         <div className="bg-primary p-6 text-primary-foreground shrink-0 z-20 shadow-md">
           <DialogHeader>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -100,9 +96,10 @@ export function ProjectDetailsModal({ isOpen, onClose, project, db }: ProjectDet
                     <DialogDescription className="text-primary-foreground/80 font-bold flex items-center gap-2">
                       <User className="h-4 w-4" /> العميل: {project.clientName}
                     </DialogDescription>
-                    <Link href="/clients">
+                    {/* تعديل الرابط ليقوم بفلترة العميل المحدد فقط */}
+                    <Link href={`/clients?q=${encodeURIComponent(project.clientPhone || project.clientName)}`}>
                       <Button variant="outline" size="sm" className="h-7 rounded-lg text-[10px] font-black bg-white/10 border-white/20 hover:bg-white/20 text-white gap-1">
-                        <Users className="h-3 w-3" /> عرض ملف العميل
+                        <Users className="h-3 w-3" /> عرض ملف العميل <ExternalLink className="h-2 w-2" />
                       </Button>
                     </Link>
                   </div>
@@ -116,10 +113,7 @@ export function ProjectDetailsModal({ isOpen, onClose, project, db }: ProjectDet
           </DialogHeader>
         </div>
 
-        {/* جسم النافذة القابل للتمرير */}
         <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 bg-slate-50/30">
-          
-          {/* معرض الصور */}
           {project.images && project.images.length > 0 && (
             <div className="space-y-4">
               <h3 className="font-black text-slate-800 text-xl flex items-center gap-2">
@@ -135,10 +129,7 @@ export function ProjectDetailsModal({ isOpen, onClose, project, db }: ProjectDet
             </div>
           )}
 
-          {/* التكلفة و المتطلبات و المراحل */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            
-            {/* المتطلبات و التكلفة */}
             <div className="lg:col-span-5 space-y-6">
               <div className="space-y-4">
                 <h3 className="font-black text-slate-800 text-lg flex items-center gap-2">
@@ -162,12 +153,10 @@ export function ProjectDetailsModal({ isOpen, onClose, project, db }: ProjectDet
               </div>
             </div>
 
-            {/* مراحل التنفيذ */}
             <div className="lg:col-span-7 space-y-4">
               <h3 className="font-black text-slate-800 text-lg flex items-center gap-2">
                 <Layers className="h-5 w-5 text-primary" /> مراحل التنفيذ
               </h3>
-              
               <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
                 <div className="p-6 bg-slate-900 text-white flex justify-between items-center">
                   <div>
@@ -202,7 +191,6 @@ export function ProjectDetailsModal({ isOpen, onClose, project, db }: ProjectDet
             </div>
           </div>
 
-          {/* زر الإغلاق النهائي بداخل السكرول */}
           <div className="pt-8 pb-4">
             <Button 
               onClick={handleClose}

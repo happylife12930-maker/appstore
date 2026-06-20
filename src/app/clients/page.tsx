@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 import { 
   Users, 
   Search, 
@@ -13,7 +13,8 @@ import {
   Wallet,
   Loader2,
   Briefcase,
-  ExternalLink
+  ExternalLink,
+  X
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,16 +23,17 @@ import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, deleteDoc, doc, setDoc, addDoc } from "firebase/firestore";
 import { AddClientModal, type ClientData } from "@/components/modals/add-client-modal";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 
-// دالة توحيد النص للبحث
+// دالة توحيد النص للبحث (تحويل أرقام عربية، حذف مسافات)
 const normalizeText = (text: string) => {
   if (!text) return '';
   const arToEn = (str: string) => str.replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d).toString());
-  return arToEn(text).toLowerCase().replace(/\s+/g, '');
+  return arToEn(text).toLowerCase().replace(/[^a-z0-9]/g, '').trim();
 };
 
-export default function ClientsPage() {
+function ClientsContent() {
   const [clients, setClients] = useState<ClientData[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -39,7 +41,18 @@ export default function ClientsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<ClientData | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  
   const { toast } = useToast();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  // التحقق من وجود بحث قادم من رابط (مثلاً من صفحة المشاريع)
+  useEffect(() => {
+    const q = searchParams.get('q');
+    if (q) {
+      setSearchQuery(q);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (!db) return;
@@ -95,10 +108,7 @@ export default function ClientsPage() {
       }
       setIsModalOpen(false);
       setEditingClient(null);
-      
-      setTimeout(() => {
-        document.body.style.pointerEvents = 'auto';
-      }, 300);
+      setTimeout(() => { document.body.style.pointerEvents = 'auto'; }, 300);
     } catch (err) {
       toast({ title: "خطأ", description: "فشل في حفظ البيانات", variant: "destructive" });
     } finally {
@@ -114,6 +124,11 @@ export default function ClientsPage() {
     } catch (err) {
       toast({ title: "خطأ", variant: "destructive" });
     }
+  };
+
+  const clearSearch = () => {
+    setSearchQuery("");
+    router.push("/clients");
   };
 
   if (loading) return (
@@ -132,7 +147,7 @@ export default function ClientsPage() {
           </div>
           <div>
             <h1 className="text-3xl font-black text-slate-800 tracking-tight">إدارة العملاء</h1>
-            <p className="text-slate-500 font-bold">ابحث بالاسم، الهاتف، أو اسم المشروع المرتبط</p>
+            <p className="text-slate-500 font-bold">عرض وتعديل بيانات العملاء والربط المالي</p>
           </div>
         </div>
         <Button 
@@ -147,11 +162,28 @@ export default function ClientsPage() {
         <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5" />
         <Input 
           placeholder="ابحث باسم العميل، رقم الهاتف، أو اسم المشروع..." 
-          className="pr-12 h-16 rounded-2xl font-bold text-lg border-none shadow-sm bg-white focus-visible:ring-primary/20"
+          className="pr-12 pl-12 h-16 rounded-2xl font-bold text-lg border-none shadow-sm bg-white focus-visible:ring-primary/20"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
+        {searchQuery && (
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={clearSearch}
+            className="absolute left-4 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full hover:bg-slate-100"
+          >
+            <X className="h-4 w-4 text-slate-400" />
+          </Button>
+        )}
       </div>
+
+      {searchParams.get('q') && (
+        <div className="bg-primary/5 p-4 rounded-2xl border border-primary/10 flex items-center justify-between">
+          <p className="text-sm font-bold text-primary">عرض نتائج البحث عن: <span className="font-black underline">{searchParams.get('q')}</span></p>
+          <Button variant="ghost" size="sm" onClick={clearSearch} className="font-black text-xs text-primary h-8 px-4">عرض كل العملاء</Button>
+        </div>
+      )}
 
       {filteredClients.length === 0 ? (
         <Card className="rounded-[2.5rem] border-none shadow-sm py-20 text-center bg-white">
@@ -239,5 +271,13 @@ export default function ClientsPage() {
         initialData={editingClient}
       />
     </div>
+  );
+}
+
+export default function ClientsPage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>}>
+      <ClientsContent />
+    </Suspense>
   );
 }

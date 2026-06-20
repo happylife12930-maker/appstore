@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -26,6 +25,7 @@ export interface ProjectData {
   name: string;
   clientId: string;
   clientName: string;
+  clientPhone?: string; // مضاف لضمان الربط الدقيق
   requirements: string;
   status: string;
   cost: number;
@@ -42,13 +42,10 @@ interface ProjectModalProps {
   initialData?: ProjectData | null;
 }
 
-// دالة تنظيف النص والبحث المتقدم للأرقام والأسماء
 const normalizeForSearch = (text: any) => {
   if (!text) return '';
   const str = String(text);
-  // تحويل الأرقام العربية إلى إنجليزية
   const arToEn = (s: string) => s.replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d).toString());
-  // إزالة كافة الرموز والمسافات وترك الأرقام والحروف فقط لضمان دقة المقارنة
   return arToEn(str).toLowerCase().replace(/[^a-z0-9]/g, '').trim();
 };
 
@@ -59,6 +56,7 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
     name: '',
     clientId: '',
     clientName: '',
+    clientPhone: '',
     requirements: '',
     status: 'قيد التنفيذ',
     cost: 0,
@@ -96,6 +94,7 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
         name: '',
         clientId: '',
         clientName: '',
+        clientPhone: '',
         requirements: '',
         status: 'قيد التنفيذ',
         cost: 0,
@@ -114,7 +113,6 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
     }
   }, [initialData, isOpen]);
 
-  // فلترة العملاء بناءً على البحث
   const filteredClients = useMemo(() => {
     const s = normalizeForSearch(clientSearch);
     if (!s) return clients;
@@ -126,12 +124,10 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
     });
   }, [clients, clientSearch]);
 
-  // تحديث نص الزر ليعكس حالة البحث الحالية
   const selectedClientDisplay = useMemo(() => {
     const found = clients.find(c => c.id === formData.clientId);
     const searchNormalized = normalizeForSearch(clientSearch);
     
-    // إذا كان المستخدم يكتب رقماً جديداً يختلف عن رقم العميل الحالي
     if (searchNormalized && found && !normalizeForSearch(found.phone).includes(searchNormalized) && !normalizeForSearch(found.name).includes(searchNormalized)) {
       return `جاري البحث عن: ${clientSearch}... (اختر من الأسفل)`;
     }
@@ -155,12 +151,13 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
   const handleSubmit = async () => {
     if (!formData.name || !formData.clientId) return;
     const selectedClient = clients.find(c => c.id === formData.clientId);
-    await onSave({ ...formData, clientName: selectedClient?.name || '' });
+    await onSave({ 
+      ...formData, 
+      clientName: selectedClient?.name || '', 
+      clientPhone: selectedClient?.phone || '' 
+    });
     
-    // ضمان عودة التفاعل للصفحة
-    setTimeout(() => {
-      document.body.style.pointerEvents = 'auto';
-    }, 500);
+    setTimeout(() => { document.body.style.pointerEvents = 'auto'; }, 500);
   };
 
   return (
@@ -172,7 +169,7 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
               <Briefcase className="h-6 w-6" /> {initialData ? 'تعديل بيانات المشروع' : 'بدء مشروع جديد'}
             </DialogTitle>
             <DialogDescription className="text-primary-foreground/80 font-bold">
-              ابحث عن العميل بالاسم أو رقم الهاتف لربطه بالمشروع فوراً
+              اربط المشروع بالعميل من خلال البحث بالاسم أو رقم الهاتف
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -186,22 +183,22 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
                   value={formData.name} 
                   onChange={(e) => setFormData({...formData, name: e.target.value})} 
                   placeholder="مثال: تطبيق توصيل طلبات" 
-                  className="rounded-2xl h-12 border-slate-200 font-bold focus-visible:ring-primary/20"
+                  className="rounded-2xl h-12 border-slate-200 font-bold"
                 />
               </div>
               
               <div className="space-y-3">
                 <Label className="font-black text-slate-700 pr-2 flex items-center gap-2">
-                   ربط العميل (بحث بالاسم/الهاتف) <Phone className="h-3 w-3 text-primary" />
+                   البحث عن العميل (اسم/هاتف) <Phone className="h-3 w-3 text-primary" />
                 </Label>
-                <div className="space-y-2 group">
+                <div className="space-y-2">
                   <div className="relative">
-                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-primary transition-colors" />
+                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <Input 
                       placeholder="اكتب رقم الهاتف هنا..." 
                       value={clientSearch}
                       onChange={(e) => setClientSearch(e.target.value)}
-                      className="rounded-2xl h-12 pr-10 border-slate-200 font-bold text-sm bg-slate-50/50 focus-visible:ring-primary shadow-inner"
+                      className="rounded-2xl h-12 pr-10 border-slate-200 font-bold text-sm bg-slate-50/50"
                     />
                   </div>
                   
@@ -209,11 +206,10 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
                     value={formData.clientId} 
                     onValueChange={(val) => {
                       setFormData({...formData, clientId: val});
-                      // مسح البحث بعد الاختيار لتسهيل العرض
                       setClientSearch('');
                     }}
                   >
-                    <SelectTrigger className="rounded-2xl h-12 border-slate-200 font-black text-right bg-white shadow-sm hover:border-primary transition-all">
+                    <SelectTrigger className="rounded-2xl h-12 border-slate-200 font-black text-right bg-white shadow-sm">
                       <div className="flex items-center gap-2">
                         {formData.clientId && <UserCheck className="h-4 w-4 text-green-500" />}
                         <span className="truncate">{selectedClientDisplay}</span>
@@ -228,12 +224,6 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
                           </div>
                         </SelectItem>
                       ))}
-                      {filteredClients.length === 0 && (
-                        <div className="p-8 text-center text-xs text-slate-400 font-bold italic flex flex-col items-center gap-2">
-                          <Search className="h-8 w-8 opacity-20" />
-                          لا يوجد عملاء بهذا الاسم أو الرقم
-                        </div>
-                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -265,7 +255,7 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
                   value={formData.cost} 
                   onChange={(e) => setFormData({...formData, cost: Number(e.target.value)})} 
                   placeholder="0.00" 
-                  className="rounded-2xl h-12 border-slate-200 font-black text-lg focus-visible:ring-primary/20"
+                  className="rounded-2xl h-12 border-slate-200 font-black text-lg"
                 />
               </div>
             </div>
@@ -276,7 +266,7 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
                 value={formData.requirements} 
                 onChange={(e) => setFormData({...formData, requirements: e.target.value})} 
                 placeholder="صف هنا مميزات التطبيق والمتطلبات التقنية بالتفصيل..."
-                className="rounded-2xl min-h-[140px] border-slate-200 font-bold leading-relaxed focus-visible:ring-primary/20"
+                className="rounded-2xl min-h-[140px] border-slate-200 font-bold leading-relaxed"
               />
             </div>
 
@@ -303,7 +293,6 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
                     >
                       <Trash2 className="h-6 w-6" />
                     </button>
-                    {idx === 0 && <div className="absolute top-0 right-0 bg-primary text-white text-[9px] font-black px-3 py-1 rounded-bl-xl shadow-sm">الغلاف</div>}
                   </div>
                 ))}
               </div>
