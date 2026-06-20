@@ -1,173 +1,194 @@
+
 "use client";
+
 import * as React from "react";
 import { useState, useEffect, useMemo } from "react";
 import { 
+  Users, 
   Search, 
   Plus, 
   Phone, 
   Mail, 
-  MoreVertical, 
+  Building, 
   Trash2, 
   Edit3, 
-  FileText,
+  Wallet,
   Loader2,
-  Users
+  AlertCircle
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuTrigger 
-} from "@/components/ui/dropdown-menu";
-import { db } from "@/lib/firebase";
-import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, query, limit } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
-import { AddClientModal, ClientData } from "@/components/modals/add-client-modal";
-import { useRouter } from "next/navigation";
+import { db } from "@/lib/firebase";
+import { collection, onSnapshot, deleteDoc, doc, setDoc, addDoc } from "firebase/firestore";
+import { AddClientModal, type ClientData } from "@/components/modals/add-client-modal";
 
 export default function ClientsPage() {
-  const [clients, setClients] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [clients, setClients] = useState<ClientData[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingClient, setEditingClient] = useState<any | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingClient, setEditingClient] = useState<ClientData | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
-  const router = useRouter();
 
   useEffect(() => {
     if (!db) return;
-    const q = query(collection(db, "clients"), limit(50));
-    const unsub = onSnapshot(q, (snapshot) => {
-      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      list.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-      setClients(list);
+    const unsub = onSnapshot(collection(db, "clients"), (snap) => {
+      setClients(snap.docs.map(d => ({ id: d.id, ...d.data() } as ClientData)));
       setLoading(false);
     });
     return () => unsub();
   }, []);
 
-  const handleSaveClient = async (data: ClientData) => {
-    setIsSubmitting(true);
-    try {
-      if (editingClient) {
-        await updateDoc(doc(db!, "clients", editingClient.id), { ...data });
-        toast({ title: "تم التحديث", description: "تم تحديث بيانات العميل بنجاح." });
-      } else {
-        await addDoc(collection(db!, "clients"), { 
-          ...data, 
-          startDate: new Date().toLocaleDateString('ar-EG')
-        });
-        toast({ title: "تمت الإضافة", description: "تم إضافة العميل الجديد بنجاح." });
-      }
-      setIsModalOpen(false);
-      setEditingClient(null);
-    } catch (error) {
-      toast({ title: "خطأ", description: "فشل حفظ البيانات.", variant: "destructive" });
-    } finally {
-      setIsSubmitting(false);
-      // حل مشكلة الفريز: إعادة التحكم في مؤشر الماوس للجسم الرئيسي
-      setTimeout(() => {
-        document.body.style.pointerEvents = 'auto';
-      }, 300);
-    }
-  };
-
-  const filtered = useMemo(() => {
+  const filteredClients = useMemo(() => {
     const s = searchQuery.toLowerCase();
     return clients.filter(c => 
-      (c.name || "").toLowerCase().includes(s) ||
-      (c.phone || "").toLowerCase().includes(s) ||
-      (c.projectName || "").toLowerCase().includes(s)
+      c.name?.toLowerCase().includes(s) || 
+      c.phone?.includes(searchQuery) ||
+      c.projectName?.toLowerCase().includes(s)
     );
   }, [clients, searchQuery]);
 
-  if (loading) return <div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
+  const handleSaveClient = async (data: ClientData) => {
+    if (!db) return;
+    setIsSaving(true);
+    try {
+      if (data.id) {
+        await setDoc(doc(db, "clients", data.id), data);
+        toast({ title: "تم التحديث", description: "تم تعديل بيانات العميل بنجاح" });
+      } else {
+        await addDoc(collection(db, "clients"), data);
+        toast({ title: "تمت الإضافة", description: "تمت إضافة العميل الجديد بنجاح" });
+      }
+      setIsModalOpen(false);
+      setEditingClient(null);
+      // حل مشكلة الفريز عبر التأكد من إعادة تفعيل الـ pointer-events
+      setTimeout(() => {
+        document.body.style.pointerEvents = 'auto';
+      }, 100);
+    } catch (err) {
+      toast({ title: "خطأ", description: "فشل في حفظ البيانات", variant: "destructive" });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteClient = async (id: string) => {
+    if (!db || !confirm("هل أنت متأكد من حذف هذا العميل؟")) return;
+    try {
+      await deleteDoc(doc(db, "clients", id));
+      toast({ title: "تم الحذف", description: "تمت إزالة العميل من النظام" });
+    } catch (err) {
+      toast({ title: "خطأ", variant: "destructive" });
+    }
+  };
+
+  if (loading) return (
+    <div className="flex flex-col items-center justify-center py-20 gap-4">
+      <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      <p className="font-bold text-slate-500">جاري تحميل قائمة العملاء...</p>
+    </div>
+  );
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 pb-20" dir="rtl">
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-slate-800 flex items-center gap-3">
-            <Users className="h-8 w-8 text-primary" /> سجل العملاء
-          </h1>
-          <p className="text-slate-500 font-bold">إدارة البيانات والمستحقات المالية</p>
+    <div className="max-w-7xl mx-auto space-y-8 pb-20" dir="rtl">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-8 rounded-[2.5rem] shadow-sm">
+        <div className="flex items-center gap-4">
+          <div className="p-4 bg-primary/10 rounded-2xl text-primary">
+            <Users className="h-8 w-8" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-black text-slate-800 tracking-tight">قائمة العملاء</h1>
+            <p className="text-slate-500 font-bold">إدارة البيانات المالية والتقنية لعملائك</p>
+          </div>
         </div>
-        <Button onClick={() => { setEditingClient(null); setIsModalOpen(true); }} className="rounded-2xl h-14 font-black shadow-lg gap-2 px-8 w-full md:w-auto">
+        <Button 
+          onClick={() => { setEditingClient(null); setIsModalOpen(true); }}
+          className="rounded-2xl h-14 px-8 font-black text-lg gap-2 shadow-xl hover:scale-105 transition-all"
+        >
           <Plus className="h-6 w-6" /> إضافة عميل جديد
         </Button>
       </header>
 
       <div className="relative">
         <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5" />
-        <input 
-          placeholder="ابحث بالاسم، الهاتف، أو اسم المشروع..." 
-          className="w-full pr-12 h-16 rounded-[1.5rem] border-none shadow-sm bg-white font-bold text-xl outline-none focus:ring-2 focus:ring-primary/20"
+        <Input 
+          placeholder="ابحث باسم العميل، رقم الهاتف، أو اسم المشروع..." 
+          className="pr-12 h-16 rounded-2xl font-bold text-lg border-none shadow-sm bg-white focus-visible:ring-primary/20"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {filtered.length === 0 ? (
-           <div className="col-span-full py-20 text-center text-slate-400 font-bold text-xl">لا توجد نتائج للبحث حالياً</div>
-        ) : filtered.map((client) => {
-          const balance = (client.totalInvoices || 0) - (client.totalPayments || 0);
-          return (
-            <Card key={client.id} className="rounded-[2.5rem] border-none shadow-sm hover:shadow-2xl transition-all bg-white overflow-hidden">
-              <CardHeader className="flex flex-row items-center justify-between pb-4">
-                <div className="flex items-center gap-4">
-                  <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-black text-xl">
-                    {client.name?.[0]}
+      {filteredClients.length === 0 ? (
+        <Card className="rounded-[2.5rem] border-none shadow-sm py-20 text-center bg-white">
+          <div className="flex flex-col items-center gap-4 opacity-40">
+            <Users className="h-20 w-20" />
+            <p className="text-xl font-black">لم يتم العثور على عملاء</p>
+          </div>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredClients.map((client) => (
+            <Card key={client.id} className="rounded-[2.5rem] border-none shadow-sm hover:shadow-xl transition-all bg-white group overflow-hidden">
+              <CardHeader className="p-6 border-b border-slate-50 flex flex-row items-center justify-between bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 rounded-2xl bg-primary flex items-center justify-center text-white font-black text-xl shadow-inner">
+                    {client.name?.[0] || 'U'}
                   </div>
-                  <div>
-                    <CardTitle className="text-lg font-black text-slate-800">{client.name}</CardTitle>
-                    <Badge variant="secondary" className="font-bold mt-0.5">{client.projectName || "بدون مشروع"}</Badge>
+                  <div className="overflow-hidden">
+                    <CardTitle className="text-lg font-black truncate">{client.name}</CardTitle>
+                    <Badge variant="secondary" className="rounded-lg font-bold text-[10px] mt-1">
+                      {client.projectName || 'بدون مشروع'}
+                    </Badge>
                   </div>
                 </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="rounded-xl h-10 w-10"><MoreVertical className="h-5 w-5" /></Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="rounded-2xl font-bold min-w-[160px]">
-                    <DropdownMenuItem onClick={() => { setEditingClient(client); setIsModalOpen(true); }} className="gap-2 p-3 cursor-pointer"><Edit3 className="h-4 w-4" /> تعديل</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => router.push(`/clients/${client.id}/statement`)} className="gap-2 p-3 cursor-pointer"><FileText className="h-4 w-4" /> كشف حساب</DropdownMenuItem>
-                    <DropdownMenuItem onClick={async () => { if(confirm("هل أنت متأكد من حذف العميل؟")) await deleteDoc(doc(db!, "clients", client.id)) }} className="text-rose-600 gap-2 p-3 cursor-pointer"><Trash2 className="h-4 w-4" /> حذف</DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <div className="flex gap-1">
+                  <Button variant="ghost" size="icon" onClick={() => { setEditingClient(client); setIsModalOpen(true); }} className="h-9 w-9 rounded-xl hover:bg-white">
+                    <Edit3 className="h-4 w-4 text-slate-500" />
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={() => handleDeleteClient(client.id!)} className="h-9 w-9 rounded-xl hover:bg-rose-50 text-rose-500">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </CardHeader>
-              <CardContent className="space-y-4 pt-2">
-                <div className="space-y-2 text-sm text-slate-500 font-bold">
-                  <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-2xl">
-                    <Phone className="h-4 w-4 text-primary" /> <span dir="ltr">{client.phone}</span>
+              <CardContent className="p-6 space-y-4">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 text-slate-500">
+                    <Phone className="h-4 w-4" />
+                    <span className="font-bold text-sm" dir="ltr">{client.phone || '---'}</span>
                   </div>
-                  <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-2xl">
-                    <Mail className="h-4 w-4 text-primary" /> {client.email}
+                  <div className="flex items-center gap-3 text-slate-500">
+                    <Mail className="h-4 w-4" />
+                    <span className="font-bold text-sm truncate">{client.email || '---'}</span>
                   </div>
                 </div>
-                <div className="p-5 bg-slate-900 rounded-[2rem] flex justify-between items-center text-white">
-                  <div>
-                    <p className="text-[10px] text-slate-400 font-black">الرصيد المتبقي</p>
-                    <p className={`text-xl font-black ${balance > 0 ? 'text-rose-400' : 'text-green-400'}`}>
-                      {balance.toLocaleString('ar-EG')} <span className="text-xs">ج.م</span>
-                    </p>
+
+                <div className="pt-4 border-t border-slate-50">
+                  <div className="p-4 bg-slate-50 rounded-2xl flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Wallet className="h-4 w-4 text-primary" />
+                      <span className="font-black text-xs text-slate-400">الرصيد المتبقي</span>
+                    </div>
+                    <span className={`font-black text-lg ${client.balance > 0 ? 'text-rose-600' : 'text-green-600'}`}>
+                      {client.balance.toLocaleString('ar-EG')} ج.م
+                    </span>
                   </div>
-                  <Button variant="outline" size="sm" onClick={() => router.push(`/clients/${client.id}/statement`)} className="rounded-xl font-black bg-white/10 border-white/20 text-white hover:bg-white hover:text-slate-900">التفاصيل</Button>
                 </div>
               </CardContent>
             </Card>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      )}
 
       <AddClientModal 
         isOpen={isModalOpen} 
-        onClose={() => { setIsModalOpen(false); setEditingClient(null); }} 
+        onClose={() => { setIsModalOpen(false); setEditingClient(null); }}
         onSave={handleSaveClient}
-        isLoading={isSubmitting}
+        isLoading={isSaving}
         initialData={editingClient}
       />
     </div>

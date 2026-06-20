@@ -79,9 +79,9 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
     }));
   };
 
-  const handleSaveClick = async () => {
+  const handleSaveClick = () => {
     if (!formData.name) return;
-    await onSave({ 
+    onSave({ 
       ...formData,
       id: initialData?.id,
       balance: (formData.totalInvoices || 0) - (formData.totalPayments || 0)
