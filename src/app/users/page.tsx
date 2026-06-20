@@ -4,21 +4,18 @@ import * as React from "react";
 import { useState, useEffect, useMemo } from "react";
 import { 
   Search, 
-  BadgeCheck, 
   Eye, 
   EyeOff, 
   Loader2, 
   Trash2,
   UserPlus,
   ShieldCheck,
-  Edit3,
   Users,
-  X,
   CheckCircle2,
-  AlertCircle,
   Settings2,
   Lock,
-  Unlock
+  Unlock,
+  AlertTriangle
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,7 +31,6 @@ import {
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, doc, setDoc, deleteDoc, updateDoc } from "firebase/firestore";
@@ -114,10 +110,10 @@ export default function UsersPermissionsPage() {
         createdAt: new Date().toISOString()
       });
       
-      toast({ title: "تم التفعيل", description: "يمكن للعميل الدخول الآن ببياناته." });
+      toast({ title: "تم التفعيل", description: "تم تزويد العميل بصلاحيات الدخول بنجاح." });
       setIsPasswordModalOpen(false);
     } catch (err) {
-      toast({ title: "خطأ", description: "فشل تفعيل العميل.", variant: "destructive" });
+      toast({ title: "خطأ", description: "فشل تفعيل العميل. تأكد من اتصال الإنترنت.", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
@@ -143,14 +139,27 @@ export default function UsersPermissionsPage() {
     }
   };
 
-  const handleRevokeAccess = async (id: string, email: string) => {
-    if (!db || !confirm("هل تريد سحب صلاحية الدخول نهائياً وحذف الحساب؟")) return;
+  // حذف الحساب النشط
+  const handleRevokeActiveAccess = async (uid: string, email: string) => {
+    if (!db || !confirm("تحذير: هل أنت متأكد من حذف حساب العميل نهائياً؟ سيتم منعه من الدخول فوراً.")) return;
     try {
-      await deleteDoc(doc(db, "users", id));
-      await deleteDoc(doc(db, "users_provision", email.toLowerCase()));
-      toast({ title: "تم السحب", description: "تم إلغاء حساب العميل بنجاح." });
+      await deleteDoc(doc(db, "users", uid));
+      // محاولة حذف مستند التفعيل أيضاً إذا كان موجوداً
+      await deleteDoc(doc(db, "users_provision", email.toLowerCase().trim())).catch(() => {});
+      toast({ title: "تم الحذف", description: "تم إلغاء حساب العميل من النظام نهائياً." });
     } catch (err) {
-      toast({ title: "خطأ", variant: "destructive" });
+      toast({ title: "خطأ في الصلاحيات", description: "لم يتم الحذف. تأكد من أنك تملك صلاحية المدير.", variant: "destructive" });
+    }
+  };
+
+  // إلغاء طلب التفعيل المعلق
+  const handleCancelProvision = async (email: string) => {
+    if (!db || !confirm("هل تريد إلغاء طلب التفعيل لهذا العميل؟")) return;
+    try {
+      await deleteDoc(doc(db, "users_provision", email.toLowerCase().trim()));
+      toast({ title: "تم الإلغاء", description: "تم سحب طلب التفعيل المعلق بنجاح." });
+    } catch (err) {
+      toast({ title: "خطأ", description: "فشل إلغاء الطلب.", variant: "destructive" });
     }
   };
 
@@ -181,7 +190,9 @@ export default function UsersPermissionsPage() {
   return (
     <div className="max-w-7xl mx-auto space-y-8 pb-20" dir="rtl">
       <header className="flex items-center gap-4 bg-white p-8 rounded-[2.5rem] shadow-sm border">
-        <ShieldCheck className="h-12 w-12 text-primary" />
+        <div className="p-4 bg-primary/10 rounded-2xl text-primary">
+          <ShieldCheck className="h-8 w-8" />
+        </div>
         <div>
           <h1 className="text-3xl font-black text-slate-800 tracking-tight">بوابة المستفيدين</h1>
           <p className="text-slate-500 font-bold">إدارة حسابات الدخول، التنشيط، وتعديل الصلاحيات</p>
@@ -189,7 +200,7 @@ export default function UsersPermissionsPage() {
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* قائمة العملاء لمنح الصلاحيات */}
+        {/* قائمة العملاء لتفعيلهم */}
         <Card className="lg:col-span-4 rounded-[2.5rem] border-none shadow-sm bg-white overflow-hidden border">
           <CardHeader className="bg-slate-50/50 border-b p-6">
             <CardTitle className="text-lg font-black mb-4">تفعيل عملاء جدد</CardTitle>
@@ -208,21 +219,34 @@ export default function UsersPermissionsPage() {
               <div className="space-y-3">
                 {filteredClients.map(client => {
                   const isActive = activeUsers.some(u => u.email === client.email);
-                  const isProvisioned = provisionedUsers.some(u => u.email === client.email);
+                  const provision = provisionedUsers.find(u => u.email === client.email);
                   
                   return (
-                    <div key={client.id} className="p-4 rounded-3xl bg-white border flex justify-between items-center shadow-sm">
-                      <div className="overflow-hidden">
-                        <p className="font-black text-slate-800 text-sm truncate">{client.name}</p>
-                        <p className="text-[10px] font-bold text-slate-400" dir="ltr">{client.phone}</p>
+                    <div key={client.id} className="p-4 rounded-3xl bg-white border flex flex-col gap-3 shadow-sm hover:border-primary/20 transition-all">
+                      <div className="flex justify-between items-start">
+                        <div className="overflow-hidden">
+                          <p className="font-black text-slate-800 text-sm truncate">{client.name}</p>
+                          <p className="text-[10px] font-bold text-slate-400" dir="ltr">{client.phone}</p>
+                        </div>
+                        {provision && !isActive && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => handleCancelProvision(client.email)}
+                            className="h-8 w-8 text-rose-500 hover:bg-rose-50 rounded-lg"
+                            title="إلغاء التفعيل المعلق"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                       <Button 
                         size="sm" 
                         disabled={isActive || !client.email}
                         onClick={() => { setSelectedClient(client); setTempPassword(""); setIsPasswordModalOpen(true); }} 
-                        className={`rounded-xl font-black gap-2 h-9 px-4 ${isActive ? 'bg-green-500 hover:bg-green-600' : isProvisioned ? 'bg-amber-500 hover:bg-amber-600' : 'bg-primary'}`}
+                        className={`rounded-xl font-black gap-2 h-10 px-4 w-full ${isActive ? 'bg-green-500 hover:bg-green-600' : provision ? 'bg-amber-500 hover:bg-amber-600' : 'bg-primary'}`}
                       >
-                        {isActive ? 'نشط' : isProvisioned ? 'في الانتظار' : 'تفعيل'}
+                        {isActive ? 'نشط تماماً' : provision ? 'في انتظار الدخول' : 'بدء التفعيل'}
                       </Button>
                     </div>
                   );
@@ -232,10 +256,10 @@ export default function UsersPermissionsPage() {
           </CardContent>
         </Card>
 
-        {/* قائمة الحسابات النشطة وإدارة حالتها */}
+        {/* قائمة الحسابات النشطة */}
         <Card className="lg:col-span-8 rounded-[2.5rem] border-none shadow-sm bg-white overflow-hidden border">
           <CardHeader className="bg-primary p-8 text-primary-foreground">
-            <CardTitle className="text-2xl font-black flex items-center gap-3">الحسابات الحالية</CardTitle>
+            <CardTitle className="text-2xl font-black flex items-center gap-3">الحسابات النشطة حالياً</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <div className="divide-y divide-slate-100">
@@ -257,7 +281,6 @@ export default function UsersPermissionsPage() {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {/* عرض كلمة المرور */}
                     <div className="bg-slate-50 p-2 px-4 rounded-2xl border flex items-center gap-4 shadow-inner">
                       <p className="font-black text-slate-800 tracking-widest text-xs">
                         {showPasswords[user.email] ? user.tempPassword || '----' : '••••••••'}
@@ -285,7 +308,7 @@ export default function UsersPermissionsPage() {
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        onClick={() => handleRevokeAccess(user.id, user.email)} 
+                        onClick={() => handleRevokeActiveAccess(user.id, user.email)} 
                         className="text-rose-500 hover:bg-rose-50 h-10 w-10 rounded-xl"
                         title="حذف الحساب نهائياً"
                       >
@@ -298,7 +321,7 @@ export default function UsersPermissionsPage() {
               {activeUsers.filter(u => u.role === 'client').length === 0 && (
                 <div className="p-20 text-center opacity-40">
                   <Users className="h-16 w-16 mx-auto mb-4" />
-                  <p className="font-black text-lg">لا توجد حسابات عملاء نشطة حالياً</p>
+                  <p className="font-black text-lg">لا توجد حسابات مستفيدين نشطة</p>
                 </div>
               )}
             </div>
@@ -306,14 +329,13 @@ export default function UsersPermissionsPage() {
         </Card>
       </div>
 
-      {/* مودال منح الصلاحية لأول مرة */}
       <Dialog open={isPasswordModalOpen} onOpenChange={setIsPasswordModalOpen}>
         <DialogContent className="rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white max-w-md" dir="rtl">
           <div className="bg-primary p-8 text-primary-foreground">
             <DialogHeader>
-              <DialogTitle className="text-2xl font-black">تفعيل حساب عميل</DialogTitle>
+              <DialogTitle className="text-2xl font-black">تفعيل حساب مستفيد</DialogTitle>
               <DialogDescription className="text-primary-foreground/80 font-bold mt-2">
-                حدد كلمة المرور للعميل ({selectedClient?.name}) ليتمكن من الدخول.
+                حدد كلمة المرور التي سيدخل بها {selectedClient?.name}
               </DialogDescription>
             </DialogHeader>
           </div>
@@ -336,13 +358,12 @@ export default function UsersPermissionsPage() {
               className="w-full h-14 rounded-2xl font-black text-lg shadow-xl"
             >
               {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <UserPlus className="h-5 w-5" />}
-              تفعيل الحساب الآن
+              تأكيد ومنح الصلاحية
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* مودال تعديل الصلاحيات والحالة (تنشيط/تعطيل) */}
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
         <DialogContent className="rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white max-w-lg" dir="rtl">
           <div className="bg-slate-900 p-8 text-white">
@@ -350,24 +371,18 @@ export default function UsersPermissionsPage() {
               <DialogTitle className="text-2xl font-black flex items-center gap-3">
                 <Settings2 className="h-6 w-6 text-primary" /> إعدادات حساب المستفيد
               </DialogTitle>
-              <DialogDescription className="text-slate-400 font-bold mt-1">
-                تحكم في حالة الحساب والصلاحيات الممنوحة لـ {editingUser?.name}
-              </DialogDescription>
             </DialogHeader>
           </div>
           
           <div className="p-8 space-y-8">
-            {/* قسم الحالة */}
             <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className={`p-3 rounded-2xl ${editingUser?.status === 'active' ? 'bg-green-500 text-white' : 'bg-rose-500 text-white'}`}>
                   {editingUser?.status === 'active' ? <Unlock className="h-5 w-5" /> : <Lock className="h-5 w-5" />}
                 </div>
                 <div>
-                  <p className="font-black text-slate-800">حالة التنشيط</p>
-                  <p className="text-[10px] font-bold text-slate-400">
-                    {editingUser?.status === 'active' ? 'الحساب نشط ويمكنه الدخول' : 'الحساب معطل ولا يمكنه الدخول'}
-                  </p>
+                  <p className="font-black text-slate-800">حالة الحساب</p>
+                  <p className="text-[10px] font-bold text-slate-400">تحكم في قدرة العميل على الدخول</p>
                 </div>
               </div>
               <Switch 
@@ -376,11 +391,8 @@ export default function UsersPermissionsPage() {
               />
             </div>
 
-            {/* قسم الصلاحيات */}
             <div className="space-y-4">
-              <h3 className="font-black text-slate-800 flex items-center gap-2 pr-2">
-                <ShieldCheck className="h-5 w-5 text-primary" /> الصلاحيات الممنوحة
-              </h3>
+              <h3 className="font-black text-slate-800 flex items-center gap-2 pr-2 text-sm uppercase">الصلاحيات المتاحة</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {availablePermissions.map((perm) => (
                   <div 
@@ -413,14 +425,7 @@ export default function UsersPermissionsPage() {
               className="w-full h-14 rounded-2xl font-black text-lg shadow-xl"
             >
               {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle2 className="h-5 w-5" />}
-              حفظ الإعدادات الجديدة
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={() => setIsEditModalOpen(false)}
-              className="w-full h-14 rounded-2xl font-black"
-            >
-              إلغاء
+              حفظ التعديلات
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -428,4 +433,3 @@ export default function UsersPermissionsPage() {
     </div>
   );
 }
-
