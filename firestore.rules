@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -36,6 +37,10 @@ service cloud.firestore {
     match /projects/{projectId} {
       allow read, list: if isAdmin() || (isAuthenticated() && getUserData() != null && (resource == null || resource.data.clientId == getUserData().clientId));
       allow write: if isAdmin();
+    }
+
+    match /quotations/{quotationId} {
+      allow read, write, list, delete: if isAdmin();
     }
 
     match /testing_groups/{groupId} {

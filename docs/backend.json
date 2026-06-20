@@ -46,6 +46,23 @@
       },
       "required": ["name", "clientId"]
     },
+    "Quotation": {
+      "title": "Quotation",
+      "description": "A generated or manual project quotation with AI insights and assets.",
+      "type": "object",
+      "properties": {
+        "projectName": { "type": "string" },
+        "clientName": { "type": "string" },
+        "clientRequestDescription": { "type": "string" },
+        "suggestedRequirements": { "type": "array", "items": { "type": "string" } },
+        "estimatedCost": { "type": "number" },
+        "executionTimelineDays": { "type": "number" },
+        "notes": { "type": "string" },
+        "images": { "type": "array", "items": { "type": "string" } },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
     "TestingGroup": {
       "title": "Testing Group",
       "description": "Manages a group of testers for a specific project.",
@@ -83,6 +100,10 @@
     "/projects/{projectId}": {
       "schema": "Project",
       "description": "Project details and assets."
+    },
+    "/quotations/{quotationId}": {
+      "schema": "Quotation",
+      "description": "AI generated and manual quotations."
     },
     "/testing_groups/{groupId}": {
       "schema": "TestingGroup",
