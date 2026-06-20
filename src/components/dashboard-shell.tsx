@@ -57,7 +57,6 @@ const navItems = [
   { title: "quotations", url: "/quotations", icon: Calculator, permission: "p_projects", roles: ['admin'] },
   { title: "invoices", url: "/invoices", icon: FileText, permission: "p_finances", roles: ['admin'] },
   { title: "payments", url: "/payments", icon: CreditCard, permission: "p_finances", roles: ['admin'] },
-  { title: "chat", url: "/chat", icon: MessageSquare, permission: "p_dashboard", roles: ['admin', 'client'] },
   { title: "support", url: "/support", icon: LifeBuoy, permission: "p_dashboard", roles: ['admin', 'client'] },
 ];
 

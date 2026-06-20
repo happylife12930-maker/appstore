@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -59,7 +60,6 @@ export default function UsersPermissionsPage() {
   // Available Permissions
   const availablePermissions = [
     { id: "p_projects", label: "عرض المشاريع" },
-    { id: "p_chat", label: "المحادثة المباشرة" },
     { id: "p_support", label: "الدعم الفني" },
     { id: "p_finances", label: "البيانات المالية" },
   ];
@@ -109,7 +109,7 @@ export default function UsersPermissionsPage() {
         role: "client",
         status: "active",
         tempPassword: tempPassword,
-        permissions: ["p_projects"],
+        permissions: ["p_projects", "p_support"],
         createdAt: new Date().toISOString()
       });
       
