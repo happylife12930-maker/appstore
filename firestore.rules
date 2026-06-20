@@ -20,16 +20,18 @@ service cloud.firestore {
     
     // قواعد جدول المشاريع
     match /projects/{projectId} {
-      allow read, write: if isAdmin() || (request.auth != null && (
+      allow read: if isAdmin() || (request.auth != null && (
+        resource.data.clientId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.clientId ||
         resource.data.clientEmail == request.auth.token.email || 
-        resource.data.clientPhone == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.phone
+        resource.data.clientPhone == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.phone ||
+        resource.data.clientPhone == request.auth.token.phone_number
       ));
+      allow write: if isAdmin();
     }
     
     // قواعد جدول التجهيز (بوابة المستفيد)
     match /users_provision/{email} {
       allow read, write: if isAdmin();
-      // السماح بالقراءة أثناء تسجيل الدخول للتحقق من وجود دعوة
       allow get: if true;
     }
   }

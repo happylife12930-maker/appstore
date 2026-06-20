@@ -1,14 +1,12 @@
-
 "use client";
 import * as React from "react";
 import { useState, useEffect } from "react";
-import { Users, Briefcase, CheckCircle, LayoutDashboard, ShieldCheck, Clock } from "lucide-react";
+import { Users, Briefcase, CheckCircle, LayoutDashboard, ShieldCheck, Clock, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot } from "firebase/firestore";
+import { collection, onSnapshot, query, where, or } from "firebase/firestore";
 import { useAuth } from "@/components/auth-provider";
-import { Loader2 } from "lucide-react";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -32,22 +30,27 @@ export default function DashboardPage() {
       return () => { unsubC(); unsubP(); };
     } 
     else if (profile.role === 'client') {
-      const unsubP = onSnapshot(collection(db, "projects"), (s) => {
-        const myProjects = s.docs.filter(d => {
-          const data = d.data();
-          // ربط ثلاثي الأبعاد لضمان الظهور: (المعرف المخصص، البريد، أو الهاتف)
-          return (
-            (profile.clientId && data.clientId === profile.clientId) ||
-            data.clientEmail === profile.email || 
-            (data.clientPhone && profile.phone && data.clientPhone === profile.phone)
-          );
-        });
-        
+      // استخدام Query بـ OR لضمان جلب المشاريع المسموح بها فقط وتجنب خطأ Permission Denied
+      const projectsRef = collection(db, "projects");
+      const q = query(
+        projectsRef,
+        or(
+          where("clientId", "==", profile.clientId || "NONE"),
+          where("clientEmail", "==", profile.email || "NONE"),
+          where("clientPhone", "==", profile.phone || "NONE")
+        )
+      );
+
+      const unsubP = onSnapshot(q, (s) => {
+        const myProjects = s.docs;
         setStats({
           clients: 0,
           projects: myProjects.filter(p => p.data().status !== 'مكتمل').length,
           finished: myProjects.filter(p => p.data().status === 'مكتمل').length
         });
+        setLoading(false);
+      }, (error) => {
+        console.error("Dashboard Snapshot Error:", error);
         setLoading(false);
       });
       return () => unsubP();

@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -22,7 +21,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, deleteDoc, doc, setDoc, addDoc } from "firebase/firestore";
+import { collection, onSnapshot, deleteDoc, doc, setDoc, addDoc, query, where, or } from "firebase/firestore";
 import { ProjectModal, type ProjectData } from "@/components/modals/project-modal";
 import { ProjectDetailsModal } from "@/components/modals/project-details-modal";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -51,20 +50,31 @@ function ProjectsContent() {
 
   useEffect(() => {
     if (!db || !profile) return;
-    const unsub = onSnapshot(collection(db, "projects"), (snap) => {
-      let docs = snap.docs.map(d => ({ id: d.id, ...d.data() } as ProjectData));
-      
-      if (profile.role === 'client') {
-        docs = docs.filter(p => 
-          (profile.clientId && p.clientId === profile.clientId) || // ربط عبر المعرف الأصلي
-          p.clientEmail === profile.email || 
-          (p.clientPhone && profile.phone && p.clientPhone === profile.phone)
-        );
-      }
-      
+
+    let q;
+    if (profile.role === 'admin') {
+      q = collection(db, "projects");
+    } else {
+      // استخدام استعلام مفلتر لتجنب خطأ Permission Denied
+      q = query(
+        collection(db, "projects"),
+        or(
+          where("clientId", "==", profile.clientId || "NONE"),
+          where("clientEmail", "==", profile.email || "NONE"),
+          where("clientPhone", "==", profile.phone || "NONE")
+        )
+      );
+    }
+
+    const unsub = onSnapshot(q, (snap) => {
+      const docs = snap.docs.map(d => ({ id: d.id, ...d.data() } as ProjectData));
       setProjects(docs);
       setLoading(false);
+    }, (error) => {
+      console.error("Projects Snapshot Error:", error);
+      setLoading(false);
     });
+    
     return () => unsub();
   }, [profile]);
 
