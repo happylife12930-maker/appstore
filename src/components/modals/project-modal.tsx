@@ -67,8 +67,8 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
     const unsub = onSnapshot(collection(db, "clients"), (snap) => {
       setClients(snap.docs.map(doc => ({ 
         id: doc.id, 
-        name: doc.data().name || '', 
-        phone: doc.data().phone || '' 
+        name: String(doc.data().name || ''), 
+        phone: String(doc.data().phone || '') 
       })));
     });
     return () => unsub();
@@ -102,10 +102,12 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
   const filteredClients = useMemo(() => {
     const s = clientSearch.toLowerCase().trim();
     if (!s) return clients;
-    return clients.filter(c => 
-      (c.name || "").toLowerCase().includes(s) || 
-      (c.phone || "").includes(s)
-    );
+    
+    return clients.filter(c => {
+      const nameMatch = c.name.toLowerCase().includes(s);
+      const phoneMatch = c.phone.includes(s);
+      return nameMatch || phoneMatch;
+    });
   }, [clients, clientSearch]);
 
   const handleAddImage = () => {
@@ -123,7 +125,8 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
     if (!formData.name || !formData.clientId) return;
     const selectedClient = clients.find(c => c.id === formData.clientId);
     await onSave({ ...formData, clientName: selectedClient?.name || '' });
-    // حل مشكلة الفريز بعد الحفظ
+    
+    // تأكيد استجابة الشاشة بعد الحفظ
     setTimeout(() => {
       document.body.style.pointerEvents = 'auto';
     }, 500);
@@ -147,7 +150,7 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label className="font-black">اسم المشروع</Label>
+                <Label className="font-black text-slate-700">اسم المشروع</Label>
                 <Input 
                   value={formData.name} 
                   onChange={(e) => setFormData({...formData, name: e.target.value})} 
@@ -156,31 +159,35 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
                 />
               </div>
               <div className="space-y-2">
-                <Label className="font-black">ربط العميل (بحث بالاسم/الهاتف)</Label>
+                <Label className="font-black text-slate-700">البحث عن العميل (اسم/هاتف)</Label>
                 <div className="space-y-2">
                   <div className="relative">
                     <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <Input 
-                      placeholder="ابحث بالاسم أو رقم الهاتف..." 
+                      placeholder="اكتب رقم الهاتف أو الاسم..." 
                       value={clientSearch}
                       onChange={(e) => setClientSearch(e.target.value)}
-                      className="rounded-2xl h-12 pr-10 border-slate-200 font-bold text-sm"
+                      className="rounded-2xl h-12 pr-10 border-slate-200 font-bold text-sm bg-slate-50/50"
                     />
                   </div>
                   <Select value={formData.clientId} onValueChange={(val) => setFormData({...formData, clientId: val})}>
                     <SelectTrigger className="rounded-2xl h-12 border-slate-200 font-bold">
-                      <SelectValue placeholder="اختر العميل من النتائج" />
+                      <SelectValue placeholder="اختر من قائمة النتائج" />
                     </SelectTrigger>
-                    <SelectContent className="rounded-2xl font-bold">
+                    <SelectContent className="rounded-2xl font-bold max-h-[200px]">
                       {filteredClients.map(c => (
                         <SelectItem key={c.id} value={c.id}>
-                          <div className="flex flex-col items-start">
-                            <span>{c.name}</span>
-                            <span className="text-[10px] text-slate-400 font-normal" dir="ltr">{c.phone}</span>
+                          <div className="flex flex-col items-start gap-0.5">
+                            <span className="text-sm">{c.name}</span>
+                            <span className="text-[10px] text-primary font-black" dir="ltr">{c.phone}</span>
                           </div>
                         </SelectItem>
                       ))}
-                      {filteredClients.length === 0 && <div className="p-2 text-center text-xs text-slate-400">لا توجد نتائج مطابقة</div>}
+                      {filteredClients.length === 0 && (
+                        <div className="p-4 text-center text-xs text-slate-400 italic">
+                          لا يوجد عملاء مطابقين لهذا البحث
+                        </div>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -188,7 +195,7 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
             </div>
 
             <div className="space-y-2">
-              <Label className="font-black">حالة التنفيذ</Label>
+              <Label className="font-black text-slate-700">حالة التنفيذ</Label>
               <Select value={formData.status} onValueChange={(val) => setFormData({...formData, status: val})}>
                 <SelectTrigger className="rounded-2xl h-12 border-slate-200 font-bold">
                   <SelectValue />
@@ -203,7 +210,7 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
             </div>
 
             <div className="space-y-2">
-              <Label className="font-black">تفاصيل المشروع والمتطلبات</Label>
+              <Label className="font-black text-slate-700">تفاصيل المشروع والمتطلبات</Label>
               <Textarea 
                 value={formData.requirements} 
                 onChange={(e) => setFormData({...formData, requirements: e.target.value})} 
@@ -213,7 +220,7 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
             </div>
 
             <div className="space-y-4 p-6 bg-slate-50 rounded-[2rem] border border-slate-100">
-              <Label className="font-black flex items-center gap-2">
+              <Label className="font-black flex items-center gap-2 text-slate-700">
                 <ImageIcon className="h-4 w-4 text-primary" /> صور التطبيق (روابط الصور)
               </Label>
               <div className="flex gap-2">
@@ -221,13 +228,13 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
                   value={newImageUrl} 
                   onChange={(e) => setNewImageUrl(e.target.value)} 
                   placeholder="أدخل رابط الصورة..." 
-                  className="rounded-xl h-11 border-slate-200"
+                  className="rounded-xl h-11 border-slate-200 bg-white"
                 />
                 <Button onClick={handleAddImage} className="rounded-xl h-11 px-4"><Plus className="h-4 w-4" /></Button>
               </div>
               <div className="grid grid-cols-3 gap-3">
                 {formData.images.map((img, idx) => (
-                  <div key={idx} className="relative group aspect-video rounded-xl overflow-hidden border">
+                  <div key={idx} className="relative group aspect-video rounded-xl overflow-hidden border bg-white">
                     <img src={img} className="w-full h-full object-cover" alt="" />
                     <button 
                       onClick={() => removeImage(idx)}
@@ -247,10 +254,10 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
           <Button 
             onClick={handleSubmit} 
             disabled={isLoading || !formData.name || !formData.clientId}
-            className="w-full h-14 rounded-2xl font-black text-lg gap-2 shadow-xl"
+            className="w-full h-14 rounded-2xl font-black text-lg gap-2 shadow-xl hover:scale-[1.01] transition-all"
           >
             {isLoading ? <Loader2 className="animate-spin" /> : <Save className="h-5 w-5" />}
-            {initialData ? 'تحديث بيانات المشروع' : 'بدء المشروع الآن'}
+            {initialData ? 'تحديث بيانات المشروع' : 'بدء تنفيذ المشروع الآن'}
           </Button>
         </DialogFooter>
       </DialogContent>

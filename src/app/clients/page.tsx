@@ -65,7 +65,7 @@ export default function ClientsPage() {
 
     return clientsWithProjects.filter(c => {
       const nameMatch = (c.name || "").toLowerCase().includes(s);
-      const phoneMatch = (c.phone || "").includes(s);
+      const phoneMatch = String(c.phone || "").includes(s);
       const companyMatch = (c.company || "").toLowerCase().includes(s);
       const projectMatch = c.associatedProjects.some(p => 
         (p.name || "").toLowerCase().includes(s)
@@ -88,10 +88,10 @@ export default function ClientsPage() {
       }
       setIsModalOpen(false);
       setEditingClient(null);
-      // حل مشكلة الفريز: التأكد من إعادة تفعيل الأحداث بعد إغلاق المودال
+      
+      // حل مشكلة الفريز: ضمان عودة التفاعل فوراً
       setTimeout(() => {
         document.body.style.pointerEvents = 'auto';
-        document.body.classList.remove('modal-open');
       }, 300);
     } catch (err) {
       toast({ title: "خطأ", description: "فشل في حفظ البيانات", variant: "destructive" });
