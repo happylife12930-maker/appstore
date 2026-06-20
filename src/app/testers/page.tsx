@@ -108,14 +108,11 @@ export default function TestersManagementPage() {
       return;
     }
 
-    // تجهيز البيانات
-    const headers = ["المشروع", "بريد المختبر", "أيام العمل", "حالة المهمة"];
+    // تجهيز البيانات - الآن تحتوي على الإيميلات فقط
+    const headers = ["البريد الإلكتروني"];
     const rows = dataToExport.flatMap(group => 
       group.testers.map(tester => [
-        group.projectName,
-        tester.email,
-        tester.assignedDays.join(" - "),
-        group.status === 'completed' ? 'تم الاختبار' : group.status === 'in_progress' ? 'جارِ الاختبار' : 'في الانتظار'
+        tester.email
       ])
     );
 
@@ -130,15 +127,15 @@ export default function TestersManagementPage() {
     const link = document.createElement("a");
     link.setAttribute("href", url);
     const fileName = specificGroup 
-      ? `مختبرين_مشروع_${specificGroup.projectName}_${new Date().toLocaleDateString('ar-EG')}.csv`
-      : `جميع_المختبرين_${new Date().toLocaleDateString('ar-EG')}.csv`;
+      ? `إيميلات_مختبرين_مشروع_${specificGroup.projectName}_${new Date().toLocaleDateString('ar-EG')}.csv`
+      : `جميع_إيميلات_المختبرين_${new Date().toLocaleDateString('ar-EG')}.csv`;
     
     link.setAttribute("download", fileName);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     
-    toast({ title: "تم التصدير", description: specificGroup ? `تم تحميل ملف مشروع ${specificGroup.projectName}` : "تم تحميل قائمة جميع المختبرين بنجاح" });
+    toast({ title: "تم التصدير", description: "تم تحميل قائمة الإيميلات بنجاح" });
   };
 
   const getStatusBadge = (status: string) => {
@@ -174,7 +171,7 @@ export default function TestersManagementPage() {
             onClick={() => handleExportCSV()}
             className="rounded-2xl h-14 px-6 font-black text-lg gap-2 border-primary text-primary hover:bg-primary/5"
           >
-            <Download className="h-5 w-5" /> تصدير الكل
+            <Download className="h-5 w-5" /> تصدير كل الإيميلات
           </Button>
           <Button 
             onClick={() => { setEditingGroup(null); setIsModalOpen(true); }}
@@ -223,7 +220,7 @@ export default function TestersManagementPage() {
                     onClick={() => handleExportCSV(group)}
                     className="h-8 rounded-lg text-primary hover:bg-primary/5 font-black text-[10px] gap-1 px-2"
                   >
-                    <FileSpreadsheet className="h-3 w-3" /> تصدير المشروع
+                    <FileSpreadsheet className="h-3 w-3" /> تصدير إيميلات المشروع
                   </Button>
                 </div>
                 <div className="space-y-3">
