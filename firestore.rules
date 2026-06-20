@@ -32,8 +32,9 @@ service cloud.firestore {
     }
 
     match /users_provision/{email} {
-      // السماح للأدمن بإدارة التجهيز، وللمستخدم بالتحقق من وجود تفعيله أثناء تسجيل الدخول
-      allow read: if isAuthenticated() || isAdmin();
+      // السماح بجلب مستند تفعيل محدد للتحقق قبل تسجيل الدخول
+      allow get: if true;
+      allow list: if isAdmin();
       allow write: if isAdmin();
     }
 
@@ -43,7 +44,7 @@ service cloud.firestore {
     }
 
     match /projects/{projectId} {
-      // السماح بالقراءة والقائمة إذا كان أدمن أو كان العميل يطلب مشاريعه الخاصة (بناءً على clientId)
+      // السماح للعميل برؤية مشاريعه بناءً على clientId المربوط في ملفه
       allow read, list: if isAdmin() || (isAuthenticated() && userProfileExists() && resource.data.clientId == getUserData().clientId);
       allow write: if isAdmin();
     }

@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -18,11 +17,11 @@ const getFriendlyErrorMessage = (errorCode: string) => {
   switch (errorCode) {
     case "auth/invalid-email": return "البريد الإلكتروني غير صالح.";
     case "auth/user-not-found": 
-    case "auth/invalid-credential": return "بيانات الدخول غير صحيحة. إذا كنت عميلاً جديداً، استخدم كلمة المرور المسلمة لك.";
+    case "auth/invalid-credential": return "بيانات الدخول غير صحيحة. تأكد من البريد وكلمة المرور.";
     case "auth/wrong-password": return "كلمة المرور غير صحيحة.";
-    case "auth/email-already-in-use": return "هذا البريد مسجل بالفعل، يرجى تسجيل الدخول مباشرة.";
+    case "auth/email-already-in-use": return "هذا البريد مسجل بالفعل، يرجى تسجيل الدخول بكلمة مرورك.";
     case "auth/weak-password": return "كلمة المرور يجب أن تكون 6 رموز على الأقل.";
-    default: return "حدث خطأ في الدخول. تأكد من بياناتك وحاول مرة أخرى.";
+    default: return "حدث خطأ غير متوقع. حاول مرة أخرى.";
   }
 };
 
@@ -42,28 +41,20 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      // 1. فحص وجود بيانات تجهيز (تفعيل) أولاً
-      const provisionDocRef = doc(db, "users_provision", email);
+      // 1. التحقق من وجود تفعيل أولاً (مسموح به الآن في القواعد بدون تسجيل دخول)
+      const provisionDocRef = doc(db, "users_provision", email.toLowerCase());
       const provisionSnap = await getDoc(provisionDocRef);
       const provisionData = provisionSnap.exists() ? provisionSnap.data() : null;
 
       let userCredential;
 
       try {
-        // 2. محاولة تسجيل الدخول
+        // 2. محاولة تسجيل الدخول العادي
         userCredential = await signInWithEmailAndPassword(auth, email, password);
       } catch (loginError: any) {
-        // 3. إذا فشل الدخول وكان السبب "غير موجود" وكان هناك بيانات تفعيل بكلمة مرور مطابقة
+        // 3. إذا كان المستخدم غير موجود وكلمة المرور مطابقة للمؤقتة في التفعيل
         if ((loginError.code === "auth/user-not-found" || loginError.code === "auth/invalid-credential") && provisionData && password === provisionData.tempPassword) {
-          try {
-            userCredential = await createUserWithEmailAndPassword(auth, email, password);
-          } catch (createError: any) {
-            // إذا كان البريد موجود فعلاً في Auth (Email already in use) رغم فشل تسجيل الدخول ببيانات معينة
-            if (createError.code === "auth/email-already-in-use") {
-              throw new Error("auth/invalid-credential");
-            }
-            throw createError;
-          }
+          userCredential = await createUserWithEmailAndPassword(auth, email, password);
         } else {
           throw loginError;
         }
@@ -71,25 +62,30 @@ export default function LoginPage() {
 
       const user = userCredential.user;
 
-      // 4. تحديث البروفايل بالبيانات الجديدة (خاصة الـ clientId) إذا كان هناك تفعيل معلق
+      // 4. تحديث البروفايل بالبيانات (خاصة الـ clientId للربط مع المشاريع)
       if (provisionData && user) {
         await setDoc(doc(db, "users", user.uid), {
           uid: user.uid,
           name: provisionData.name || "مستفيد",
-          email: email,
+          email: email.toLowerCase(),
           phone: provisionData.phone || "",
-          clientId: provisionData.clientId || "", 
+          clientId: provisionData.clientId || "", // المعرف الأساسي للربط مع Projects
           role: "client",
           status: "active",
           permissions: ["p_projects"],
           lastLogin: new Date().toLocaleString('ar-EG')
         }, { merge: true });
         
-        // مسح بيانات التفعيل بعد النجاح
+        // مسح بيانات التفعيل بعد الربط الناجح
         await deleteDoc(provisionDocRef);
+      } else if (user) {
+        // تحديث تاريخ آخر دخول فقط إذا كان المستخدم موجوداً مسبقاً
+        await setDoc(doc(db, "users", user.uid), {
+          lastLogin: new Date().toLocaleString('ar-EG')
+        }, { merge: true });
       }
 
-      toast({ title: "تم الدخول بنجاح", description: "مرحباً بك مجدداً في APP STORE" });
+      toast({ title: "تم الدخول بنجاح", description: "مرحباً بك في بوابة APP STORE" });
       router.push("/");
     } catch (error: any) {
       console.error("Login process error:", error);
