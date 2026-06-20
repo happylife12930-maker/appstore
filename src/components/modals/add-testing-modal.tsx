@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Dialog, 
   DialogContent, 
@@ -14,20 +14,17 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { 
-  Search, 
   UserPlus, 
   Mail, 
   Calendar, 
   Link as LinkIcon, 
-  Trash2, 
-  Briefcase, 
   Loader2,
   CheckCircle2,
   X
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Checkbox } from '@/components/ui/checkbox';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -227,7 +224,9 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
                     <p className="font-black text-xs text-slate-800">{tester.email}</p>
                     <div className="flex flex-wrap gap-1">
                       {tester.assignedDays.map(d => (
-                        <Badge key={d} variant="outline" className="text-[8px] font-black rounded-md">{d}</Badge>
+                        <Badge key={d} variant="outline" className="text-[8px] font-black rounded-md px-2 py-0.5 bg-slate-50">
+                          {d}
+                        </Badge>
                       ))}
                     </div>
                   </div>
@@ -263,3 +262,4 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
     </Dialog>
   );
 }
+
