@@ -38,7 +38,7 @@ export default function DashboardPage() {
       }, () => setLoading(false));
     } 
     else if (profile.role === 'client' && profile.clientId) {
-      // استعلام محدد بدقة بناءً على clientId لتجنب خطأ الصلاحيات
+      // استعلام صارم بناءً على الـ clientId لضمان التوافق مع القواعد
       const q = query(
         collection(db, "projects"),
         where("clientId", "==", profile.clientId)

@@ -53,7 +53,7 @@ function ProjectsContent() {
     if (profile.role === 'admin') {
       q = query(collection(db, "projects"));
     } else {
-      // إذا كان عميلاً، يجب أن يطلب فقط المشاريع التي تخصه ليتوافق مع الـ Rules
+      // إذا كان عميلاً، يجب استخدام الـ clientId ليتوافق مع الـ Rules
       if (!profile.clientId) {
         setLoading(false);
         return;

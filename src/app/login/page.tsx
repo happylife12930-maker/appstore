@@ -43,24 +43,23 @@ export default function LoginPage() {
     const emailLower = email.toLowerCase().trim();
 
     try {
-      // 1. التحقق من وجود تفعيل أولاً
-      const provisionDocRef = doc(db, "users_provision", emailLower);
-      const provisionSnap = await getDoc(provisionDocRef);
-      const provisionData = provisionSnap.exists() ? provisionSnap.data() : null;
-
       let userCredential;
 
       try {
-        // 2. محاولة تسجيل الدخول
+        // 1. محاولة تسجيل الدخول أولاً
         userCredential = await signInWithEmailAndPassword(auth, emailLower, password);
       } catch (loginError: any) {
-        // 3. إذا كان الحساب غير موجود وكان هناك تفعيل بكلمة مرور مطابقة
-        if (
-          (loginError.code === "auth/user-not-found" || loginError.code === "auth/invalid-credential") && 
-          provisionData && 
-          password === provisionData.tempPassword
-        ) {
-          userCredential = await createUserWithEmailAndPassword(auth, emailLower, password);
+        // 2. إذا لم يكن الحساب موجوداً، نتحقق من وجود تفعيل (Invitation)
+        if (loginError.code === "auth/user-not-found" || loginError.code === "auth/invalid-credential") {
+          const provisionDocRef = doc(db, "users_provision", emailLower);
+          const provisionSnap = await getDoc(provisionDocRef);
+          
+          if (provisionSnap.exists() && password === provisionSnap.data().tempPassword) {
+            // إنشاء حساب جديد إذا كانت كلمة المرور مطابقة للمؤقتة
+            userCredential = await createUserWithEmailAndPassword(auth, emailLower, password);
+          } else {
+            throw loginError;
+          }
         } else {
           throw loginError;
         }
@@ -68,25 +67,30 @@ export default function LoginPage() {
 
       const user = userCredential.user;
 
-      // 4. مزامنة بيانات الملف الشخصي (خاصة الـ clientId)
-      if (provisionData && user) {
+      // 3. مزامنة بيانات الملف الشخصي وربط الـ clientId
+      const provisionDocRef = doc(db, "users_provision", emailLower);
+      const provisionSnap = await getDoc(provisionDocRef);
+
+      if (provisionSnap.exists() && user) {
+        const pData = provisionSnap.data();
         await setDoc(doc(db, "users", user.uid), {
           uid: user.uid,
-          name: provisionData.name || "مستفيد",
+          name: pData.name || "مستفيد",
           email: emailLower,
-          phone: provisionData.phone || "",
-          clientId: provisionData.clientId || "", // المعرف الأساسي للربط مع المشاريع
+          phone: pData.phone || "",
+          clientId: pData.clientId || "", // المعرف الأساسي للربط مع المشاريع
           role: "client",
           status: "active",
           permissions: ["p_projects"],
-          lastLogin: new Date().toLocaleString('ar-EG')
+          lastLogin: new Date().toISOString()
         }, { merge: true });
         
         // مسح بيانات التفعيل بعد الربط بنجاح
         await deleteDoc(provisionDocRef);
       } else if (user) {
+        // تحديث تاريخ الدخول فقط إذا كان الحساب مربوطاً مسبقاً
         await setDoc(doc(db, "users", user.uid), {
-          lastLogin: new Date().toLocaleString('ar-EG')
+          lastLogin: new Date().toISOString()
         }, { merge: true });
       }
 
