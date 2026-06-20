@@ -76,16 +76,16 @@ export default function LoginPage() {
           name: pData.name || "مستفيد",
           email: emailLower,
           phone: pData.phone || "",
-          clientId: pData.clientId || "", // المعرف الأساسي للربط (المأخوذ من id العميل)
+          clientId: pData.clientId || "", 
           role: "client",
           status: "active",
           permissions: ["p_projects"],
           lastLogin: new Date().toISOString()
         }, { merge: true });
         
-        await deleteDoc(provisionDocRef);
+        // حذف مستند التفعيل بهدوء
+        deleteDoc(provisionDocRef).catch(err => console.warn("Provision cleanup deferred:", err));
       } else if (user) {
-        // تحديث وقت الدخول للحسابات النشطة مسبقاً
         await setDoc(doc(db, "users", user.uid), {
           lastLogin: new Date().toISOString()
         }, { merge: true });
@@ -95,9 +95,7 @@ export default function LoginPage() {
       router.push("/");
     } catch (error: any) {
       console.error("Login Error:", error);
-      setError(error.message?.includes("insufficient permissions") 
-        ? "خطأ في صلاحيات النظام، يرجى التواصل مع الإدارة." 
-        : getFriendlyErrorMessage(error.code));
+      setError(getFriendlyErrorMessage(error.code));
     } finally {
       setLoading(false);
     }

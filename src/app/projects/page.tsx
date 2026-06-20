@@ -53,9 +53,8 @@ function ProjectsContent() {
     if (profile.role === 'admin') {
       q = query(collection(db, "projects"));
     } else {
-      // ربط صارم وحصري بناءً على clientId لضمان التوافق مع القواعد (Security Rules)
+      // الاعتماد الصارم على clientId المربوط بملف المستخدم
       if (!profile.clientId) {
-        console.warn("User has no clientId, project fetch skipped.");
         setLoading(false);
         return;
       }
@@ -71,18 +70,11 @@ function ProjectsContent() {
       setLoading(false);
     }, (error: any) => {
       console.error("Projects Access Error:", error);
-      if (error.message?.includes("insufficient permissions")) {
-        toast({ 
-          title: "خطأ في الصلاحيات", 
-          description: "برجاء تسجيل الخروج والدخول مرة أخرى لتحديث بيانات الربط.", 
-          variant: "destructive" 
-        });
-      }
       setLoading(false);
     });
     
     return () => unsub();
-  }, [profile, authLoading, toast]);
+  }, [profile, authLoading]);
 
   const filteredProjects = useMemo(() => {
     const s = searchQuery.toLowerCase().trim();
