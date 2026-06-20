@@ -7,8 +7,6 @@ import {
   Eye, 
   EyeOff, 
   Loader2, 
-  Trash2,
-  UserPlus,
   ShieldCheck,
   Settings2,
   Lock,
@@ -33,7 +31,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, doc, setDoc, deleteDoc, updateDoc } from "firebase/firestore";
+import { collection, onSnapshot, doc, setDoc, updateDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/auth-provider";
 import { useRouter } from "next/navigation";
@@ -150,38 +148,6 @@ export default function UsersPermissionsPage() {
     }
   };
 
-  const handleRevokeActiveAccess = async (uid: string, email: string) => {
-    if (!db) return;
-    if (!confirm("تحذير نهائي: هل أنت متأكد من مسح حساب هذا العميل تماماً من النظام؟")) return;
-    
-    try {
-      // 1. حذف حساب المستخدم النشط
-      await deleteDoc(doc(db, "users", uid));
-      
-      // 2. محاولة حذف مستند التفعيل إذا كان موجوداً
-      if (email) {
-        const emailLower = email.toLowerCase().trim();
-        await deleteDoc(doc(db, "users_provision", emailLower)).catch(() => {});
-      }
-      
-      toast({ title: "تم الحذف النهائي", description: "تمت إزالة كافة بيانات الدخول المرتبطة بالعميل." });
-    } catch (err) {
-      toast({ title: "خطأ في الحذف", description: "تأكد من اتصالك بالإنترنت وصلاحياتك.", variant: "destructive" });
-    }
-  };
-
-  const handleCancelProvision = async (email: string) => {
-    if (!db || !email) return;
-    if (!confirm("هل تريد سحب وإلغاء طلب التفعيل المعلق؟")) return;
-    
-    try {
-      await deleteDoc(doc(db, "users_provision", email.toLowerCase().trim()));
-      toast({ title: "تم الإلغاء", description: "تم سحب طلب التفعيل بنجاح." });
-    } catch (err) {
-      toast({ title: "خطأ في الإلغاء", variant: "destructive" });
-    }
-  };
-
   const togglePermission = (permId: string) => {
     if (!editingUser) return;
     const currentPerms = editingUser.permissions || [];
@@ -214,7 +180,7 @@ export default function UsersPermissionsPage() {
         </div>
         <div>
           <h1 className="text-3xl font-black text-slate-800 tracking-tight">بوابة المستفيدين</h1>
-          <p className="text-slate-500 font-bold">إدارة حسابات الدخول، التنشيط، ومسح الحسابات نهائياً</p>
+          <p className="text-slate-500 font-bold">إدارة حسابات الدخول، التنشيط، والتحكم في حالة الحساب</p>
         </div>
       </header>
 
@@ -246,17 +212,6 @@ export default function UsersPermissionsPage() {
                           <p className="font-black text-slate-800 text-sm truncate">{client.name}</p>
                           <p className="text-[10px] font-bold text-slate-400" dir="ltr">{client.phone}</p>
                         </div>
-                        {provision && !isActive && (
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => handleCancelProvision(client.email)}
-                            className="h-8 w-8 text-rose-500 hover:bg-rose-50 rounded-lg"
-                            title="إلغاء التفعيل المعلق"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
                       </div>
                       <Button 
                         size="sm" 
@@ -276,7 +231,7 @@ export default function UsersPermissionsPage() {
 
         <Card className="lg:col-span-8 rounded-[2.5rem] border-none shadow-sm bg-white overflow-hidden border">
           <CardHeader className="bg-primary p-8 text-primary-foreground">
-            <CardTitle className="text-2xl font-black flex items-center gap-3">الحسابات النشطة (تحكم كامل)</CardTitle>
+            <CardTitle className="text-2xl font-black flex items-center gap-3">الحسابات النشطة والمسجلة</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <div className="divide-y divide-slate-100">
@@ -322,22 +277,13 @@ export default function UsersPermissionsPage() {
                       >
                         <Settings2 className="h-5 w-5" />
                       </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => handleRevokeActiveAccess(user.id, user.email)} 
-                        className="text-rose-500 hover:bg-rose-50 h-10 w-10 rounded-xl"
-                        title="حذف الحساب نهائياً"
-                      >
-                        <Trash2 className="h-5 w-5" />
-                      </Button>
                     </div>
                   </div>
                 </div>
               ))}
               {activeUsers.filter(u => u.role === 'client').length === 0 && (
                 <div className="p-20 text-center opacity-20">
-                  <Users className="h-20 w-20 mx-auto mb-4" />
+                  <ShieldCheck className="h-20 w-20 mx-auto mb-4" />
                   <p className="font-black">لا توجد حسابات نشطة حالياً</p>
                 </div>
               )}
@@ -374,7 +320,7 @@ export default function UsersPermissionsPage() {
               disabled={isSubmitting || !tempPassword}
               className="w-full h-14 rounded-2xl font-black text-lg shadow-xl"
             >
-              {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <UserPlus className="h-5 w-5" />}
+              {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle2 className="h-5 w-5" />}
               تأكيد ومنح الصلاحية
             </Button>
           </DialogFooter>
@@ -415,9 +361,6 @@ export default function UsersPermissionsPage() {
                     placeholder="أدخل معرف العميل للربط..."
                     className="rounded-xl h-10 font-mono text-xs border-primary/20 bg-white"
                   />
-                  <p className="text-[10px] text-slate-400 font-bold leading-tight pr-1">
-                    هذا المعرف يربط المستخدم بمشاريعه وفواتيره.
-                  </p>
                 </div>
               </div>
 
