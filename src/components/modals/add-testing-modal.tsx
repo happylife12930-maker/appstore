@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { 
   Dialog, 
   DialogContent, 
@@ -22,7 +22,9 @@ import {
   Link as LinkIcon, 
   Loader2,
   CheckCircle2,
-  X
+  X,
+  Search,
+  Briefcase
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { db } from '@/lib/firebase';
@@ -54,6 +56,7 @@ const DAYS = ["أحد", "اثنين", "ثلاثاء", "أربعاء", "خميس"
 
 export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialData }: AddTestingModalProps) {
   const [projects, setProjects] = useState<any[]>([]);
+  const [projectSearch, setProjectSearch] = useState('');
   const [formData, setFormData] = useState<TestingGroupData>({
     projectId: '',
     projectName: '',
@@ -77,6 +80,7 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
   useEffect(() => {
     if (initialData && isOpen) {
       setFormData(initialData);
+      setProjectSearch('');
     } else if (isOpen) {
       setFormData({
         projectId: '',
@@ -86,8 +90,15 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
         resourceLink: '',
         notes: ''
       });
+      setProjectSearch('');
     }
   }, [initialData, isOpen]);
+
+  const filteredProjects = useMemo(() => {
+    const s = projectSearch.toLowerCase().trim();
+    if (!s) return projects;
+    return projects.filter(p => p.name.toLowerCase().includes(s));
+  }, [projects, projectSearch]);
 
   const addTester = () => {
     if (!newTesterEmail.includes('@') || selectedDays.length === 0) return;
@@ -135,29 +146,48 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
         <ScrollArea className="max-h-[75vh] p-8">
           <div className="space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label className="font-black text-slate-700 pr-2">المشروع المستهدف</Label>
-                <Select 
-                  value={formData.projectId} 
-                  onValueChange={(val) => setFormData({...formData, projectId: val})}
-                >
-                  <SelectTrigger className="rounded-2xl h-12 border-slate-200 font-black">
-                    <SelectValue placeholder="اختر المشروع..." />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-2xl font-bold">
-                    {projects.map(p => (
-                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="space-y-3">
+                <Label className="font-black text-slate-700 pr-2 flex items-center gap-2">
+                  <Briefcase className="h-4 w-4 text-primary" /> المشروع المستهدف (بحث)
+                </Label>
+                <div className="space-y-2">
+                  <div className="relative">
+                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <Input 
+                      placeholder="اكتب اسم المشروع للبحث..." 
+                      value={projectSearch}
+                      onChange={(e) => setProjectSearch(e.target.value)}
+                      className="rounded-2xl h-12 pr-10 border-slate-200 font-bold text-sm bg-slate-50/50"
+                    />
+                  </div>
+                  <Select 
+                    value={formData.projectId} 
+                    onValueChange={(val) => {
+                      setFormData({...formData, projectId: val});
+                      setProjectSearch('');
+                    }}
+                  >
+                    <SelectTrigger className="rounded-2xl h-12 border-slate-200 font-black text-right">
+                      <SelectValue placeholder="اختر من النتائج..." />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-2xl font-bold max-h-[250px]">
+                      {filteredProjects.map(p => (
+                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                      ))}
+                      {filteredProjects.length === 0 && (
+                        <div className="p-4 text-center text-xs text-slate-400 font-bold">لا توجد مشاريع مطابقة</div>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 pt-1">
                 <Label className="font-black text-slate-700 pr-2">حالة الاختبار</Label>
                 <Select 
                   value={formData.status} 
                   onValueChange={(val: any) => setFormData({...formData, status: val})}
                 >
-                  <SelectTrigger className="rounded-2xl h-12 border-slate-200 font-black">
+                  <SelectTrigger className="rounded-2xl h-12 border-slate-200 font-black mt-2">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="rounded-2xl font-bold">
@@ -262,4 +292,3 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
     </Dialog>
   );
 }
-
