@@ -17,7 +17,8 @@ import {
   Loader2,
   AlertCircle,
   ExternalLink,
-  Download
+  Download,
+  FileSpreadsheet
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -99,15 +100,17 @@ export default function TestersManagementPage() {
     }
   };
 
-  const handleExportCSV = () => {
-    if (filteredGroups.length === 0) {
+  const handleExportCSV = (specificGroup?: TestingGroupData) => {
+    const dataToExport = specificGroup ? [specificGroup] : filteredGroups;
+
+    if (dataToExport.length === 0) {
       toast({ title: "تنبيه", description: "لا توجد بيانات لتصديرها حالياً", variant: "destructive" });
       return;
     }
 
     // تجهيز البيانات
     const headers = ["المشروع", "بريد المختبر", "أيام العمل", "حالة المهمة"];
-    const rows = filteredGroups.flatMap(group => 
+    const rows = dataToExport.flatMap(group => 
       group.testers.map(tester => [
         group.projectName,
         tester.email,
@@ -126,12 +129,16 @@ export default function TestersManagementPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `قائمة_المختبرين_${new Date().toLocaleDateString('ar-EG')}.csv`);
+    const fileName = specificGroup 
+      ? `مختبرين_مشروع_${specificGroup.projectName}_${new Date().toLocaleDateString('ar-EG')}.csv`
+      : `جميع_المختبرين_${new Date().toLocaleDateString('ar-EG')}.csv`;
+    
+    link.setAttribute("download", fileName);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     
-    toast({ title: "تم التصدير", description: "تم تحميل ملف المختبرين بنجاح" });
+    toast({ title: "تم التصدير", description: specificGroup ? `تم تحميل ملف مشروع ${specificGroup.projectName}` : "تم تحميل قائمة جميع المختبرين بنجاح" });
   };
 
   const getStatusBadge = (status: string) => {
@@ -164,10 +171,10 @@ export default function TestersManagementPage() {
         <div className="flex gap-2">
           <Button 
             variant="outline"
-            onClick={handleExportCSV}
+            onClick={() => handleExportCSV()}
             className="rounded-2xl h-14 px-6 font-black text-lg gap-2 border-primary text-primary hover:bg-primary/5"
           >
-            <Download className="h-5 w-5" /> تصدير CSV
+            <Download className="h-5 w-5" /> تصدير الكل
           </Button>
           <Button 
             onClick={() => { setEditingGroup(null); setIsModalOpen(true); }}
@@ -210,6 +217,14 @@ export default function TestersManagementPage() {
                     <UserCheck className="h-4 w-4" />
                     <span className="text-xs font-black uppercase">المختبرون ({group.testers.length})</span>
                   </div>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => handleExportCSV(group)}
+                    className="h-8 rounded-lg text-primary hover:bg-primary/5 font-black text-[10px] gap-1 px-2"
+                  >
+                    <FileSpreadsheet className="h-3 w-3" /> تصدير المشروع
+                  </Button>
                 </div>
                 <div className="space-y-3">
                   {group.testers.map((tester, idx) => (
