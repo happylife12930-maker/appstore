@@ -10,7 +10,9 @@ import {
   Loader2, 
   Circle,
   CheckCheck,
-  AlertCircle
+  AlertCircle,
+  Trash2,
+  X
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,7 +31,9 @@ import {
   setDoc, 
   updateDoc,
   increment,
-  limit
+  limit,
+  deleteDoc,
+  getDocs
 } from "firebase/firestore";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
@@ -80,7 +84,7 @@ function SupportContent() {
     return () => unsub();
   }, [isAdmin]);
 
-  // تعيين المحادثة النشطة - تم التعديل ليستخدم clientId بدلاً من uid
+  // تعيين المحادثة النشطة
   useEffect(() => {
     if (profile && !isAdmin) {
       if (profile.clientId) {
@@ -109,6 +113,7 @@ function SupportContent() {
         
         // تصفير عداد الرسائل غير المقروءة عند فتح المحادثة
         const threadRef = doc(db, "support_threads", activeThreadId);
+        // نتحقق من وجود المستند أولاً قبل التحديث لتجنب خطأ الحذف المتزامن
         if (isAdmin) {
           updateDoc(threadRef, { unreadAdmin: 0 }).catch(() => {});
         } else {
@@ -155,12 +160,32 @@ function SupportContent() {
         updateData.unreadClient = increment(1);
       } else {
         updateData.unreadAdmin = increment(1);
-        updateData.clientId = profile.clientId; // تم التعديل
+        updateData.clientId = profile.clientId;
       }
 
       await setDoc(threadRef, updateData, { merge: true });
     } catch (err) {
       toast({ title: "خطأ", description: "فشل في إرسال الرسالة", variant: "destructive" });
+    }
+  };
+
+  const handleDeleteThread = async (e: React.MouseEvent, threadId: string) => {
+    e.stopPropagation();
+    if (!isAdmin || !db || !confirm("هل أنت متأكد من حذف هذه المحادثة نهائياً؟")) return;
+
+    try {
+      // حذف المستند الرئيسي للمحادثة
+      await deleteDoc(doc(db, "support_threads", threadId));
+      
+      // إذا كانت هي المحادثة النشطة، نقوم بإغلاقها
+      if (activeThreadId === threadId) {
+        setActiveThreadId(null);
+        setMessages([]);
+      }
+
+      toast({ title: "تم الحذف", description: "تم مسح المحادثة بنجاح" });
+    } catch (err) {
+      toast({ title: "خطأ", description: "فشل في حذف المحادثة", variant: "destructive" });
     }
   };
 
@@ -181,7 +206,6 @@ function SupportContent() {
     </div>
   );
 
-  // إذا كان المستخدم عميلاً وغير مربوط بـ clientId
   if (!isAdmin && !profile?.clientId) {
     return (
       <div className="max-w-7xl mx-auto py-20 text-center">
@@ -235,11 +259,23 @@ function SupportContent() {
                       <p className={`font-black text-sm truncate ${activeThreadId === thread.id ? 'text-white' : 'text-slate-800'}`}>
                         {thread.clientName}
                       </p>
-                      {thread.unreadAdmin > 0 && activeThreadId !== thread.id && (
-                        <Badge className="bg-rose-500 text-white rounded-full h-5 w-5 flex items-center justify-center p-0 text-[10px] animate-bounce">
-                          {thread.unreadAdmin}
-                        </Badge>
-                      )}
+                      <div className="flex items-center gap-1">
+                        {thread.unreadAdmin > 0 && activeThreadId !== thread.id && (
+                          <Badge className="bg-rose-500 text-white rounded-full h-5 w-5 flex items-center justify-center p-0 text-[10px] animate-bounce">
+                            {thread.unreadAdmin}
+                          </Badge>
+                        )}
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={(e) => handleDeleteThread(e, thread.id)}
+                          className={`h-6 w-6 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity ${
+                            activeThreadId === thread.id ? 'text-white/50 hover:text-white hover:bg-white/10' : 'text-slate-300 hover:text-rose-500 hover:bg-rose-50'
+                          }`}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </div>
                     <div className="flex justify-between items-center">
                       <p className={`text-[10px] truncate ${activeThreadId === thread.id ? 'text-white/70' : 'text-slate-400 font-bold'}`}>
@@ -280,34 +316,51 @@ function SupportContent() {
                   </div>
                 </div>
               </div>
+              {isAdmin && (
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => setActiveThreadId(null)}
+                  className="rounded-full h-10 w-10 hover:bg-slate-100"
+                >
+                  <X className="h-5 w-5 text-slate-400" />
+                </Button>
+              )}
             </CardHeader>
 
             <ScrollArea className="flex-1 p-6" viewportRef={scrollRef}>
               <div className="space-y-6">
-                {messages.map((msg, idx) => {
-                  const isMe = msg.senderId === profile?.uid;
-                  return (
-                    <div key={msg.id || idx} className={`flex ${isMe ? 'justify-start' : 'justify-end'}`}>
-                      <div className={`max-w-[80%] md:max-w-[70%] space-y-1`}>
-                        <div className={`p-4 rounded-[1.8rem] text-sm font-bold shadow-sm ${
-                          isMe 
-                            ? 'bg-primary text-white rounded-tr-none' 
-                            : 'bg-slate-100 text-slate-800 rounded-tl-none'
-                        }`}>
-                          {msg.text}
-                        </div>
-                        <div className={`flex items-center gap-2 text-[9px] font-black text-slate-400 px-2 ${isMe ? 'justify-start' : 'justify-end'}`}>
-                          {msg.timestamp?.seconds ? (
-                            <span>{format(msg.timestamp.seconds * 1000, 'p', { locale: ar })}</span>
-                          ) : (
-                            <span>الآن</span>
-                          )}
-                          {isMe && <CheckCheck className="h-3 w-3 text-primary" />}
+                {messages.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-20 opacity-20">
+                    <LifeBuoy className="h-16 w-16 mb-4" />
+                    <p className="font-black text-lg">بدء محادثة جديدة...</p>
+                  </div>
+                ) : (
+                  messages.map((msg, idx) => {
+                    const isMe = msg.senderId === profile?.uid;
+                    return (
+                      <div key={msg.id || idx} className={`flex ${isMe ? 'justify-start' : 'justify-end'}`}>
+                        <div className={`max-w-[80%] md:max-w-[70%] space-y-1`}>
+                          <div className={`p-4 rounded-[1.8rem] text-sm font-bold shadow-sm ${
+                            isMe 
+                              ? 'bg-primary text-white rounded-tr-none' 
+                              : 'bg-slate-100 text-slate-800 rounded-tl-none'
+                          }`}>
+                            {msg.text}
+                          </div>
+                          <div className={`flex items-center gap-2 text-[9px] font-black text-slate-400 px-2 ${isMe ? 'justify-start' : 'justify-end'}`}>
+                            {msg.timestamp?.seconds ? (
+                              <span>{format(msg.timestamp.seconds * 1000, 'p', { locale: ar })}</span>
+                            ) : (
+                              <span>الآن</span>
+                            )}
+                            {isMe && <CheckCheck className="h-3 w-3 text-primary" />}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                )}
               </div>
             </ScrollArea>
 
@@ -337,7 +390,7 @@ function SupportContent() {
             </div>
             <div>
               <h3 className="text-2xl font-black text-slate-800">مركز الدعم والمساعدة</h3>
-              <p className="text-slate-500 font-bold max-w-sm mt-2">
+              <p className="text-slate-500 font-bold max-sm mt-2">
                 اختر محادثة من القائمة الجانبية للبدء في التواصل مع المستفيدين وحل استفساراتهم.
               </p>
             </div>
