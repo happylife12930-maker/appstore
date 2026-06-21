@@ -8,7 +8,7 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // التحقق مما إذا كان المستخدم مديراً بشكل مباشر لتجنب التكرار
+    // تبسيط التحقق من الإدارة لتجنب الدوران المنطقي (Recursion)
     function isAdmin() {
       return isAuthenticated() && 
              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
@@ -21,8 +21,11 @@ service cloud.firestore {
 
     // --- Security Rules for 'users' collection ---
     match /users/{userId} {
-      allow get: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
-      allow list: if isAdmin();
+      // السماح للمستخدم بجلب بياناته الخاصة دائماً بدون طلب isAdmin لمنع التعليق
+      allow get: if isAuthenticated() && request.auth.uid == userId;
+      // السماح للمدير بجلب أي بروفايل أو عرض القائمة
+      allow get, list: if isAdmin();
+      // صلاحيات الإنشاء والتعديل
       allow create, update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
       allow delete: if isAdmin();
     }
@@ -53,7 +56,7 @@ service cloud.firestore {
     match /support_threads/{threadId} {
       // السماح بالقراءة والكتابة للمدير، وللعميل فقط إذا كان المعرف يطابق clientId الخاص به
       allow read, write: if isAdmin() || (isAuthenticated() && threadId == getClientId());
-      // السماح بالحذف للمدير فقط
+      // منح صلاحية الحذف الكاملة للمدير
       allow delete: if isAdmin();
       
       match /messages/{msgId} {

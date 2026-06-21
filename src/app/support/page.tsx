@@ -158,7 +158,7 @@ function SupportContent() {
     }
   };
 
-  const handleDeleteThread = async (e: React.MouseEvent, threadId: string) => {
+  const handleDeleteThread = (e: React.MouseEvent, threadId: string) => {
     e.preventDefault();
     e.stopPropagation();
     
@@ -167,23 +167,25 @@ function SupportContent() {
     const confirmDelete = window.confirm("هل أنت متأكد من حذف هذه المحادثة نهائياً من سجلاتك؟");
     if (!confirmDelete) return;
 
-    try {
-      const threadRef = doc(db, "support_threads", threadId);
-      await deleteDoc(threadRef);
-      
-      if (activeThreadId === threadId) {
-        setActiveThreadId(null);
-        setMessages([]);
-      }
-
-      toast({ title: "تم الحذف", description: "تم مسح المحادثة بنجاح." });
-    } catch (err) {
-      toast({ 
-        title: "خطأ في الحذف", 
-        description: "فشل حذف المحادثة. تأكد من اتصالك بالإنترنت.", 
-        variant: "destructive" 
+    const threadRef = doc(db, "support_threads", threadId);
+    
+    // تنفيذ الحذف بدون await للسماح بالاستجابة المتفائلة
+    deleteDoc(threadRef)
+      .then(() => {
+        if (activeThreadId === threadId) {
+          setActiveThreadId(null);
+          setMessages([]);
+        }
+        toast({ title: "تم الحذف", description: "تم مسح المحادثة بنجاح." });
+      })
+      .catch((err) => {
+        console.error("Delete Thread Error:", err);
+        toast({ 
+          title: "خطأ في الحذف", 
+          description: "تأكد من صلاحيات النظام وحاول مرة أخرى.", 
+          variant: "destructive" 
+        });
       });
-    }
   };
 
   const filteredThreads = threads.filter(t => {
