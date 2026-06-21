@@ -232,7 +232,9 @@ function SupportContent() {
     
     // إذا لم يكن هناك بحث، نعرض المحادثات الحالية حسب التبويب
     if (!q) {
-      return threads.filter(t => (t.status || "active") === activeTab);
+      return threads
+        .filter(t => (t.status || "active") === activeTab)
+        .map(t => ({ ...t, isExisting: true }));
     }
 
     // إذا كان هناك بحث، نبحث في قائمة "كل العملاء" برقم الهاتف
@@ -345,7 +347,7 @@ function SupportContent() {
                           variant="ghost" 
                           size="sm" 
                           onClick={(e) => handleArchiveThread(e, item.id, item.status === "archived")}
-                          className="h-6 rounded-lg text-slate-400 hover:text-primary hover:bg-primary/5 font-black text-[8px] gap-1 px-2"
+                          className="h-7 rounded-lg text-slate-400 hover:text-primary hover:bg-primary/5 font-black text-[9px] gap-1 px-2 border"
                         >
                           {item.status === "archived" ? <ArchiveRestore className="h-3 w-3" /> : <Archive className="h-3 w-3" />}
                           {item.status === "archived" ? "استعادة" : "أرشفة"}
@@ -354,7 +356,7 @@ function SupportContent() {
                           variant="ghost" 
                           size="sm" 
                           onClick={(e) => { e.stopPropagation(); setThreadToDelete(item.id); }}
-                          className="h-6 rounded-lg text-rose-300 hover:text-rose-600 hover:bg-rose-50 font-black text-[8px] gap-1 px-2"
+                          className="h-7 rounded-lg text-rose-300 hover:text-rose-600 hover:bg-rose-50 font-black text-[9px] gap-1 px-2 border border-rose-100"
                         >
                           <Trash2 className="h-3 w-3" /> إخفاء
                         </Button>
@@ -475,24 +477,28 @@ function SupportContent() {
 
       {/* نافذة تأكيد الحذف الاحترافية */}
       <AlertDialog open={!!threadToDelete} onOpenChange={(open) => !open && setThreadToDelete(null)}>
-        <AlertDialogContent className="rounded-[2rem] border-none shadow-2xl" dir="rtl">
-          <AlertDialogHeader>
-            <div className="h-14 w-14 rounded-2xl bg-rose-50 flex items-center justify-center text-rose-500 mb-2">
-              <AlertCircle className="h-8 w-8" />
-            </div>
-            <AlertDialogTitle className="text-xl font-black">إخفاء المحادثة من القائمة؟</AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-500 font-bold leading-relaxed">
-              سوف يتم حذف المحادثة، لكن عند الرجوع إليها ستتمكن من استرجاع كامل تاريخ المحادثة والرسائل السابقة بمجرد إرسال رسالة جديدة.
+        <AlertDialogContent className="rounded-[2rem] border-none shadow-2xl p-0 overflow-hidden bg-white max-w-md" dir="rtl">
+          <div className="bg-rose-500 p-8 text-white">
+            <AlertDialogHeader>
+              <div className="h-14 w-14 rounded-2xl bg-white/20 flex items-center justify-center text-white mb-2">
+                <AlertCircle className="h-8 w-8" />
+              </div>
+              <AlertDialogTitle className="text-xl font-black">إخفاء المحادثة من القائمة؟</AlertDialogTitle>
+            </AlertDialogHeader>
+          </div>
+          <div className="p-8">
+            <AlertDialogDescription className="text-slate-500 font-bold leading-relaxed text-base">
+              سوف يتم حذف المحادثة من القائمة الجارية الآن، لكن عند الرجوع إليها بالبحث برقم الهاتف ستتمكن من استرجاع كامل تاريخ المحادثة والرسائل السابقة بمجرد إرسال رسالة جديدة.
             </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex-row-reverse gap-3 mt-4">
+          </div>
+          <AlertDialogFooter className="p-8 bg-slate-50 border-t flex-row-reverse gap-3">
             <AlertDialogAction 
               onClick={confirmDeleteThread}
-              className="bg-rose-500 hover:bg-rose-600 text-white font-black rounded-xl h-12 flex-1"
+              className="bg-rose-500 hover:bg-rose-600 text-white font-black rounded-xl h-14 flex-1"
             >
               نعم، إخفاء الآن
             </AlertDialogAction>
-            <AlertDialogCancel className="bg-slate-100 border-none font-black rounded-xl h-12 flex-1 mt-0">
+            <AlertDialogCancel className="bg-white border-slate-200 text-slate-500 font-black rounded-xl h-14 flex-1 mt-0">
               تراجع
             </AlertDialogCancel>
           </AlertDialogFooter>
