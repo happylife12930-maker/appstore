@@ -98,7 +98,7 @@ export default function SupportPage() {
       (snap) => {
         setMessages(snap.docs.map(d => ({ id: d.id, ...d.data() })));
         
-        // تصفير عداد الرسائل غير المقروءة عند فتح المحادثة (فقط إذا كان هناك رسائل غير مقروءة لتجنب الكتابة الزائدة)
+        // تصفير عداد الرسائل غير المقروءة عند فتح المحادثة
         const threadRef = doc(db, "support_threads", activeThreadId);
         if (isAdmin) {
           updateDoc(threadRef, { unreadAdmin: 0 }).catch(() => {});
@@ -133,10 +133,12 @@ export default function SupportPage() {
       await addDoc(collection(db, "support_threads", threadId, "messages"), msgData);
 
       const threadRef = doc(db, "support_threads", threadId);
+      const activeThread = threads.find(t => t.id === threadId);
+      
       const updateData: any = {
         lastMessage: text,
         lastMessageTime: serverTimestamp(),
-        clientName: isAdmin ? threads.find(t => t.id === threadId)?.clientName || "مستفيد" : profile.name,
+        clientName: isAdmin ? activeThread?.clientName || "مستفيد" : profile.name,
       };
 
       if (isAdmin) {
@@ -152,9 +154,15 @@ export default function SupportPage() {
     }
   };
 
-  const filteredThreads = threads.filter(t => 
-    t.clientName?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredThreads = threads.filter(t => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return true;
+    
+    const nameMatch = t.clientName?.toLowerCase().includes(q);
+    const phoneMatch = t.clientPhone?.includes(q);
+    
+    return nameMatch || phoneMatch;
+  });
 
   if (authLoading || loading) return (
     <div className="flex flex-col items-center justify-center h-[70vh] gap-4">
@@ -174,7 +182,7 @@ export default function SupportPage() {
             <div className="relative mt-4">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input 
-                placeholder="ابحث عن مستفيد..." 
+                placeholder="ابحث بالاسم أو رقم الهاتف..." 
                 className="pr-10 h-10 rounded-xl bg-white border-slate-200 font-bold"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -207,14 +215,21 @@ export default function SupportPage() {
                         </Badge>
                       )}
                     </div>
-                    <p className={`text-[10px] truncate ${activeThreadId === thread.id ? 'text-white/70' : 'text-slate-400 font-bold'}`}>
-                      {thread.lastMessage || 'لا توجد رسائل'}
-                    </p>
+                    <div className="flex justify-between items-center">
+                      <p className={`text-[10px] truncate ${activeThreadId === thread.id ? 'text-white/70' : 'text-slate-400 font-bold'}`}>
+                        {thread.lastMessage || 'لا توجد رسائل'}
+                      </p>
+                      {thread.clientPhone && (
+                         <span className={`text-[8px] font-bold ${activeThreadId === thread.id ? 'text-white/50' : 'text-slate-300'}`} dir="ltr">
+                           {thread.clientPhone}
+                         </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
               {filteredThreads.length === 0 && (
-                <div className="py-10 text-center opacity-30 text-xs font-bold">لا توجد محادثات نشطة</div>
+                <div className="py-10 text-center opacity-30 text-xs font-bold">لا توجد نتائج للبحث</div>
               )}
             </div>
           </ScrollArea>
