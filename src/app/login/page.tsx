@@ -21,6 +21,7 @@ const getFriendlyErrorMessage = (errorCode: string) => {
     case "auth/invalid-credential": return "بيانات الدخول غير صحيحة. تأكد من البريد وكلمة المرور.";
     case "auth/wrong-password": return "كلمة المرور غير صحيحة.";
     case "auth/email-already-in-use": return "البريد مسجل مسبقاً، يرجى الدخول بكلمة مرورك.";
+    case "auth/weak-password": return "كلمة المرور يجب أن تكون 6 أحرف على الأقل.";
     default: return "حدث خطأ في الدخول. تأكد من بياناتك وحاول مرة أخرى.";
   }
 };
@@ -45,18 +46,20 @@ export default function LoginPage() {
     try {
       let userCredential;
 
-      // 1. محاولة تسجيل الدخول أولاً
+      // 1. محاولة تسجيل الدخول
       try {
         userCredential = await signInWithEmailAndPassword(auth, emailLower, password);
       } catch (loginError: any) {
-        // 2. إذا كان الحساب غير موجود، نتحقق من التفعيل لإنشائه
+        // 2. إذا فشل الدخول، نتحقق مما إذا كان حساباً جديداً قيد التفعيل (Provisioning)
         if (loginError.code === "auth/user-not-found" || loginError.code === "auth/invalid-credential") {
           const provisionDocRef = doc(db, "users_provision", emailLower);
           const provisionSnap = await getDoc(provisionDocRef);
           
           if (provisionSnap.exists() && password === provisionSnap.data().tempPassword) {
+            // إنشاء الحساب فعلياً في نظام Auth للمستفيد الجديد
             userCredential = await createUserWithEmailAndPassword(auth, emailLower, password);
           } else {
+            // إذا لم يكن قيد التفعيل أو كلمة المرور خطأ، نطرح الخطأ الأصلي ليظهر في الواجهة
             throw loginError;
           }
         } else {
@@ -64,15 +67,17 @@ export default function LoginPage() {
         }
       }
 
+      if (!userCredential) throw new Error("فشل الحصول على بيانات المستخدم");
+
       const user = userCredential.user;
 
-      // 3. الخطوة الجوهرية: سحب الـ clientId من جدول التفعيل وحفظه في ملف المستخدم
+      // 3. التحقق من وجود بيانات تفعيل لربط الـ clientId وتجهيز الملف الشخصي
       const provisionDocRef = doc(db, "users_provision", emailLower);
       const provisionSnap = await getDoc(provisionDocRef);
 
-      if (provisionSnap.exists() && user) {
+      if (provisionSnap.exists()) {
         const pData = provisionSnap.data();
-        // التأكد من حفظ الـ clientId بدقة تامة لفتح الصلاحيات
+        // إنشاء مستند المستخدم الدائم بالصلاحيات والبيانات المربوطة
         await setDoc(doc(db, "users", user.uid), {
           uid: user.uid,
           name: pData.name || "مستفيد",
@@ -80,14 +85,15 @@ export default function LoginPage() {
           clientId: pData.clientId || "", 
           role: "client",
           status: "active",
-          permissions: ["p_projects"],
+          permissions: pData.permissions || ["p_projects", "p_support"],
+          tempPassword: pData.tempPassword || password, // حفظها لسهولة استرجاعها من قبل الأدمن
           lastLogin: new Date().toISOString()
         }, { merge: true });
         
-        // حذف مستند التفعيل لضمان عدم استخدامه مرة أخرى
-        await deleteDoc(provisionDocRef).catch(e => console.warn("Cleanup deferred:", e));
-      } else if (user) {
-        // تحديث تاريخ الدخول فقط إذا كان الحساب مربوطاً مسبقاً
+        // حذف مستند التفعيل بعد النجاح لضمان عدم تكرار العملية
+        await deleteDoc(provisionDocRef).catch(err => console.warn("Provision Cleanup:", err));
+      } else {
+        // تحديث وقت الدخول للمستخدمين المسجلين مسبقاً
         await setDoc(doc(db, "users", user.uid), {
           lastLogin: new Date().toISOString()
         }, { merge: true });
@@ -96,7 +102,8 @@ export default function LoginPage() {
       toast({ title: "تم الدخول بنجاح", description: "مرحباً بك في بوابة المستفيد" });
       router.push("/");
     } catch (error: any) {
-      console.error("Login Error:", error);
+      // نستخدم console.warn بدلاً من console.error لتجنب ظهور overlay في بيئة التطوير
+      console.warn("Login Auth Logic Catch:", error.code);
       setError(getFriendlyErrorMessage(error.code));
     } finally {
       setLoading(false);
