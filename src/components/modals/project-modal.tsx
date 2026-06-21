@@ -53,7 +53,7 @@ const normalizeForSearch = (text: any) => {
 };
 
 export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }: ProjectModalProps) {
-  const [clients, setClients] = useState<{ id: string; name: string; phone: string; email: string }[]>([]);
+  const [clients, setClients] = useState<{ id: string; name: string; phone: string; phone2: string; email: string }[]>([]);
   const [clientSearch, setClientSearch] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -87,6 +87,7 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
         id: doc.id, 
         name: String(doc.data().name || ''), 
         phone: String(doc.data().phone || ''),
+        phone2: String(doc.data().phone2 || ''),
         email: String(doc.data().email || '')
       })));
     });
@@ -129,7 +130,8 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
     return clients.filter(c => {
       const nameMatch = normalizeForSearch(c.name).includes(s);
       const phoneMatch = normalizeForSearch(c.phone).includes(s);
-      return nameMatch || phoneMatch;
+      const phone2Match = normalizeForSearch(c.phone2).includes(s);
+      return nameMatch || phoneMatch || phone2Match;
     });
   }, [clients, clientSearch]);
 
@@ -137,7 +139,7 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
     const found = clients.find(c => c.id === formData.clientId);
     const searchNormalized = normalizeForSearch(clientSearch);
     
-    if (searchNormalized && found && !normalizeForSearch(found.phone).includes(searchNormalized) && !normalizeForSearch(found.name).includes(searchNormalized)) {
+    if (searchNormalized && found && !normalizeForSearch(found.phone).includes(searchNormalized) && !normalizeForSearch(found.phone2).includes(searchNormalized) && !normalizeForSearch(found.name).includes(searchNormalized)) {
       return `جاري البحث عن: ${clientSearch}... (اختر من الأسفل)`;
     }
 
@@ -267,7 +269,10 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
                         <SelectItem key={c.id} value={c.id} className="cursor-pointer hover:bg-primary/5">
                           <div className="flex flex-col items-start gap-0.5 text-right w-full py-1">
                             <span className="text-sm font-black text-slate-800">{c.name}</span>
-                            <span className="text-[10px] text-primary font-black" dir="ltr">{c.phone}</span>
+                            <div className="flex gap-2">
+                              <span className="text-[10px] text-primary font-black" dir="ltr">{c.phone}</span>
+                              {c.phone2 && <span className="text-[10px] text-slate-300 font-black" dir="ltr">/ {c.phone2}</span>}
+                            </div>
                           </div>
                         </SelectItem>
                       ))}

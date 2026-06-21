@@ -226,7 +226,7 @@ function SupportContent() {
     }
   };
 
-  // البحث برقم الهاتف فقط وجلب العملاء لبدء محادثة
+  // البحث برقم الهاتف (الأساسي أو الإضافي) لبدء محادثة
   const filteredResults = React.useMemo(() => {
     const q = searchQuery.trim();
     
@@ -237,9 +237,9 @@ function SupportContent() {
         .map(t => ({ ...t, isExisting: true }));
     }
 
-    // إذا كان هناك بحث، نبحث في قائمة "كل العملاء" برقم الهاتف
+    // إذا كان هناك بحث، نبحث في قائمة "كل العملاء" برقم الهاتف (الأساسي أو الإضافي)
     return allClients
-      .filter(c => c.phone?.includes(q))
+      .filter(c => (c.phone?.includes(q) || c.phone2?.includes(q)))
       .map(client => {
         // نتحقق إذا كان لهذا العميل محادثة مسجلة مسبقاً
         const existingThread = threads.find(t => t.id === client.id);
@@ -247,6 +247,7 @@ function SupportContent() {
           id: client.id,
           clientName: client.name,
           clientPhone: client.phone,
+          clientPhone2: client.phone2,
           lastMessage: existingThread?.lastMessage,
           lastMessageTime: existingThread?.lastMessageTime,
           unreadAdmin: existingThread?.unreadAdmin,
@@ -292,7 +293,7 @@ function SupportContent() {
           <div className="relative">
             <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 h-4 w-4" />
             <Input 
-              placeholder="ابحث برقم هاتف العميل فقط..." 
+              placeholder="ابحث برقم هاتف العميل (الأساسي أو الإضافي)..." 
               className="pr-12 h-14 rounded-2xl font-black border-none shadow-sm bg-white focus-visible:ring-primary/20 text-lg"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -316,9 +317,16 @@ function SupportContent() {
                     </div>
                     <div>
                       <p className="font-black text-slate-800 text-xs">{item.clientName}</p>
-                      <p className="text-[8px] font-bold text-slate-400 flex items-center gap-1" dir="ltr">
-                        <Phone className="h-2 w-2" /> {item.clientPhone}
-                      </p>
+                      <div className="flex flex-col gap-0.5">
+                        <p className="text-[8px] font-bold text-slate-400 flex items-center gap-1" dir="ltr">
+                          <Phone className="h-2 w-2" /> {item.clientPhone}
+                        </p>
+                        {item.clientPhone2 && (
+                          <p className="text-[8px] font-bold text-slate-300 flex items-center gap-1" dir="ltr">
+                            <Phone className="h-2 w-2" /> {item.clientPhone2}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
                   {(item.unreadAdmin || 0) > 0 && (
