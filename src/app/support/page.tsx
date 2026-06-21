@@ -10,6 +10,7 @@ import {
   Loader2, 
   Circle,
   CheckCheck,
+  AlertCircle
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -79,10 +80,12 @@ function SupportContent() {
     return () => unsub();
   }, [isAdmin]);
 
-  // تعيين المحادثة النشطة
+  // تعيين المحادثة النشطة - تم التعديل ليستخدم clientId بدلاً من uid
   useEffect(() => {
     if (profile && !isAdmin) {
-      setActiveThreadId(profile.uid);
+      if (profile.clientId) {
+        setActiveThreadId(profile.clientId);
+      }
       setLoading(false);
     } else if (isAdmin && cid) {
       setActiveThreadId(cid);
@@ -145,13 +148,14 @@ function SupportContent() {
         lastMessage: text,
         lastMessageTime: serverTimestamp(),
         clientName: isAdmin ? activeThread?.clientName || cname || "مستفيد" : profile.name,
+        clientPhone: isAdmin ? activeThread?.clientPhone || "" : profile.phone || "",
       };
 
       if (isAdmin) {
         updateData.unreadClient = increment(1);
       } else {
         updateData.unreadAdmin = increment(1);
-        updateData.clientId = profile.uid;
+        updateData.clientId = profile.clientId; // تم التعديل
       }
 
       await setDoc(threadRef, updateData, { merge: true });
@@ -176,6 +180,19 @@ function SupportContent() {
       <p className="font-bold text-slate-500">جاري تحميل المحادثات...</p>
     </div>
   );
+
+  // إذا كان المستخدم عميلاً وغير مربوط بـ clientId
+  if (!isAdmin && !profile?.clientId) {
+    return (
+      <div className="max-w-7xl mx-auto py-20 text-center">
+        <Card className="rounded-[3rem] p-20 border-dashed border-2">
+          <AlertCircle className="h-20 w-20 mx-auto mb-6 text-orange-400" />
+          <h2 className="text-3xl font-black text-slate-800">حسابك غير مربوط بمشروع</h2>
+          <p className="text-slate-500 font-bold mt-4">يرجى التواصل مع الإدارة لتفعيل خدمات الدعم الفني لمشروعك.</p>
+        </Card>
+      </div>
+    );
+  }
 
   const activeThread = threads.find(t => t.id === activeThreadId);
   const threadDisplayName = isAdmin ? (activeThread?.clientName || cname || "مستفيد") : 'الدعم الفني - APP STORE';

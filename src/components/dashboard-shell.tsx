@@ -63,7 +63,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const { profile, loading } = useAuth();
   const [unreadCount, setUnreadCount] = React.useState(0);
 
-  // مراقبة الرسائل غير المقروءة للإشعارات
+  // مراقبة الرسائل غير المقروءة للإشعارات - تم التعديل ليستخدم clientId
   React.useEffect(() => {
     if (!db || !profile) return;
 
@@ -74,8 +74,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         setUnreadCount(total);
       });
       return () => unsub();
-    } else {
-      const unsub = onSnapshot(doc(db, "support_threads", profile.uid), (docSnap) => {
+    } else if (profile.clientId) {
+      const unsub = onSnapshot(doc(db, "support_threads", profile.clientId), (docSnap) => {
         if (docSnap.exists()) {
           setUnreadCount(docSnap.data().unreadClient || 0);
         }

@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -52,11 +53,11 @@ service cloud.firestore {
 
     // --- Security Rules for 'support_threads' collection ---
     match /support_threads/{threadId} {
-      // المحادثة متاحة للآدمن ولصاحب المحادثة فقط (حيث threadId هو uid المستخدم)
-      allow read, write: if isAdmin() || (isAuthenticated() && request.auth.uid == threadId);
+      // المحادثة متاحة للآدمن ولصاحب المحادثة فقط (حيث threadId هو clientId الخاص بالمستخدم)
+      allow read, write: if isAdmin() || (isAuthenticated() && getUserData().clientId == threadId);
       
       match /messages/{msgId} {
-        allow read, write: if isAdmin() || (isAuthenticated() && request.auth.uid == threadId);
+        allow read, write: if isAdmin() || (isAuthenticated() && getUserData().clientId == threadId);
       }
     }
 
