@@ -26,7 +26,8 @@
         "lastMessage": { "type": "string" },
         "lastMessageTime": { "type": "string", "format": "date-time" },
         "unreadAdmin": { "type": "number" },
-        "unreadClient": { "type": "number" }
+        "unreadClient": { "type": "number" },
+        "status": { "type": "string", "enum": ["active", "archived"] }
       }
     },
     "ChatMessage": {

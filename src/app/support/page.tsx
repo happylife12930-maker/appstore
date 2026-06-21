@@ -11,8 +11,10 @@ import {
   Circle,
   CheckCheck,
   AlertCircle,
-  Trash2,
-  X
+  Archive,
+  ArchiveRestore,
+  X,
+  MessageSquare
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,13 +34,14 @@ import {
   updateDoc,
   increment,
   limit,
-  deleteDoc
+  where
 } from "firebase/firestore";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { ar } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { useSearchParams } from "next/navigation";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 function SupportContent() {
   const { profile, loading: authLoading } = useAuth();
@@ -48,6 +51,7 @@ function SupportContent() {
   const [inputText, setInputText] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("active");
   const { toast } = useToast();
   
   const searchParams = useSearchParams();
@@ -143,6 +147,7 @@ function SupportContent() {
         lastMessageTime: serverTimestamp(),
         clientName: isAdmin ? activeThread?.clientName || cname || "مستفيد" : profile.name,
         clientPhone: isAdmin ? activeThread?.clientPhone || "" : profile.phone || "",
+        status: "active" // إعادة تفعيل المحادثة إذا كانت مؤرشفة عند إرسال أي رسالة
       };
 
       if (isAdmin) {
@@ -158,37 +163,34 @@ function SupportContent() {
     }
   };
 
-  const handleDeleteThread = (e: React.MouseEvent, threadId: string) => {
+  const handleArchiveThread = async (e: React.MouseEvent, threadId: string, isCurrentlyArchived: boolean) => {
     e.preventDefault();
     e.stopPropagation();
     
     if (!isAdmin || !db) return;
     
-    const confirmDelete = window.confirm("هل أنت متأكد من حذف هذه المحادثة نهائياً من سجلاتك؟");
-    if (!confirmDelete) return;
-
     const threadRef = doc(db, "support_threads", threadId);
-    
-    // تنفيذ الحذف بدون await للسماح بالاستجابة المتفائلة
-    deleteDoc(threadRef)
-      .then(() => {
-        if (activeThreadId === threadId) {
-          setActiveThreadId(null);
-          setMessages([]);
-        }
-        toast({ title: "تم الحذف", description: "تم مسح المحادثة بنجاح." });
-      })
-      .catch((err) => {
-        console.error("Delete Thread Error:", err);
-        toast({ 
-          title: "خطأ في الحذف", 
-          description: "تأكد من صلاحيات النظام وحاول مرة أخرى.", 
-          variant: "destructive" 
-        });
+    try {
+      await updateDoc(threadRef, { status: isCurrentlyArchived ? "active" : "archived" });
+      toast({ 
+        title: isCurrentlyArchived ? "تمت الاستعادة" : "تمت الأرشفة", 
+        description: isCurrentlyArchived ? "المحادثة الآن في القائمة النشطة." : "تم نقل المحادثة إلى الأرشيف." 
       });
+      if (!isCurrentlyArchived && activeThreadId === threadId) {
+        setActiveThreadId(null);
+        setMessages([]);
+      }
+    } catch (err) {
+      toast({ title: "خطأ", description: "فشلت العملية، حاول مرة أخرى.", variant: "destructive" });
+    }
   };
 
   const filteredThreads = threads.filter(t => {
+    // فلترة حسب التبويب (نشط أو مؤرشف)
+    const threadStatus = t.status || "active";
+    if (threadStatus !== activeTab) return false;
+
+    // فلترة حسب البحث
     const q = searchQuery.toLowerCase().trim();
     if (!q) return true;
     const nameMatch = t.clientName?.toLowerCase().includes(q);
@@ -222,15 +224,23 @@ function SupportContent() {
     <div className="max-w-7xl mx-auto h-[calc(100vh-140px)] flex flex-col md:flex-row gap-6" dir="rtl">
       {isAdmin && (
         <Card className="w-full md:w-80 rounded-[2.5rem] border-none shadow-sm flex flex-col overflow-hidden bg-white">
-          <CardHeader className="p-6 border-b bg-slate-50/50">
+          <CardHeader className="p-6 border-b bg-slate-50/50 space-y-4">
             <CardTitle className="text-xl font-black flex items-center gap-2">
               <LifeBuoy className="h-5 w-5 text-primary" /> المحادثات
             </CardTitle>
-            <div className="relative mt-4">
+            
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid grid-cols-2 w-full rounded-xl p-1 bg-slate-100">
+                <TabsTrigger value="active" className="rounded-lg font-black text-xs data-[state=active]:bg-white">نشطة</TabsTrigger>
+                <TabsTrigger value="archived" className="rounded-lg font-black text-xs data-[state=active]:bg-white">الأرشيف</TabsTrigger>
+              </TabsList>
+            </Tabs>
+
+            <div className="relative">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input 
-                placeholder="ابحث بالاسم أو رقم الهاتف..." 
-                className="pr-10 h-10 rounded-xl bg-white border-slate-200 font-bold"
+                placeholder="ابحث بالاسم أو الرقم..." 
+                className="pr-10 h-10 rounded-xl bg-white border-slate-200 font-bold text-xs"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -265,13 +275,13 @@ function SupportContent() {
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          onClick={(e) => handleDeleteThread(e, thread.id)}
+                          onClick={(e) => handleArchiveThread(e, thread.id, activeTab === "archived")}
                           className={`h-8 w-8 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity z-50 ${
-                            activeThreadId === thread.id ? 'text-white/70 hover:text-white hover:bg-white/10' : 'text-slate-300 hover:text-rose-500 hover:bg-rose-50'
+                            activeThreadId === thread.id ? 'text-white/70 hover:text-white hover:bg-white/10' : 'text-slate-300 hover:text-primary hover:bg-primary/5'
                           }`}
-                          title="حذف المحادثة"
+                          title={activeTab === "archived" ? "استعادة" : "أرشفة"}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          {activeTab === "archived" ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
                         </Button>
                       </div>
                     </div>
@@ -284,7 +294,10 @@ function SupportContent() {
                 </div>
               ))}
               {filteredThreads.length === 0 && (
-                <div className="py-10 text-center opacity-30 text-xs font-bold">لا توجد نتائج للبحث</div>
+                <div className="py-20 text-center opacity-30 flex flex-col items-center gap-2">
+                   <MessageSquare className="h-8 w-8" />
+                   <p className="text-[10px] font-bold">لا توجد محادثات هنا</p>
+                </div>
               )}
             </div>
           </ScrollArea>
