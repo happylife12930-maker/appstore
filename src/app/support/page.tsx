@@ -57,14 +57,12 @@ function SupportContent() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const isAdmin = profile?.role === 'admin';
 
-  // التمرير لأسفل المحادثة
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
 
-  // جلب قائمة المحادثات (للمدير فقط)
   useEffect(() => {
     if (!db || !isAdmin) return;
 
@@ -74,8 +72,7 @@ function SupportContent() {
         setThreads(snap.docs.map(d => ({ id: d.id, ...d.data() })));
         setLoading(false);
       },
-      (error) => {
-        console.warn("Threads Listener Error:", error);
+      () => {
         setLoading(false);
       }
     );
@@ -83,7 +80,6 @@ function SupportContent() {
     return () => unsub();
   }, [isAdmin]);
 
-  // تعيين المحادثة النشطة
   useEffect(() => {
     if (profile && !isAdmin) {
       if (profile.clientId) {
@@ -96,7 +92,6 @@ function SupportContent() {
     }
   }, [profile, isAdmin, cid]);
 
-  // جلب الرسائل للمحادثة النشطة وتصفير العداد
   useEffect(() => {
     if (!db || !activeThreadId || !profile) return;
 
@@ -109,8 +104,6 @@ function SupportContent() {
     const unsub = onSnapshot(q, 
       (snap) => {
         setMessages(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-        
-        // تصفير عداد الرسائل غير المقروءة عند فتح المحادثة
         const threadRef = doc(db, "support_threads", activeThreadId);
         if (isAdmin) {
           updateDoc(threadRef, { unreadAdmin: 0 }).catch(() => {});
@@ -118,9 +111,7 @@ function SupportContent() {
           updateDoc(threadRef, { unreadClient: 0 }).catch(() => {});
         }
       },
-      (error) => {
-        console.warn("Messages Listener Error:", error);
-      }
+      () => {}
     );
 
     return () => unsub();
@@ -168,11 +159,13 @@ function SupportContent() {
   };
 
   const handleDeleteThread = async (e: React.MouseEvent, threadId: string) => {
-    e.stopPropagation(); // منع فتح المحادثة عند الضغط على زر الحذف
+    e.preventDefault();
+    e.stopPropagation();
     
     if (!isAdmin || !db) return;
     
-    if (!confirm("هل أنت متأكد من حذف هذه المحادثة نهائياً؟ سيؤدي ذلك لإزالة السجل من قائمتك.")) return;
+    const confirmDelete = window.confirm("هل أنت متأكد من حذف هذه المحادثة نهائياً من سجلاتك؟");
+    if (!confirmDelete) return;
 
     try {
       const threadRef = doc(db, "support_threads", threadId);
@@ -183,20 +176,21 @@ function SupportContent() {
         setMessages([]);
       }
 
-      toast({ title: "تم الحذف", description: "تم مسح المحادثة بنجاح من النظام." });
+      toast({ title: "تم الحذف", description: "تم مسح المحادثة بنجاح." });
     } catch (err) {
-      console.error("Delete Thread Error:", err);
-      toast({ title: "خطأ", description: "عذراً، فشل حذف المحادثة. تأكد من الصلاحيات.", variant: "destructive" });
+      toast({ 
+        title: "خطأ في الحذف", 
+        description: "فشل حذف المحادثة. تأكد من اتصالك بالإنترنت.", 
+        variant: "destructive" 
+      });
     }
   };
 
   const filteredThreads = threads.filter(t => {
     const q = searchQuery.toLowerCase().trim();
     if (!q) return true;
-    
     const nameMatch = t.clientName?.toLowerCase().includes(q);
     const phoneMatch = t.clientPhone?.includes(q);
-    
     return nameMatch || phoneMatch;
   });
 
@@ -247,11 +241,11 @@ function SupportContent() {
                   key={thread.id}
                   onClick={() => setActiveThreadId(thread.id)}
                   className={`p-4 rounded-2xl cursor-pointer transition-all flex items-center gap-3 relative group ${
-                    activeThreadId === thread.id ? 'bg-primary text-white' : 'hover:bg-slate-50'
+                    activeThreadId === thread.id ? 'bg-primary text-white shadow-lg z-10' : 'hover:bg-slate-50'
                   }`}
                 >
                   <div className={`h-12 w-12 rounded-2xl flex items-center justify-center font-black text-lg shadow-sm ${
-                    activeThreadId === thread.id ? 'bg-white/20' : 'bg-slate-100 text-primary'
+                    activeThreadId === thread.id ? 'bg-white/20 text-white' : 'bg-slate-100 text-primary'
                   }`}>
                     {thread.clientName?.[0] || 'U'}
                   </div>
@@ -270,9 +264,10 @@ function SupportContent() {
                           variant="ghost" 
                           size="icon" 
                           onClick={(e) => handleDeleteThread(e, thread.id)}
-                          className={`h-7 w-7 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity z-20 ${
-                            activeThreadId === thread.id ? 'text-white/50 hover:text-white hover:bg-white/10' : 'text-slate-300 hover:text-rose-500 hover:bg-rose-50'
+                          className={`h-8 w-8 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity z-50 ${
+                            activeThreadId === thread.id ? 'text-white/70 hover:text-white hover:bg-white/10' : 'text-slate-300 hover:text-rose-500 hover:bg-rose-50'
                           }`}
+                          title="حذف المحادثة"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -282,11 +277,6 @@ function SupportContent() {
                       <p className={`text-[10px] truncate ${activeThreadId === thread.id ? 'text-white/70' : 'text-slate-400 font-bold'}`}>
                         {thread.lastMessage || 'لا توجد رسائل'}
                       </p>
-                      {thread.clientPhone && (
-                         <span className={`text-[8px] font-bold ${activeThreadId === thread.id ? 'text-white/50' : 'text-slate-300'}`} dir="ltr">
-                           {thread.clientPhone}
-                         </span>
-                      )}
                     </div>
                   </div>
                 </div>

@@ -8,20 +8,20 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // دالة جلب بيانات المستخدم لتقليل تكرار الكود
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-    }
-
+    // التحقق مما إذا كان المستخدم مديراً بشكل مباشر لتجنب التكرار
     function isAdmin() {
       return isAuthenticated() && 
-             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-             getUserData().role == 'admin';
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // جلب بيانات العميل المربوطة بالحساب
+    function getClientId() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.clientId;
     }
 
     // --- Security Rules for 'users' collection ---
     match /users/{userId} {
-      allow get: if (isAuthenticated() && request.auth.uid == userId) || isAdmin();
+      allow get: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
       allow list: if isAdmin();
       allow create, update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
       allow delete: if isAdmin();
@@ -35,13 +35,11 @@ service cloud.firestore {
     // --- Security Rules for 'projects' collection ---
     match /projects/{projectId} {
       allow create, update, delete: if isAdmin();
-      // الأدمن يرى الكل، والعميل يرى مشاريعه فقط بناءً على الـ clientId المربوط بحسابه
-      allow read: if isAdmin() || (isAuthenticated() && resource.data.clientId == getUserData().clientId);
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.clientId == getClientId());
     }
 
     // --- Security Rules for 'quotations' collection ---
     match /quotations/{quotationId} {
-      // عروض الأسعار (المعرض) متاح للقراءة لكل المستخدمين المسجلين
       allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
@@ -53,17 +51,18 @@ service cloud.firestore {
 
     // --- Security Rules for 'support_threads' collection ---
     match /support_threads/{threadId} {
-      // السماح بالقراءة والكتابة والحذف للأدمن، ولصاحب المحادثة القراءة والكتابة فقط
-      allow read, write: if isAdmin() || (isAuthenticated() && threadId == getUserData().clientId);
+      // السماح بالقراءة والكتابة للمدير، وللعميل فقط إذا كان المعرف يطابق clientId الخاص به
+      allow read, write: if isAdmin() || (isAuthenticated() && threadId == getClientId());
+      // السماح بالحذف للمدير فقط
       allow delete: if isAdmin();
       
       match /messages/{msgId} {
-        allow read, write: if isAdmin() || (isAuthenticated() && threadId == getUserData().clientId);
+        allow read, write: if isAdmin() || (isAuthenticated() && threadId == getClientId());
         allow delete: if isAdmin();
       }
     }
 
-    // --- Security Rules for 'users_provision' (Activation) ---
+    // --- Security Rules for 'users_provision' ---
     match /users_provision/{email} {
       allow read, write: if true; 
     }
