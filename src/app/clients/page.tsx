@@ -19,7 +19,8 @@ import {
   Printer,
   FileText,
   MessageCircle,
-  Send
+  Send,
+  Building
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -149,11 +150,7 @@ function ClientsContent() {
     if (!db || !messageClient || !quickMessage.trim() || !profile) return;
     setIsSendingMsg(true);
     try {
-      // البحث عن الـ UID الخاص بالعميل من خلال بريده الإلكتروني
-      // ملاحظة: نفترض هنا أن الـ threadId هو UID المستخدم كما في شاشة الدعم
-      // إذا لم يكن العميل قد سجل دخوله بعد، سننشئ المحادثة باسمه وهاتفه
-      
-      const threadId = messageClient.id; // نستخدم معرف العميل كمعرف مؤقت أو UID
+      const threadId = messageClient.id;
       const msgText = quickMessage.trim();
 
       await addDoc(collection(db, "support_threads", threadId!, "messages"), {
@@ -334,25 +331,51 @@ function ClientsContent() {
                     {client.name?.[0] || 'U'}
                   </div>
                   <div className="overflow-hidden">
-                    <CardTitle className="text-lg font-black truncate max-w-[150px]">{client.name}</CardTitle>
+                    <CardTitle className="text-lg font-black truncate max-w-[120px]">{client.name}</CardTitle>
                     <div className="flex items-center gap-1 mt-1">
                       <Phone className="h-3 w-3 text-slate-400" />
                       <span className="text-[10px] font-bold text-slate-500 truncate" dir="ltr">{client.phone}</span>
                     </div>
                   </div>
                 </div>
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" onClick={() => setMessageClient(client)} className="h-9 w-9 rounded-xl text-primary hover:bg-primary/5" title="مراسلة سريعة">
-                    <MessageCircle className="h-4 w-4" />
+                
+                {/* شريط الإجراءات الموحد والمتناسق */}
+                <div className="flex items-center gap-1 p-1 bg-white/80 backdrop-blur-sm rounded-2xl border shadow-sm group-hover:border-primary/20 transition-all">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => setMessageClient(client)} 
+                    className="h-9 w-9 rounded-xl text-primary hover:bg-primary/5" 
+                    title="مراسلة سريعة"
+                  >
+                    <MessageCircle className="h-4.5 w-4.5" />
                   </Button>
-                  <Button variant="ghost" size="icon" onClick={() => handlePrintStatement(client)} className="h-9 w-9 rounded-xl text-slate-400 hover:bg-slate-50" title="طباعة كشف حساب">
-                    <Printer className="h-4 w-4" />
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => handlePrintStatement(client)} 
+                    className="h-9 w-9 rounded-xl text-slate-400 hover:bg-slate-50" 
+                    title="طباعة كشف حساب"
+                  >
+                    <Printer className="h-4.5 w-4.5" />
                   </Button>
-                  <Button variant="ghost" size="icon" onClick={() => { setEditingClient(client); setIsModalOpen(true); }} className="h-9 w-9 rounded-xl">
-                    <Edit3 className="h-4 w-4 text-slate-500" />
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => { setEditingClient(client); setIsModalOpen(true); }} 
+                    className="h-9 w-9 rounded-xl text-slate-400 hover:bg-slate-50"
+                    title="تعديل العميل"
+                  >
+                    <Edit3 className="h-4.5 w-4.5" />
                   </Button>
-                  <Button variant="ghost" size="icon" onClick={() => handleDeleteClient(client.id!)} className="h-9 w-9 rounded-xl hover:bg-rose-50 text-rose-500">
-                    <Trash2 className="h-4 w-4" />
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => handleDeleteClient(client.id!)} 
+                    className="h-9 w-9 rounded-xl text-rose-300 hover:text-rose-600 hover:bg-rose-50"
+                    title="حذف"
+                  >
+                    <Trash2 className="h-4.5 w-4.5" />
                   </Button>
                 </div>
               </CardHeader>
@@ -362,6 +385,13 @@ function ClientsContent() {
                     <Mail className="h-4 w-4 text-primary" />
                     <span className="font-bold text-sm truncate max-w-[200px]">{client.email || '---'}</span>
                   </div>
+                  
+                  {client.company && (
+                    <div className="flex items-center gap-3 text-slate-600">
+                      <Building className="h-4 w-4 text-primary" />
+                      <span className="font-bold text-sm truncate max-w-[200px]">{client.company}</span>
+                    </div>
+                  )}
                   
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
