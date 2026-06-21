@@ -14,7 +14,8 @@ import {
   Unlock,
   Link2,
   CheckCircle2,
-  Key
+  Key,
+  Users
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,7 +37,7 @@ import { db } from "@/lib/firebase";
 import { collection, onSnapshot, doc, setDoc, updateDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/auth-provider";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function UsersPermissionsPage() {
   const [allClients, setAllClients] = useState<any[]>([]);
@@ -46,7 +47,6 @@ export default function UsersPermissionsPage() {
   const [loading, setLoading] = useState(true);
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
   
-  // Modals state
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<any>(null);
@@ -57,8 +57,9 @@ export default function UsersPermissionsPage() {
   const { profile } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const roleFilter = searchParams.get('role');
 
-  // Available Permissions
   const availablePermissions = [
     { id: "p_projects", label: "عرض المشاريع" },
     { id: "p_support", label: "الدعم الفني" },
@@ -167,6 +168,24 @@ export default function UsersPermissionsPage() {
     );
   }, [allClients, searchQuery]);
 
+  const activeUsersToDisplay = useMemo(() => {
+    const s = searchQuery.toLowerCase().trim();
+    let users = activeUsers;
+
+    if (s) {
+      users = users.filter(u => 
+        u.name?.toLowerCase().includes(s) ||
+        u.email?.toLowerCase().includes(s)
+      );
+    }
+    
+    if (roleFilter) {
+      return users.filter(u => u.role === roleFilter);
+    }
+
+    return users.filter(u => u.role !== 'admin');
+  }, [activeUsers, roleFilter, searchQuery]);
+
   if (loading) return (
     <div className="flex flex-col items-center justify-center py-20 gap-4">
       <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -189,11 +208,13 @@ export default function UsersPermissionsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <Card className="lg:col-span-4 rounded-[2.5rem] border-none shadow-sm bg-white overflow-hidden border">
           <CardHeader className="bg-slate-50/50 border-b p-6">
-            <CardTitle className="text-lg font-black mb-4">تفعيل عملاء جدد</CardTitle>
+            <CardTitle className="text-lg font-black mb-4">
+              {roleFilter ? 'بحث' : 'تفعيل عملاء جدد'}
+            </CardTitle>
             <div className="relative">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 h-4 w-4" />
               <input 
-                placeholder="ابحث بالاسم أو الهاتف..." 
+                placeholder={roleFilter ? "ابحث بالاسم أو الإيميل..." : "ابحث بالاسم أو الهاتف..."}
                 className="w-full pr-10 h-12 rounded-2xl font-bold bg-white border outline-none px-4 text-sm"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -233,11 +254,13 @@ export default function UsersPermissionsPage() {
 
         <Card className="lg:col-span-8 rounded-[2.5rem] border-none shadow-sm bg-white overflow-hidden border">
           <CardHeader className="bg-primary p-8 text-primary-foreground">
-            <CardTitle className="text-2xl font-black flex items-center gap-3">الحسابات النشطة والمسجلة</CardTitle>
+            <CardTitle className="text-2xl font-black flex items-center gap-3">
+              {roleFilter === 'tester' ? 'قائمة المختبرين' : 'الحسابات النشطة والمسجلة'}
+            </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <div className="divide-y divide-slate-100">
-              {activeUsers.filter(u => u.role === 'client').map(user => (
+              {activeUsersToDisplay.map(user => (
                 <div key={user.id} className="p-6 flex flex-col md:flex-row justify-between md:items-center gap-4 hover:bg-slate-50 transition-colors">
                   <div className="flex items-center gap-4">
                     <div className={`h-12 w-12 rounded-2xl flex items-center justify-center font-black text-xl uppercase ${user.status === 'inactive' ? 'bg-slate-200 text-slate-400' : 'bg-primary/10 text-primary'}`}>
@@ -246,8 +269,8 @@ export default function UsersPermissionsPage() {
                     <div>
                       <div className="flex items-center gap-2">
                         <p className="font-black text-slate-800">{user.name}</p>
-                        <Badge variant={user.status === 'inactive' ? 'destructive' : 'default'} className="rounded-lg text-[8px] font-black h-5">
-                          {user.status === 'inactive' ? 'معطل' : 'نشط'}
+                        <Badge variant={user.role === 'tester' ? 'outline' : user.status === 'inactive' ? 'destructive' : 'default'} className="rounded-lg text-[8px] font-black h-5">
+                          {user.role === 'tester' ? 'مختبر' : user.status === 'inactive' ? 'معطل' : 'نشط'}
                         </Badge>
                       </div>
                       <p className="text-xs font-bold text-slate-400">{user.email}</p>
@@ -255,19 +278,21 @@ export default function UsersPermissionsPage() {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <div className="bg-slate-50 p-2 px-4 rounded-2xl border flex items-center gap-4 shadow-inner">
-                      <p className="font-black text-slate-800 tracking-widest text-xs">
-                        {showPasswords[user.email] ? user.tempPassword || '----' : '••••••••'}
-                      </p>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => setShowPasswords(p => ({...p, [user.email]: !p[user.email]}))} 
-                        className="h-8 w-8 rounded-lg"
-                      >
-                        {showPasswords[user.email] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </Button>
-                    </div>
+                    {user.tempPassword && (
+                      <div className="bg-slate-50 p-2 px-4 rounded-2xl border flex items-center gap-4 shadow-inner">
+                        <p className="font-black text-slate-800 tracking-widest text-xs">
+                          {showPasswords[user.email] ? user.tempPassword : '••••••••'}
+                        </p>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => setShowPasswords(p => ({...p, [user.email]: !p[user.email]}))} 
+                          className="h-8 w-8 rounded-lg"
+                        >
+                          {showPasswords[user.email] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                    )}
 
                     <div className="flex gap-1">
                       <Button 
@@ -283,10 +308,17 @@ export default function UsersPermissionsPage() {
                   </div>
                 </div>
               ))}
-              {activeUsers.filter(u => u.role === 'client').length === 0 && (
-                <div className="p-20 text-center opacity-20">
-                  <ShieldCheck className="h-20 w-20 mx-auto mb-4" />
-                  <p className="font-black">لا توجد حسابات نشطة حالياً</p>
+              {activeUsersToDisplay.length === 0 && (
+                <div className="p-20 text-center opacity-40">
+                  <Users className="h-20 w-20 mx-auto mb-4" />
+                  <p className="font-black text-slate-600">
+                    {searchQuery 
+                      ? 'لم يتم العثور على نتائج تطابق بحثك.'
+                      : roleFilter === 'tester'
+                      ? 'لا يوجد مختبرون فعالون حالياً.'
+                      : 'لا توجد حسابات نشطة حالياً.'
+                    }
+                  </p>
                 </div>
               )}
             </div>
@@ -334,7 +366,7 @@ export default function UsersPermissionsPage() {
           <div className="bg-slate-900 p-8 text-white">
             <DialogHeader>
               <DialogTitle className="text-2xl font-black flex items-center gap-3">
-                <Settings2 className="h-6 w-6 text-primary" /> إعدادات حساب المستفيد
+                <Settings2 className="h-6 w-6 text-primary" /> إعدادات حساب المستخدم
               </DialogTitle>
             </DialogHeader>
           </div>
@@ -342,7 +374,7 @@ export default function UsersPermissionsPage() {
           <ScrollArea className="max-h-[60vh]">
             <div className="p-8 space-y-8">
               <div className="space-y-2">
-                <Label className="font-black text-slate-700 pr-2">اسم المستفيد</Label>
+                <Label className="font-black text-slate-700 pr-2">اسم المستخدم</Label>
                 <Input 
                   value={editingUser?.name || ""} 
                   onChange={(e) => setEditingUser({...editingUser, name: e.target.value})}
@@ -363,25 +395,27 @@ export default function UsersPermissionsPage() {
                     placeholder="أدخل كلمة مرور جديدة..."
                     className="rounded-xl h-10 font-black text-center tracking-widest border-slate-200"
                   />
-                  <p className="text-[9px] font-bold text-slate-400 pr-2">سيتمكن العميل من الدخول بهذا الرمز فوراً.</p>
+                  <p className="text-[9px] font-bold text-slate-400 pr-2">سيتمكن المستخدم من الدخول بهذا الرمز فوراً.</p>
                 </div>
               </div>
 
-              <div className="p-6 bg-primary/5 rounded-3xl border border-primary/10 space-y-4">
-                <div className="flex items-center gap-2 text-primary">
-                  <Link2 className="h-5 w-5" />
-                  <h3 className="font-black text-sm uppercase">بيانات الربط التقني</h3>
+              {editingUser?.role === 'client' && (
+                <div className="p-6 bg-primary/5 rounded-3xl border border-primary/10 space-y-4">
+                  <div className="flex items-center gap-2 text-primary">
+                    <Link2 className="h-5 w-5" />
+                    <h3 className="font-black text-sm uppercase">بيانات الربط التقني</h3>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="font-black text-slate-600 text-xs">معرف العميل (clientId)</Label>
+                    <Input 
+                      value={editingUser?.clientId || ""} 
+                      onChange={(e) => setEditingUser({...editingUser, clientId: e.target.value})}
+                      placeholder="أدخل معرف العميل للربط..."
+                      className="rounded-xl h-10 font-mono text-xs border-primary/20 bg-white"
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label className="font-black text-slate-600 text-xs">معرف العميل (clientId)</Label>
-                  <Input 
-                    value={editingUser?.clientId || ""} 
-                    onChange={(e) => setEditingUser({...editingUser, clientId: e.target.value})}
-                    placeholder="أدخل معرف العميل للربط..."
-                    className="rounded-xl h-10 font-mono text-xs border-primary/20 bg-white"
-                  />
-                </div>
-              </div>
+              )}
 
               <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -390,7 +424,7 @@ export default function UsersPermissionsPage() {
                   </div>
                   <div>
                     <p className="font-black text-slate-800">حالة الحساب</p>
-                    <p className="text-[10px] font-bold text-slate-400">تحكم في نشاط العميل</p>
+                    <p className="text-[10px] font-bold text-slate-400">تحكم في نشاط المستخدم</p>
                   </div>
                 </div>
                 <Switch 
@@ -399,31 +433,33 @@ export default function UsersPermissionsPage() {
                 />
               </div>
 
-              <div className="space-y-4">
-                <h3 className="font-black text-slate-800 flex items-center gap-2 pr-2 text-sm uppercase">الصلاحيات المتاحة</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {availablePermissions.map((perm) => (
-                    <div 
-                      key={perm.id} 
-                      onClick={() => togglePermission(perm.id)}
-                      className={`flex items-center gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all ${
-                        editingUser?.permissions?.includes(perm.id) 
-                          ? 'bg-primary/5 border-primary shadow-sm' 
-                          : 'bg-white border-slate-100 hover:border-slate-200'
-                      }`}
-                    >
-                      <Checkbox 
-                        checked={editingUser?.permissions?.includes(perm.id)} 
-                        onCheckedChange={() => togglePermission(perm.id)}
-                        className="rounded-md h-5 w-5"
-                      />
-                      <span className={`font-black text-sm ${editingUser?.permissions?.includes(perm.id) ? 'text-primary' : 'text-slate-600'}`}>
-                        {perm.label}
-                      </span>
-                    </div>
-                  ))}
+              {editingUser?.role === 'client' && (
+                <div className="space-y-4">
+                  <h3 className="font-black text-slate-800 flex items-center gap-2 pr-2 text-sm uppercase">الصلاحيات المتاحة</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {availablePermissions.map((perm) => (
+                      <div 
+                        key={perm.id} 
+                        onClick={() => togglePermission(perm.id)}
+                        className={`flex items-center gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all ${
+                          editingUser?.permissions?.includes(perm.id) 
+                            ? 'bg-primary/5 border-primary shadow-sm' 
+                            : 'bg-white border-slate-100 hover:border-slate-200'
+                        }`}
+                      >
+                        <Checkbox 
+                          checked={editingUser?.permissions?.includes(perm.id)} 
+                          onCheckedChange={() => togglePermission(perm.id)}
+                          className="rounded-md h-5 w-5"
+                        />
+                        <span className={`font-black text-sm ${editingUser?.permissions?.includes(perm.id) ? 'text-primary' : 'text-slate-600'}`}>
+                          {perm.label}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </ScrollArea>
 

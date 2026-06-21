@@ -58,7 +58,8 @@ interface AddTestingModalProps {
   initialData?: TestingGroupData | null;
 }
 
-const DAYS = ["أحد", "اثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة", "سبت"];
+// تم توحيد الأسماء مع جدول المواعيد
+const DAYS = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
 
 export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialData }: AddTestingModalProps) {
   const [projects, setProjects] = useState<any[]>([]);
@@ -83,7 +84,7 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
       setProjects(snap.docs.map(doc => ({ 
         id: doc.id, 
         name: doc.data().name,
-        status: doc.data().status // جلب حالة المشروع للمقارنة
+        status: doc.data().status 
       })));
     });
     return () => unsub();
@@ -112,9 +113,6 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
 
   const filteredProjects = useMemo(() => {
     const s = projectSearch.toLowerCase().trim();
-    
-    // تصفية المشاريع: إظهار المشاريع غير المكتملة فقط
-    // مع السماح بإظهار المشروع الحالي المختار في حالة التعديل حتى لو كان مكتملاً
     const availableProjects = projects.filter(p => {
       const isNotCompleted = p.status !== 'مكتمل';
       const isCurrentlySelected = p.id === formData.projectId;
@@ -195,7 +193,7 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
               <Calendar className="h-6 w-6" /> {initialData ? 'تعديل مهمة الاختبار' : 'تعيين مشروع للاختبار'}
             </DialogTitle>
             <DialogDescription className="text-primary-foreground/80 font-bold mt-1">
-              اختر المشروع (المشاريع الجارية فقط)، حدد فريق الاختبار وجدول المواعيد
+              اختر المشروع، حدد فريق الاختبار وجدول المواعيد بدقة
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -205,13 +203,13 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-3">
                 <Label className="font-black text-slate-700 pr-2 flex items-center gap-2">
-                  <Briefcase className="h-4 w-4 text-primary" /> المشروع المستهدف (المشاريع النشطة)
+                  <Briefcase className="h-4 w-4 text-primary" /> المشروع المستهدف
                 </Label>
                 <div className="space-y-2">
                   <div className="relative">
                     <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <Input 
-                      placeholder="ابحث بالاسم عن المشاريع النشطة..." 
+                      placeholder="ابحث عن مشروع..." 
                       value={projectSearch}
                       onChange={(e) => setProjectSearch(e.target.value)}
                       className="rounded-2xl h-12 pr-10 border-slate-200 font-bold text-sm bg-slate-50/50"
@@ -225,7 +223,7 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
                     }}
                   >
                     <SelectTrigger className="rounded-2xl h-12 border-slate-200 font-black text-right">
-                      <SelectValue placeholder="اختر المشروع الجاري..." />
+                      <SelectValue placeholder="اختر المشروع..." />
                     </SelectTrigger>
                     <SelectContent className="rounded-2xl font-bold max-h-[250px]">
                       {filteredProjects.map(p => (
@@ -236,9 +234,6 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
                           </div>
                         </SelectItem>
                       ))}
-                      {filteredProjects.length === 0 && (
-                        <div className="p-4 text-center text-xs text-slate-400 font-bold">لا توجد مشاريع جارية متاحة حالياً</div>
-                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -265,7 +260,7 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
               <h3 className="font-black text-slate-800 flex items-center gap-2 pr-2">
                 {editingTesterIndex !== null ? (
                   <>
-                    <Edit3 className="h-5 w-5 text-orange-500" /> تعديل بيانات المختبر الحالي
+                    <Edit3 className="h-5 w-5 text-orange-500" /> تعديل بيانات المختبر
                   </>
                 ) : (
                   <>
@@ -331,22 +326,8 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
                 {formData.testers.map((tester, idx) => (
                   <div key={idx} className={`p-4 rounded-3xl border flex flex-col gap-2 relative shadow-sm group transition-all ${editingTesterIndex === idx ? 'bg-orange-50 border-orange-300 ring-2 ring-orange-200' : 'bg-white border-slate-100'}`}>
                     <div className="absolute top-2 left-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => startEditingTester(idx)}
-                        className="h-7 w-7 rounded-lg text-primary hover:bg-primary/10"
-                      >
-                        <Edit3 className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => removeTester(idx)}
-                        className="h-7 w-7 rounded-lg text-rose-500 hover:bg-rose-50"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => startEditingTester(idx)} className="h-7 w-7 rounded-lg text-primary"><Edit3 className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => removeTester(idx)} className="h-7 w-7 rounded-lg text-rose-50"><X className="h-4 w-4 text-rose-500" /></Button>
                     </div>
                     <div className="space-y-1">
                       <p className="font-black text-xs text-slate-800">{tester.email}</p>
@@ -354,9 +335,7 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
                     </div>
                     <div className="flex flex-wrap gap-1">
                       {tester.assignedDays.map(d => (
-                        <Badge key={d} variant="outline" className="text-[8px] font-black rounded-md px-2 py-0.5 bg-slate-50">
-                          {d}
-                        </Badge>
+                        <Badge key={d} variant="outline" className="text-[8px] font-black rounded-md px-2 py-0.5 bg-slate-50">{d}</Badge>
                       ))}
                     </div>
                   </div>
@@ -379,13 +358,13 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
 
               <div className="space-y-2">
                 <Label className="font-black text-slate-700 pr-2 flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-primary" /> وصف المرفق / ملاحظات للمختبرين
+                  <FileText className="h-4 w-4 text-primary" /> ملاحظات للمختبرين
                 </Label>
                 <Textarea 
                   value={formData.notes} 
                   onChange={(e) => setFormData({...formData, notes: e.target.value})} 
-                  placeholder="اكتب هنا توضيحاً للمختبرين..." 
-                  className="rounded-2xl min-h-[100px] border-slate-200 font-bold leading-relaxed"
+                  placeholder="اكتب تعليماتك هنا..." 
+                  className="rounded-2xl min-h-[100px] border-slate-200 font-bold"
                 />
               </div>
             </div>
@@ -399,7 +378,7 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
             className="w-full h-16 rounded-2xl font-black text-xl gap-3 shadow-xl active:scale-95 transition-all"
           >
             {isLoading ? <Loader2 className="animate-spin h-6 w-6" /> : <CheckCircle2 className="h-6 w-6" />}
-            {initialData ? 'حفظ تعديلات مجموعة الاختبار' : 'بدء عملية الاختبار'}
+            {initialData ? 'حفظ التعديلات' : 'بدء عملية الاختبار'}
           </Button>
         </DialogFooter>
       </DialogContent>
