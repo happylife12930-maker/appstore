@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Loader2, CalendarDays, Printer, Mail, X, MessageCircle, Phone, Info, ExternalLink } from "lucide-react";
+import { Loader2, CalendarDays, Printer, X, MessageCircle, Info, ExternalLink } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot } from "firebase/firestore";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -41,7 +41,6 @@ export function TestingScheduleModal({ isOpen, onClose }: { isOpen: boolean; onC
       const groups = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
       const newSchedule: Schedule = {};
 
-      // تهيئة الجدول فارغاً لجميع الأيام
       DAYS_OF_WEEK.forEach(day => {
         newSchedule[day] = [];
       });
@@ -53,11 +52,13 @@ export function TestingScheduleModal({ isOpen, onClose }: { isOpen: boolean; onC
           if (!tester.assignedDays || !Array.isArray(tester.assignedDays)) return;
           
           tester.assignedDays.forEach((day: string) => {
-            const trimmedDay = day.trim();
-            if (newSchedule[trimmedDay]) {
-              // البحث عن المشروع في هذا اليوم لتجنب التكرار
-              let projectEntry = newSchedule[trimmedDay].find(p => 
-                p.projectId === (group.projectId || group.id) || p.projectName === group.projectName
+            const cleanDay = day.trim();
+            // البحث عن اليوم في القائمة الموحدة لضمان المطابقة
+            const dayKey = DAYS_OF_WEEK.find(d => d === cleanDay || cleanDay.includes(d));
+            
+            if (dayKey && newSchedule[dayKey]) {
+              let projectEntry = newSchedule[dayKey].find(p => 
+                p.projectId === group.projectId || p.projectName === group.projectName
               );
 
               const testerInfo = { 
@@ -66,13 +67,11 @@ export function TestingScheduleModal({ isOpen, onClose }: { isOpen: boolean; onC
               };
 
               if (projectEntry) {
-                // إضافة المختبر للمشروع إذا لم يكن موجوداً
                 if (!projectEntry.testers.find(t => t.email === testerInfo.email)) {
                   projectEntry.testers.push(testerInfo);
                 }
               } else {
-                // إضافة المشروع لأول مرة في هذا اليوم
-                newSchedule[trimmedDay].push({
+                newSchedule[dayKey].push({
                   projectId: group.projectId || group.id,
                   projectName: group.projectName || "مشروع غير مسمى",
                   resourceLink: group.resourceLink || "",
@@ -98,7 +97,7 @@ export function TestingScheduleModal({ isOpen, onClose }: { isOpen: boolean; onC
   const handleSendWhatsApp = (project: ScheduleProject, day: string) => {
     const testersWithPhone = project.testers.filter((t) => !!t.phone);
     if (testersWithPhone.length === 0) {
-      toast({ title: "تنبيه", description: "لا توجد أرقام هواتف مسجلة لمختبري هذا اليوم.", variant: "destructive" });
+      toast({ title: "تنبيه", description: "لا توجد أرقام هواتف لمختبري هذا اليوم.", variant: "destructive" });
       return;
     }
 
@@ -107,7 +106,7 @@ export function TestingScheduleModal({ isOpen, onClose }: { isOpen: boolean; onC
       if (cleanPhone.startsWith('0')) cleanPhone = '2' + cleanPhone;
       else if (!cleanPhone.startsWith('2')) cleanPhone = '20' + cleanPhone;
 
-      const message = `*تنبيه بمهمة اختبار - يوم ${day}* 🚀\n\nمرحباً، نود تذكيركم بمهمة الاختبار المقررة لكم اليوم لمشروع: *${project.projectName}*\n\n*رابط النسخة:* 🔗 ${project.resourceLink || 'سيتم تزويدكم به لاحقاً'}\n\n${project.notes ? `*تعليمات:* 📝 ${project.notes}` : ''}\n\nبالتوفيق، فريق APP STORE.`;
+      const message = `*تذكير بمهمة اختبار - يوم ${day}* 🚀\n\nنحيطكم علماً بمهمة الاختبار لليوم لمشروع: *${project.projectName}*\n\n🔗 رابط النسخة: ${project.resourceLink || 'سيزودكم به المدير'}\n\n${project.notes ? `📝 تعليمات: ${project.notes}` : ''}\n\nبالتوفيق، فريق APP STORE.`;
       const encodedMessage = encodeURIComponent(message);
       
       setTimeout(() => {
@@ -126,12 +125,12 @@ export function TestingScheduleModal({ isOpen, onClose }: { isOpen: boolean; onC
       const projects = schedule[day];
       if (projects && projects.length > 0) {
         content += `
-          <div style="margin-bottom: 20px; page-break-inside: avoid;">
-            <h3 style="background: #1e293b; color: white; padding: 5px 15px; border-radius: 8px; display: inline-block; font-size: 14px; margin-bottom: 10px;">${day}</h3>
+          <div style="margin-bottom: 15px; page-break-inside: avoid;">
+            <h3 style="background: #1e293b; color: white; padding: 4px 12px; border-radius: 6px; display: inline-block; font-size: 13px; margin-bottom: 8px;">${day}</h3>
             ${projects.map(p => `
-              <div style="border: 1px solid #eee; padding: 12px; border-radius: 12px; margin-top: 5px; background: #fafafa;">
-                <div style="font-weight: 900; color: #1e293b; font-size: 14px;">${p.projectName}</div>
-                <div style="font-size: 11px; color: #64748b; margin-top: 5px;">المختبرون: ${p.testers.map(t => t.email).join('، ')}</div>
+              <div style="border: 1px solid #eee; padding: 10px; border-radius: 10px; margin-top: 4px; background: #fafafa;">
+                <div style="font-weight: 900; color: #1e293b; font-size: 13px;">${p.projectName}</div>
+                <div style="font-size: 10px; color: #64748b; margin-top: 4px;">المختبرون: ${p.testers.map(t => t.email).join('، ')}</div>
               </div>
             `).join('')}
           </div>
@@ -143,11 +142,11 @@ export function TestingScheduleModal({ isOpen, onClose }: { isOpen: boolean; onC
       <html dir="rtl">
         <head>
           <title>جدول الاختبارات الأسبوعي</title>
-          <style>@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap'); body { font-family: 'Cairo', sans-serif; padding: 30px; }</style>
+          <style>@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap'); body { font-family: 'Cairo', sans-serif; padding: 20px; }</style>
         </head>
         <body>
-          <h2 style="text-align:center; border-bottom: 2px solid #eee; padding-bottom: 15px;">جدول توزيع المهام الأسبوعي</h2>
-          ${content || '<p style="text-align:center; color: #94a3b8;">لا توجد مهام مجدولة حالياً.</p>'}
+          <h2 style="text-align:center; border-bottom: 2px solid #eee; padding-bottom: 10px; font-size: 18px;">توزيع مهام الاختبارات الأسبوعية</h2>
+          ${content || '<p style="text-align:center; color: #94a3b8;">لا توجد مهام حالياً.</p>'}
         </body>
       </html>
     `);
@@ -157,73 +156,66 @@ export function TestingScheduleModal({ isOpen, onClose }: { isOpen: boolean; onC
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-4xl w-[95vw] h-[85vh] flex flex-col rounded-[2rem] p-0 border-none shadow-2xl overflow-hidden bg-white" dir="rtl">
-        <DialogHeader className="p-5 bg-primary text-primary-foreground shrink-0 flex flex-row items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-white/20 rounded-xl">
-              <CalendarDays className="h-6 w-6" />
-            </div>
+      <DialogContent className="max-w-3xl w-[95vw] h-[80vh] flex flex-col rounded-[1.5rem] p-0 border-none shadow-2xl overflow-hidden bg-white" dir="rtl">
+        <DialogHeader className="p-4 bg-primary text-primary-foreground shrink-0 flex flex-row items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CalendarDays className="h-5 w-5 opacity-80" />
             <div>
-              <DialogTitle className="text-xl font-black">جدول الاختبارات الأسبوعي</DialogTitle>
-              <DialogDescription className="text-[10px] text-primary-foreground/70 font-bold">توزيع المهام والمختبرين على مدار الأسبوع</DialogDescription>
+              <DialogTitle className="text-lg font-black">جدول الاختبارات الأسبوعي</DialogTitle>
+              <DialogDescription className="text-[10px] text-primary-foreground/70 font-bold">توزيع المهام اليومي لفريق الاختبار</DialogDescription>
             </div>
           </div>
-          <Button size="icon" variant="ghost" onClick={onClose} className="rounded-full hover:bg-white/10 text-white h-10 w-10">
-            <X className="h-6 w-6" />
+          <Button size="icon" variant="ghost" onClick={onClose} className="rounded-full hover:bg-white/10 text-white h-8 w-8">
+            <X className="h-5 w-5" />
           </Button>
         </DialogHeader>
         
-        <ScrollArea className="flex-1 p-6 bg-slate-50/50">
+        <ScrollArea className="flex-1 p-4 bg-slate-50/50">
           {loading ? (
-            <div className="flex flex-col items-center justify-center h-full py-20 gap-3">
-              <Loader2 className="h-10 w-10 animate-spin text-primary" />
-              <p className="font-bold text-slate-400 text-sm">جاري تجميع الجدول...</p>
+            <div className="flex flex-col items-center justify-center h-full py-10 gap-2">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="font-bold text-slate-400 text-xs">جاري تحميل الجدول...</p>
             </div>
           ) : (
-            <div className="space-y-8">
+            <div className="space-y-6">
               {DAYS_OF_WEEK.map(day => {
                 const projects = schedule[day];
                 if (!projects || projects.length === 0) return null;
                 return (
-                  <div key={day} className="space-y-4">
-                    <h3 className="text-sm font-black text-slate-700 bg-white px-5 py-2 rounded-2xl shadow-sm border-r-4 border-primary inline-block">
+                  <div key={day} className="space-y-3">
+                    <h3 className="text-xs font-black text-slate-700 bg-white px-4 py-1.5 rounded-xl shadow-sm border-r-4 border-primary inline-block">
                       {day}
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {projects.map((proj, idx) => (
-                        <div key={idx} className="p-5 rounded-[1.5rem] border border-slate-100 bg-white shadow-sm flex flex-col gap-4 group hover:border-primary/20 transition-all">
+                        <div key={idx} className="p-4 rounded-xl border border-slate-100 bg-white shadow-sm flex flex-col gap-3 group hover:border-primary/20 transition-all">
                           <div className="flex justify-between items-start">
                             <div className="space-y-1">
-                               <h4 className="text-base font-black text-slate-800">{proj.projectName}</h4>
+                               <h4 className="text-sm font-black text-slate-800">{proj.projectName}</h4>
                                {proj.resourceLink && (
-                                <a href={proj.resourceLink} target="_blank" className="text-[10px] font-bold text-primary underline flex items-center gap-1 hover:text-primary/80">
-                                  <ExternalLink className="h-3 w-3" /> رابط نسخة الاختبار
+                                <a href={proj.resourceLink} target="_blank" className="text-[9px] font-bold text-primary flex items-center gap-1 hover:underline">
+                                  <ExternalLink className="h-2.5 w-2.5" /> نسخة الاختبار
                                 </a>
                               )}
                             </div>
-                            <Info className="h-4 w-4 text-slate-300" />
+                            <Info className="h-3.5 w-3.5 text-slate-300" />
                           </div>
 
-                          <div className="space-y-3 flex-1">
-                            <div className="flex flex-wrap gap-1.5">
+                          <div className="space-y-2 flex-1">
+                            <div className="flex flex-wrap gap-1">
                               {proj.testers.map(tester => (
-                                <Badge key={tester.email} variant="outline" className="text-[9px] font-bold bg-slate-50 border-slate-200 py-1 px-2 rounded-lg">
+                                <Badge key={tester.email} variant="outline" className="text-[8px] font-bold bg-slate-50 border-slate-100 py-0.5 px-1.5 rounded-md">
                                   {tester.email.split('@')[0]}
                                 </Badge>
                               ))}
                             </div>
-                            {proj.notes && (
-                              <p className="text-[10px] text-slate-400 font-bold italic line-clamp-2">
-                                * {proj.notes}
-                              </p>
-                            )}
                           </div>
 
                           <Button 
                             onClick={() => handleSendWhatsApp(proj, day)}
-                            className="w-full h-10 rounded-xl bg-green-500 hover:bg-green-600 text-white font-black text-[11px] gap-2 shadow-md active:scale-95 transition-all"
+                            className="w-full h-9 rounded-lg bg-green-600 hover:bg-green-700 text-white font-black text-[10px] gap-2 shadow-sm"
                           >
-                            <MessageCircle className="h-4 w-4" /> إرسال تنبيهات اليوم
+                            <MessageCircle className="h-3.5 w-3.5" /> تنبيهات اليوم
                           </Button>
                         </div>
                       ))}
@@ -233,21 +225,21 @@ export function TestingScheduleModal({ isOpen, onClose }: { isOpen: boolean; onC
               })}
               
               {Object.keys(schedule).every(day => schedule[day].length === 0) && (
-                <div className="flex flex-col items-center justify-center py-32 text-center opacity-30">
-                  <CalendarDays className="h-20 w-20 mb-4 text-slate-300" />
-                  <p className="font-black text-lg text-slate-500">الجدول فارغ تماماً</p>
-                  <p className="text-xs font-bold text-slate-400 mt-2">قم بتعيين مختبرين لمشاريع من "إدارة المختبرين" أولاً</p>
+                <div className="flex flex-col items-center justify-center py-20 text-center opacity-30">
+                  <CalendarDays className="h-14 w-14 mb-3 text-slate-300" />
+                  <p className="font-black text-base text-slate-500">الجدول لا يحتوي على مهام</p>
+                  <p className="text-[10px] font-bold text-slate-400 mt-1">يرجى تعيين أيام عمل للمختبرين أولاً.</p>
                 </div>
               )}
             </div>
           )}
         </ScrollArea>
         
-        <div className="p-5 bg-white border-t flex gap-3">
-          <Button onClick={handlePrint} disabled={loading || Object.keys(schedule).every(day => schedule[day].length === 0)} className="flex-1 h-12 rounded-2xl font-black gap-2 text-base bg-slate-900 shadow-xl">
-            <Printer className="h-5 w-5" /> طباعة الجدول الورقي
+        <div className="p-4 bg-white border-t flex gap-2">
+          <Button onClick={handlePrint} disabled={loading || Object.keys(schedule).every(day => schedule[day].length === 0)} className="flex-1 h-10 rounded-xl font-black gap-2 text-xs bg-slate-900">
+            <Printer className="h-4 w-4" /> طباعة الجدول
           </Button>
-          <Button variant="outline" onClick={onClose} className="h-12 px-10 rounded-2xl font-black text-sm border-slate-200">إغلاق</Button>
+          <Button variant="outline" onClick={onClose} className="h-10 px-6 rounded-xl font-black text-xs">إغلاق</Button>
         </div>
       </DialogContent>
     </Dialog>
