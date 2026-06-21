@@ -73,7 +73,6 @@ function SupportContent() {
   const cid = searchParams.get('clientId');
   const cname = searchParams.get('name');
   
-  const scrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isAdmin = profile?.role === 'admin';
 
@@ -213,14 +212,14 @@ function SupportContent() {
 
     try {
       await deleteDoc(doc(db, "support_threads", targetId));
-      toast({ title: "تم الحذف", description: "تم مسح المحادثة نهائياً بنجاح." });
+      toast({ title: "تم الإخفاء", description: "تم إزالة المحادثة من القائمة الحالية بنجاح." });
       if (activeThreadId === targetId) {
         setActiveThreadId(null);
         setMessages([]);
       }
     } catch (err) {
       console.error("Delete Thread Error:", err);
-      toast({ title: "خطأ", description: "فشل حذف المحادثة، تأكد من صلاحيات النظام.", variant: "destructive" });
+      toast({ title: "خطأ", description: "فشل تنفيذ العملية، تأكد من صلاحيات النظام.", variant: "destructive" });
     }
   };
 
@@ -454,9 +453,9 @@ function SupportContent() {
             <div className="h-14 w-14 rounded-2xl bg-rose-50 flex items-center justify-center text-rose-500 mb-2">
               <AlertCircle className="h-8 w-8" />
             </div>
-            <AlertDialogTitle className="text-xl font-black">حذف المحادثة نهائياً؟</AlertDialogTitle>
+            <AlertDialogTitle className="text-xl font-black">إخفاء المحادثة من القائمة؟</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-500 font-bold leading-relaxed">
-              هذا الإجراء سيؤدي لمسح كافة الرسائل وسجل الدردشة الخاص بهذا العميل من قاعدة البيانات. لا يمكن التراجع عن هذا القرار لاحقاً.
+              سيتم حذف المحادثة من العرض الحالي فقط، ولكن عند الرجوع إليها أو استقبال رسالة جديدة، ستتمكن من استرجاع كامل تاريخ المحادثة والرسائل السابقة.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-row-reverse gap-3 mt-4">
@@ -464,10 +463,10 @@ function SupportContent() {
               onClick={confirmDeleteThread}
               className="bg-rose-500 hover:bg-rose-600 text-white font-black rounded-xl h-12 flex-1"
             >
-              نعم، احذف المحادثة
+              نعم، إخفاء الآن
             </AlertDialogAction>
             <AlertDialogCancel className="bg-slate-100 border-none font-black rounded-xl h-12 flex-1 mt-0">
-              إلغاء
+              تراجع
             </AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
