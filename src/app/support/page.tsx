@@ -32,8 +32,7 @@ import {
   updateDoc,
   increment,
   limit,
-  deleteDoc,
-  getDocs
+  deleteDoc
 } from "firebase/firestore";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
@@ -76,7 +75,7 @@ function SupportContent() {
         setLoading(false);
       },
       (error) => {
-        console.error("Threads Listener Error:", error);
+        console.warn("Threads Listener Error:", error);
         setLoading(false);
       }
     );
@@ -113,7 +112,6 @@ function SupportContent() {
         
         // تصفير عداد الرسائل غير المقروءة عند فتح المحادثة
         const threadRef = doc(db, "support_threads", activeThreadId);
-        // نتحقق من وجود المستند أولاً قبل التحديث لتجنب خطأ الحذف المتزامن
         if (isAdmin) {
           updateDoc(threadRef, { unreadAdmin: 0 }).catch(() => {});
         } else {
@@ -121,7 +119,7 @@ function SupportContent() {
         }
       },
       (error) => {
-        console.error("Messages Listener Error:", error);
+        console.warn("Messages Listener Error:", error);
       }
     );
 
@@ -170,22 +168,25 @@ function SupportContent() {
   };
 
   const handleDeleteThread = async (e: React.MouseEvent, threadId: string) => {
-    e.stopPropagation();
-    if (!isAdmin || !db || !confirm("هل أنت متأكد من حذف هذه المحادثة نهائياً؟")) return;
+    e.stopPropagation(); // منع فتح المحادثة عند الضغط على زر الحذف
+    
+    if (!isAdmin || !db) return;
+    
+    if (!confirm("هل أنت متأكد من حذف هذه المحادثة نهائياً؟ سيؤدي ذلك لإزالة السجل من قائمتك.")) return;
 
     try {
-      // حذف المستند الرئيسي للمحادثة
-      await deleteDoc(doc(db, "support_threads", threadId));
+      const threadRef = doc(db, "support_threads", threadId);
+      await deleteDoc(threadRef);
       
-      // إذا كانت هي المحادثة النشطة، نقوم بإغلاقها
       if (activeThreadId === threadId) {
         setActiveThreadId(null);
         setMessages([]);
       }
 
-      toast({ title: "تم الحذف", description: "تم مسح المحادثة بنجاح" });
+      toast({ title: "تم الحذف", description: "تم مسح المحادثة بنجاح من النظام." });
     } catch (err) {
-      toast({ title: "خطأ", description: "فشل في حذف المحادثة", variant: "destructive" });
+      console.error("Delete Thread Error:", err);
+      toast({ title: "خطأ", description: "عذراً، فشل حذف المحادثة. تأكد من الصلاحيات.", variant: "destructive" });
     }
   };
 
@@ -269,11 +270,11 @@ function SupportContent() {
                           variant="ghost" 
                           size="icon" 
                           onClick={(e) => handleDeleteThread(e, thread.id)}
-                          className={`h-6 w-6 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity ${
+                          className={`h-7 w-7 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity z-20 ${
                             activeThreadId === thread.id ? 'text-white/50 hover:text-white hover:bg-white/10' : 'text-slate-300 hover:text-rose-500 hover:bg-rose-50'
                           }`}
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>

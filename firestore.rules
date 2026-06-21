@@ -8,7 +8,7 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // دالة لجلب بيانات المستخدم الحالي من مجموعة users
+    // دالة جلب بيانات المستخدم لتقليل تكرار الكود
     function getUserData() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
@@ -53,17 +53,19 @@ service cloud.firestore {
 
     // --- Security Rules for 'support_threads' collection ---
     match /support_threads/{threadId} {
-      // المحادثة متاحة للآدمن ولصاحب المحادثة فقط (حيث threadId هو clientId الخاص بالمستخدم)
-      allow read, write: if isAdmin() || (isAuthenticated() && getUserData().clientId == threadId);
+      // السماح بالقراءة والكتابة والحذف للأدمن، ولصاحب المحادثة القراءة والكتابة فقط
+      allow read, write: if isAdmin() || (isAuthenticated() && threadId == getUserData().clientId);
+      allow delete: if isAdmin();
       
       match /messages/{msgId} {
-        allow read, write: if isAdmin() || (isAuthenticated() && getUserData().clientId == threadId);
+        allow read, write: if isAdmin() || (isAuthenticated() && threadId == getUserData().clientId);
+        allow delete: if isAdmin();
       }
     }
 
     // --- Security Rules for 'users_provision' (Activation) ---
     match /users_provision/{email} {
-      allow read, write: if true; // متاح مؤقتاً لعملية الربط الأولى قبل الدخول
+      allow read, write: if true; 
     }
   }
 }
