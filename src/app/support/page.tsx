@@ -11,7 +11,6 @@ import {
   CheckCheck,
   Archive,
   ArchiveRestore,
-  X,
   MessageSquare,
   ArrowRight,
   Phone,
@@ -73,12 +72,10 @@ function SupportContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const cid = searchParams.get('clientId');
-  const cname = searchParams.get('name');
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isAdmin = profile?.role === 'admin';
 
-  // التمرير التلقائي لآخر رسالة
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -87,428 +84,154 @@ function SupportContent() {
 
   useEffect(() => {
     if (!db || !isAdmin) return;
-
-    // جلب المحادثات الحالية
-    const qThreads = query(collection(db, "support_threads"), orderBy("lastMessageTime", "desc"));
-    const unsubThreads = onSnapshot(qThreads, (snap) => {
+    const unsubThreads = onSnapshot(query(collection(db, "support_threads"), orderBy("lastMessageTime", "desc")), (snap) => {
       setThreads(snap.docs.map(d => ({ id: d.id, ...d.data() })));
       setLoading(false);
     });
-
-    // جلب كافة العملاء للبحث والبدء الجديد
     const unsubClients = onSnapshot(collection(db, "clients"), (snap) => {
       setAllClients(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
-
     return () => { unsubThreads(); unsubClients(); };
   }, [isAdmin]);
 
   useEffect(() => {
     if (profile && !isAdmin) {
-      if (profile.clientId) {
-        setActiveThreadId(profile.clientId);
-      }
+      if (profile.clientId) setActiveThreadId(profile.clientId);
       setLoading(false);
     } else if (isAdmin && cid) {
       setActiveThreadId(cid);
-      setActiveTab("active");
       setLoading(false);
     }
   }, [profile, isAdmin, cid]);
 
   useEffect(() => {
     if (!db || !activeThreadId || !profile) return;
-
-    const q = query(
-      collection(db, "support_threads", activeThreadId, "messages"),
-      orderBy("timestamp", "asc"),
-      limit(50)
-    );
-
-    const unsub = onSnapshot(q, 
-      (snap) => {
-        setMessages(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-        
-        const threadRef = doc(db, "support_threads", activeThreadId);
-        if (isAdmin) {
-          updateDoc(threadRef, { unreadAdmin: 0 }).catch(() => {});
-        } else {
-          updateDoc(threadRef, { unreadClient: 0 }).catch(() => {});
-        }
-      },
-      () => {}
-    );
-
+    const q = query(collection(db, "support_threads", activeThreadId, "messages"), orderBy("timestamp", "asc"), limit(100));
+    const unsub = onSnapshot(q, (snap) => {
+      setMessages(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      const threadRef = doc(db, "support_threads", activeThreadId);
+      updateDoc(threadRef, isAdmin ? { unreadAdmin: 0 } : { unreadClient: 0 }).catch(() => {});
+    });
     return () => unsub();
   }, [activeThreadId, isAdmin, profile]);
 
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!inputText.trim() || !activeThreadId || !profile || !db) return;
-
     const text = inputText.trim();
     setInputText("");
-
-    const threadId = activeThreadId;
-    const msgData = {
-      text,
-      senderId: profile.uid,
-      senderRole: profile.role,
-      timestamp: serverTimestamp()
-    };
-
     try {
-      await addDoc(collection(db, "support_threads", threadId, "messages"), msgData);
-
-      const threadRef = doc(db, "support_threads", threadId);
-      const updateData: any = {
-        lastMessage: text,
-        lastMessageTime: serverTimestamp(),
-        status: "active" 
-      };
-
-      if (isAdmin) {
-        const client = allClients.find(c => c.id === threadId);
-        updateData.clientName = client?.name || cname || "مستفيد";
-        updateData.clientPhone = client?.phone || "";
-        updateData.unreadClient = increment(1);
-      } else {
-        updateData.clientName = profile.name || "مستفيد";
-        updateData.clientPhone = profile.phone || "";
-        updateData.clientId = profile.clientId || profile.uid;
-        updateData.unreadAdmin = increment(1);
-      }
-
-      await setDoc(threadRef, updateData, { merge: true });
-    } catch (err) {
-      console.error("Chat Send Error:", err);
-    }
-  };
-
-  const handleArchiveThread = async (e: React.MouseEvent, threadId: string, isCurrentlyArchived: boolean) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (!isAdmin || !db) return;
-    
-    const threadRef = doc(db, "support_threads", threadId);
-    try {
-      await updateDoc(threadRef, { status: isCurrentlyArchived ? "active" : "archived" });
-      toast({ 
-        title: isCurrentlyArchived ? "تمت الاستعادة" : "تمت الأرشفة", 
-        description: isCurrentlyArchived ? "المحادثة الآن في القائمة النشطة." : "تم نقل المحادثة إلى الأرشيف." 
+      await addDoc(collection(db, "support_threads", activeThreadId, "messages"), {
+        text, senderId: profile.uid, senderRole: profile.role, timestamp: serverTimestamp()
       });
-      if (!isCurrentlyArchived && activeThreadId === threadId) {
-        setActiveThreadId(null);
-        setMessages([]);
-      }
-    } catch (err) {
-      toast({ title: "خطأ", description: "فشل تحديث حالة المحادثة.", variant: "destructive" });
-    }
+      const updateData: any = { lastMessage: text, lastMessageTime: serverTimestamp(), status: "active" };
+      if (isAdmin) updateData.unreadClient = increment(1);
+      else updateData.unreadAdmin = increment(1);
+      await setDoc(doc(db, "support_threads", activeThreadId), updateData, { merge: true });
+    } catch (err) {}
   };
 
-  const confirmDeleteThread = async () => {
-    if (!threadToDelete || !isAdmin || !db) return;
-    
-    const targetId = threadToDelete;
-    setThreadToDelete(null);
-
-    try {
-      await deleteDoc(doc(db, "support_threads", targetId));
-      toast({ title: "تم الإخفاء", description: "تم إزالة المحادثة من القائمة الحالية بنجاح." });
-      if (activeThreadId === targetId) {
-        setActiveThreadId(null);
-        setMessages([]);
-      }
-    } catch (err) {
-      console.error("Delete Thread Error:", err);
-      toast({ title: "خطأ", description: "فشل تنفيذ العملية، تأكد من صلاحيات النظام.", variant: "destructive" });
-    }
-  };
-
-  // البحث برقم الهاتف (الأساسي أو الإضافي) لبدء محادثة
   const filteredResults = React.useMemo(() => {
     const q = searchQuery.trim();
-    
-    // إذا لم يكن هناك بحث، نعرض المحادثات الحالية حسب التبويب
-    if (!q) {
-      return threads
-        .filter(t => (t.status || "active") === activeTab)
-        .map(t => ({ ...t, isExisting: true }));
-    }
-
-    // إذا كان هناك بحث، نبحث في قائمة "كل العملاء" برقم الهاتف (الأساسي أو الإضافي)
-    return allClients
-      .filter(c => (c.phone?.includes(q) || c.phone2?.includes(q)))
-      .map(client => {
-        // نتحقق إذا كان لهذا العميل محادثة مسجلة مسبقاً
-        const existingThread = threads.find(t => t.id === client.id);
-        return {
-          id: client.id,
-          clientName: client.name,
-          clientPhone: client.phone,
-          clientPhone2: client.phone2,
-          lastMessage: existingThread?.lastMessage,
-          lastMessageTime: existingThread?.lastMessageTime,
-          unreadAdmin: existingThread?.unreadAdmin,
-          status: existingThread?.status || "new", // "new" تعني لم تبدأ بعد
-          isExisting: !!existingThread
-        };
-      });
+    if (!q) return threads.filter(t => (t.status || "active") === activeTab).map(t => ({ ...t, isExisting: true }));
+    return allClients.filter(c => (c.phone?.includes(q) || c.phone2?.includes(q))).map(client => {
+      const existing = threads.find(t => t.id === client.id);
+      return { id: client.id, clientName: client.name, clientPhone: client.phone, lastMessage: existing?.lastMessage, isExisting: !!existing, status: existing?.status || "new" };
+    });
   }, [threads, allClients, searchQuery, activeTab]);
 
-  if (authLoading || loading) return (
-    <div className="flex flex-col items-center justify-center h-[80vh] gap-4">
-      <Loader2 className="h-10 w-10 animate-spin text-primary" />
-      <p className="font-bold text-slate-500">جاري تحميل المحادثات...</p>
-    </div>
-  );
-
-  const activeThread = threads.find(t => t.id === activeThreadId) || allClients.find(c => c.id === activeThreadId);
-  const threadDisplayName = isAdmin ? (activeThread?.clientName || activeThread?.name || cname || "مستفيد") : 'الدعم الفني - APP STORE';
+  if (authLoading || loading) return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="animate-spin text-primary" /></div>;
 
   return (
-    <div className="max-w-6xl mx-auto" dir="rtl">
+    <div className="max-w-4xl mx-auto space-y-4" dir="rtl">
       {!activeThreadId ? (
-        <div className="space-y-4">
-          <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-[2rem] shadow-sm border">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-primary/10 rounded-xl text-primary">
-                <MessageSquare className="h-6 w-6" />
-              </div>
-              <div>
-                <h1 className="text-xl font-black text-slate-800">مركز المراسلات</h1>
-                <p className="text-[10px] font-bold text-slate-400">ابحث برقم الهاتف لبدء دردشة فورية</p>
-              </div>
+        <>
+          <header className="flex items-center justify-between bg-white p-4 rounded-xl border shadow-sm">
+            <div className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5 text-primary" />
+              <h1 className="text-sm font-black">مركز المراسلات</h1>
             </div>
-            
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full md:w-auto">
-              <TabsList className="grid grid-cols-2 w-full md:w-[200px] rounded-xl p-1 bg-slate-100 h-10">
-                <TabsTrigger value="active" className="rounded-lg font-black text-[10px] data-[state=active]:bg-white">نشطة</TabsTrigger>
-                <TabsTrigger value="archived" className="rounded-lg font-black text-[10px] data-[state=active]:bg-white">الأرشيف</TabsTrigger>
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="h-8 rounded-lg">
+                <TabsTrigger value="active" className="text-[10px] font-bold">نشطة</TabsTrigger>
+                <TabsTrigger value="archived" className="text-[10px] font-bold">الأرشيف</TabsTrigger>
               </TabsList>
             </Tabs>
           </header>
 
-          <div className="relative">
-            <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 h-4 w-4" />
-            <Input 
-              placeholder="ابحث برقم هاتف العميل (الأساسي أو الإضافي)..." 
-              className="pr-12 h-14 rounded-2xl font-black border-none shadow-sm bg-white focus-visible:ring-primary/20 text-lg"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              dir="ltr"
-            />
-          </div>
+          <Input 
+            placeholder="ابحث برقم الهاتف..." 
+            className="h-10 rounded-xl font-bold text-xs"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            dir="ltr"
+          />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {filteredResults.map((item) => (
-              <Card 
-                key={item.id}
-                onClick={() => setActiveThreadId(item.id)}
-                className="rounded-2xl border-none shadow-sm hover:shadow-md transition-all bg-white overflow-hidden cursor-pointer group border border-slate-50"
-              >
-                <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={`h-10 w-10 rounded-xl flex items-center justify-center font-black text-base transition-colors ${
-                      item.status === 'new' ? 'bg-green-50 text-green-600' : 'bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white'
-                    }`}>
-                      {item.status === 'new' ? <UserPlus className="h-5 w-5" /> : (item.clientName?.[0] || 'U')}
+              <Card key={item.id} onClick={() => setActiveThreadId(item.id)} className="rounded-xl border-none shadow-sm hover:shadow-md cursor-pointer transition-all bg-white border border-slate-50">
+                <CardHeader className="p-3 pb-1 flex flex-row items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-black text-xs">
+                      {item.clientName?.[0] || 'U'}
                     </div>
                     <div>
-                      <p className="font-black text-slate-800 text-xs">{item.clientName}</p>
-                      <div className="flex flex-col gap-0.5">
-                        <p className="text-[8px] font-bold text-slate-400 flex items-center gap-1" dir="ltr">
-                          <Phone className="h-2 w-2" /> {item.clientPhone}
-                        </p>
-                        {item.clientPhone2 && (
-                          <p className="text-[8px] font-bold text-slate-300 flex items-center gap-1" dir="ltr">
-                            <Phone className="h-2 w-2" /> {item.clientPhone2}
-                          </p>
-                        )}
-                      </div>
+                      <p className="font-black text-xs">{item.clientName}</p>
+                      <p className="text-[9px] text-slate-400 font-bold" dir="ltr">{item.clientPhone}</p>
                     </div>
                   </div>
-                  {(item.unreadAdmin || 0) > 0 && (
-                    <Badge className="bg-rose-500 text-white rounded-full h-5 min-w-5 flex items-center justify-center p-1 text-[8px]">
-                      {item.unreadAdmin}
-                    </Badge>
-                  )}
-                  {item.status === 'new' && (
-                    <Badge variant="outline" className="text-[7px] font-black text-green-600 border-green-200">بدء جديد</Badge>
-                  )}
+                  {item.status === 'new' && <Badge className="bg-green-500 text-[8px] h-4">جديد</Badge>}
                 </CardHeader>
-                <CardContent className="p-4 pt-2 space-y-3">
-                  <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
-                    <p className="text-[10px] font-bold text-slate-500 line-clamp-1">
-                      {item.lastMessage || (item.status === 'new' ? 'لا توجد رسائل سابقة.. انقر للبدء' : 'محادثة فارغة')}
-                    </p>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1 text-[8px] font-black text-slate-300">
-                      <Clock className="h-2 w-2" />
-                      <span>{item.lastMessageTime ? format(item.lastMessageTime.toDate(), 'eeee p', { locale: ar }) : 'الآن'}</span>
-                    </div>
-                    {item.isExisting && (
-                      <div className="flex gap-1">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={(e) => handleArchiveThread(e, item.id, item.status === "archived")}
-                          className="h-7 rounded-lg text-slate-400 hover:text-primary hover:bg-primary/5 font-black text-[9px] gap-1 px-2 border"
-                        >
-                          {item.status === "archived" ? <ArchiveRestore className="h-3 w-3" /> : <Archive className="h-3 w-3" />}
-                          {item.status === "archived" ? "استعادة" : "أرشفة"}
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={(e) => { e.stopPropagation(); setThreadToDelete(item.id); }}
-                          className="h-7 rounded-lg text-rose-300 hover:text-rose-600 hover:bg-rose-50 font-black text-[9px] gap-1 px-2 border border-rose-100"
-                        >
-                          <Trash2 className="h-3 w-3" /> إخفاء
-                        </Button>
-                      </div>
-                    )}
-                  </div>
+                <CardContent className="p-3 pt-0">
+                  <p className="text-[10px] text-slate-500 line-clamp-1 italic">{item.lastMessage || 'لا توجد رسائل'}</p>
                 </CardContent>
               </Card>
             ))}
-            
-            {filteredResults.length === 0 && (
-              <div className="col-span-full py-20 text-center opacity-20">
-                <Search className="h-16 w-16 mx-auto mb-3" />
-                <p className="text-xl font-black">لم يتم العثور على أي عميل بهذا الرقم</p>
-              </div>
-            )}
           </div>
-        </div>
+        </>
       ) : (
-        <Card className="rounded-[2rem] border-none shadow-xl flex flex-col overflow-hidden bg-white h-[75vh]">
-          <CardHeader className="p-3 border-b flex flex-row items-center justify-between bg-slate-50/50 shrink-0">
-            <div className="flex items-center gap-3">
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={() => { setActiveThreadId(null); setMessages([]); router.push('/support'); }}
-                className="h-9 w-9 rounded-xl bg-white border border-slate-200 shadow-sm hover:bg-primary hover:text-white transition-all"
-              >
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-              <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center text-white font-black text-lg shadow-lg">
-                {isAdmin ? (threadDisplayName?.[0] || 'U') : 'A'}
-              </div>
-              <div>
-                <CardTitle className="text-sm font-black text-slate-800">
-                  {threadDisplayName}
-                </CardTitle>
-                <div className="flex items-center gap-2">
-                  <Circle className="h-1.5 w-1.5 fill-green-500 text-green-500 animate-pulse" />
-                  <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">نشط الآن</span>
-                </div>
-              </div>
+        <Card className="rounded-2xl border-none shadow-lg flex flex-col overflow-hidden bg-white h-[75vh]">
+          <CardHeader className="p-3 border-b flex flex-row items-center justify-between bg-slate-50/50">
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" onClick={() => setActiveThreadId(null)} className="h-8 w-8 rounded-lg"><ArrowRight className="h-4 w-4" /></Button>
+              <div className="h-8 w-8 rounded-lg bg-primary text-white flex items-center justify-center font-black text-xs">{isAdmin ? 'C' : 'A'}</div>
+              <CardTitle className="text-xs font-black">{isAdmin ? 'محادثة العميل' : 'الدعم الفني'}</CardTitle>
             </div>
-            {isAdmin && (
-              <div className="flex gap-2">
-                 <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={() => setThreadToDelete(activeThreadId)}
-                  className="h-9 w-9 rounded-xl text-rose-300 hover:text-rose-600 hover:bg-rose-50"
-                  title="إخفاء من القائمة"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
+            {isAdmin && <Button variant="ghost" size="icon" onClick={() => setThreadToDelete(activeThreadId)} className="h-8 w-8 text-rose-300"><Trash2 className="h-4 w-4" /></Button>}
           </CardHeader>
 
-          <ScrollArea className="flex-1 bg-slate-50/10">
-            <div className="p-4 space-y-4 max-w-4xl mx-auto">
-              {messages.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-10 opacity-20">
-                  <div className="p-4 bg-white rounded-2xl shadow-sm mb-2 border">
-                    <MessageSquare className="h-8 w-8 text-primary" />
-                  </div>
-                  <p className="font-black text-sm">ابدأ مراسلة العميل الآن...</p>
-                </div>
-              ) : (
-                messages.map((msg, idx) => {
-                  const isMe = msg.senderId === profile?.uid;
-                  return (
-                    <div key={msg.id || idx} className={`flex ${isMe ? 'justify-start' : 'justify-end'}`}>
-                      <div className="max-w-[80%] md:max-w-[60%] space-y-0.5">
-                        <div className={`p-2.5 rounded-2xl text-[11px] font-bold shadow-sm leading-relaxed ${
-                          isMe 
-                            ? 'bg-primary text-white rounded-tr-none' 
-                            : 'bg-white text-slate-800 rounded-tl-none border border-slate-100'
-                        }`}>
-                          {msg.text}
-                        </div>
-                        <div className={`flex items-center gap-2 text-[7px] font-black text-slate-400 px-2 ${isMe ? 'justify-start' : 'justify-end'}`}>
-                          {msg.timestamp?.seconds ? (
-                            <span>{format(msg.timestamp.seconds * 1000, 'p', { locale: ar })}</span>
-                          ) : (
-                            <span>الآن</span>
-                          )}
-                          {isMe && <CheckCheck className="h-2.5 w-2.5 text-primary" />}
-                        </div>
-                      </div>
+          <ScrollArea className="flex-1 p-4">
+            <div className="space-y-3">
+              {messages.map((msg, idx) => {
+                const isMe = msg.senderId === profile?.uid;
+                return (
+                  <div key={idx} className={`flex ${isMe ? 'justify-start' : 'justify-end'}`}>
+                    <div className={`p-2.5 rounded-xl text-[10px] font-bold max-w-[70%] shadow-sm ${isMe ? 'bg-primary text-white rounded-tr-none' : 'bg-slate-100 text-slate-800 rounded-tl-none'}`}>
+                      {msg.text}
                     </div>
-                  );
-                })
-              )}
+                  </div>
+                );
+              })}
               <div ref={messagesEndRef} />
             </div>
           </ScrollArea>
 
-          <div className="p-3 border-t bg-white shrink-0">
-            <form onSubmit={(e) => handleSendMessage(e)} className="flex gap-2 max-w-4xl mx-auto">
-              <Input 
-                placeholder="اكتب رسالتك..." 
-                className="flex-1 h-10 rounded-xl border-none shadow-inner px-4 font-bold text-xs bg-slate-50 focus-visible:ring-primary/20"
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-              />
-              <Button 
-                type="submit" 
-                size="icon" 
-                disabled={!inputText.trim()}
-                className="h-10 w-10 rounded-xl shadow-lg active:scale-95 transition-all bg-primary"
-              >
-                <Send className="h-4 w-4" />
-              </Button>
+          <div className="p-3 border-t bg-white">
+            <form onSubmit={handleSendMessage} className="flex gap-2">
+              <Input placeholder="اكتب رسالتك..." className="flex-1 h-9 rounded-lg text-xs" value={inputText} onChange={e => setInputText(e.target.value)} />
+              <Button type="submit" size="icon" disabled={!inputText.trim()} className="h-9 w-9 rounded-lg"><Send className="h-4 w-4" /></Button>
             </form>
           </div>
         </Card>
       )}
 
-      {/* نافذة تأكيد الحذف الاحترافية */}
-      <AlertDialog open={!!threadToDelete} onOpenChange={(open) => !open && setThreadToDelete(null)}>
-        <AlertDialogContent className="rounded-[2rem] border-none shadow-2xl p-0 overflow-hidden bg-white max-w-md" dir="rtl">
-          <div className="bg-rose-500 p-8 text-white">
-            <AlertDialogHeader>
-              <div className="h-14 w-14 rounded-2xl bg-white/20 flex items-center justify-center text-white mb-2">
-                <AlertCircle className="h-8 w-8" />
-              </div>
-              <AlertDialogTitle className="text-xl font-black">إخفاء المحادثة من القائمة؟</AlertDialogTitle>
-            </AlertDialogHeader>
-          </div>
-          <div className="p-8">
-            <AlertDialogDescription className="text-slate-500 font-bold leading-relaxed text-base">
-              سوف يتم حذف المحادثة من القائمة الجارية الآن، لكن عند الرجوع إليها بالبحث برقم الهاتف ستتمكن من استرجاع كامل تاريخ المحادثة والرسائل السابقة بمجرد إرسال رسالة جديدة.
-            </AlertDialogDescription>
-          </div>
-          <AlertDialogFooter className="p-8 bg-slate-50 border-t flex-row-reverse gap-3">
-            <AlertDialogAction 
-              onClick={confirmDeleteThread}
-              className="bg-rose-500 hover:bg-rose-600 text-white font-black rounded-xl h-14 flex-1"
-            >
-              نعم، إخفاء الآن
-            </AlertDialogAction>
-            <AlertDialogCancel className="bg-white border-slate-200 text-slate-500 font-black rounded-xl h-14 flex-1 mt-0">
-              تراجع
-            </AlertDialogCancel>
+      <AlertDialog open={!!threadToDelete} onOpenChange={(o) => !o && setThreadToDelete(null)}>
+        <AlertDialogContent className="rounded-xl max-w-sm" dir="rtl">
+          <AlertDialogHeader><AlertDialogTitle className="text-base font-black">إخفاء المحادثة؟</AlertDialogTitle></AlertDialogHeader>
+          <AlertDialogDescription className="text-xs font-bold">سوف يتم إخفاء المحادثة من القائمة ولكن يمكنك استعادتها بالبحث برقم الهاتف.</AlertDialogDescription>
+          <AlertDialogFooter className="flex-row-reverse gap-2">
+            <AlertDialogAction onClick={async () => { if(threadToDelete) { await deleteDoc(doc(db!, "support_threads", threadToDelete)); setActiveThreadId(null); setThreadToDelete(null); } }} className="bg-rose-500 text-xs h-10">إخفاء</AlertDialogAction>
+            <AlertDialogCancel className="text-xs h-10">تراجع</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -517,14 +240,5 @@ function SupportContent() {
 }
 
 export default function SupportPage() {
-  return (
-    <Suspense fallback={
-      <div className="flex flex-col items-center justify-center h-[80vh] gap-4">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="font-bold text-slate-500">جاري تحميل الدردشة...</p>
-      </div>
-    }>
-      <SupportContent />
-    </Suspense>
-  );
+  return <Suspense fallback={<Loader2 className="animate-spin" />}><SupportContent /></Suspense>;
 }
