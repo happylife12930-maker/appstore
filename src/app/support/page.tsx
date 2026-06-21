@@ -111,7 +111,7 @@ function SupportContent() {
       (snap) => {
         setMessages(snap.docs.map(d => ({ id: d.id, ...d.data() })));
         
-        // تصفير العداد عند فتح المحادثة (فقط إذا كانت هناك رسائل غير مقروءة فعلاً)
+        // تصفير العداد عند فتح المحادثة
         const threadRef = doc(db, "support_threads", activeThreadId);
         if (isAdmin) {
           updateDoc(threadRef, { unreadAdmin: 0 }).catch(() => {});
@@ -125,7 +125,7 @@ function SupportContent() {
     return () => unsub();
   }, [activeThreadId, isAdmin, profile]);
 
-  const handleSendMessage = (e?: React.FormEvent) => {
+  const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!inputText.trim() || !activeThreadId || !profile || !db) return;
 
@@ -140,31 +140,35 @@ function SupportContent() {
       timestamp: serverTimestamp()
     };
 
-    // 1. إضافة الرسالة للمجموعة الفرعية
-    addDoc(collection(db, "support_threads", threadId, "messages"), msgData);
+    try {
+      // 1. إضافة الرسالة للمجموعة الفرعية
+      await addDoc(collection(db, "support_threads", threadId, "messages"), msgData);
 
-    // 2. تحديث مستند المحادثة الرئيسي مع إعادة التفعيل (Unarchive) بشكل صريح
-    const threadRef = doc(db, "support_threads", threadId);
-    
-    const updateData: any = {
-      lastMessage: text,
-      lastMessageTime: serverTimestamp(),
-      status: "active" // ضمان عودتها نشطة فوراً
-    };
+      // 2. تحديث مستند المحادثة الرئيسي مع التأكيد على الحالة "نشطة"
+      const threadRef = doc(db, "support_threads", threadId);
+      
+      const updateData: any = {
+        lastMessage: text,
+        lastMessageTime: serverTimestamp(),
+        status: "active" // إعادة التفعيل التلقائي في كل رسالة
+      };
 
-    if (isAdmin) {
-      const activeThread = threads.find(t => t.id === threadId);
-      updateData.clientName = activeThread?.clientName || cname || "مستفيد";
-      updateData.clientPhone = activeThread?.clientPhone || "";
-      updateData.unreadClient = increment(1);
-    } else {
-      updateData.clientName = profile.name || "مستفيد";
-      updateData.clientPhone = profile.phone || "";
-      updateData.clientId = profile.clientId || profile.uid;
-      updateData.unreadAdmin = increment(1);
+      if (isAdmin) {
+        const activeThread = threads.find(t => t.id === threadId);
+        updateData.clientName = activeThread?.clientName || cname || "مستفيد";
+        updateData.clientPhone = activeThread?.clientPhone || "";
+        updateData.unreadClient = increment(1);
+      } else {
+        updateData.clientName = profile.name || "مستفيد";
+        updateData.clientPhone = profile.phone || "";
+        updateData.clientId = profile.clientId || profile.uid;
+        updateData.unreadAdmin = increment(1);
+      }
+
+      await setDoc(threadRef, updateData, { merge: true });
+    } catch (err) {
+      console.error("Chat Send Error:", err);
     }
-
-    setDoc(threadRef, updateData, { merge: true });
   };
 
   const handleArchiveThread = async (e: React.MouseEvent, threadId: string, isCurrentlyArchived: boolean) => {

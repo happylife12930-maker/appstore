@@ -11,22 +11,26 @@ const ScrollArea = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root> & {
     viewportRef?: React.Ref<HTMLDivElement>
   }
->(({ className, children, viewportRef, ...props }, ref) => (
-  <ScrollAreaPrimitive.Root
-    ref={ref}
-    className={cn("relative overflow-hidden", className)}
-    {...props}
-  >
-    <ScrollAreaPrimitive.Viewport 
-      ref={viewportRef}
-      className="h-full w-full rounded-[inherit]"
+>(({ className, children, viewportRef, ...props }, ref) => {
+  // نقوم باستخراج viewportRef من الخصائص لمنع تمريره إلى المكون الأساسي كخاصية DOM غير معروفة
+  // ثم نقوم بتمريره فقط إلى ScrollAreaPrimitive.Viewport
+  return (
+    <ScrollAreaPrimitive.Root
+      ref={ref}
+      className={cn("relative overflow-hidden", className)}
+      {...props}
     >
-      {children}
-    </ScrollAreaPrimitive.Viewport>
-    <ScrollBar />
-    <ScrollAreaPrimitive.Corner />
-  </ScrollAreaPrimitive.Root>
-))
+      <ScrollAreaPrimitive.Viewport 
+        ref={viewportRef}
+        className="h-full w-full rounded-[inherit]"
+      >
+        {children}
+      </ScrollAreaPrimitive.Viewport>
+      <ScrollBar />
+      <ScrollAreaPrimitive.Corner />
+    </ScrollAreaPrimitive.Root>
+  )
+})
 ScrollArea.displayName = ScrollAreaPrimitive.Root.displayName
 
 const ScrollBar = React.forwardRef<
