@@ -31,13 +31,14 @@ const DAYS_OF_WEEK = ["الأحد", "الاثنين", "الثلاثاء", "ال�
 const normalizeDay = (day: string) => {
   if (!day) return "";
   let d = day.trim();
-  if (d === "الأحد" || d === "أحد") return "الأحد";
-  if (d === "الاثنين" || d === "اثنان" || d === "إثنين") return "الاثنين";
-  if (d === "الثلاثاء" || d === "ثلاثاء") return "الثلاثاء";
-  if (d === "الأربعاء" || d === "أربعاء") return "الأربعاء";
-  if (d === "الخميس" || d === "خميس") return "الخميس";
-  if (d === "الجمعة" || d === "جمعة") return "الجمعة";
-  if (d === "السبت" || d === "سبت") return "الالسبت";
+  // تحويل "أحد" لـ "الأحد" وهكذا لضمان الربط
+  if (d === "أحد") return "الأحد";
+  if (d === "اثنين" || d === "إثنين" || d === "الاثنين") return "الاثنين";
+  if (d === "ثلاثاء") return "الثلاثاء";
+  if (d === "أربعاء" || d === "اربعاء") return "الأربعاء";
+  if (d === "خميس") return "الخميس";
+  if (d === "جمعة") return "الجمعة";
+  if (d === "سبت") return "السبت";
   return d;
 };
 
@@ -112,7 +113,7 @@ export function TestingScheduleModal({ isOpen, onClose }: { isOpen: boolean; onC
     projects.forEach((project) => {
       const testersWithPhone = project.testers.filter((t) => !!t.phone);
       
-      testersWithPhone.forEach((tester, index) => {
+      testersWithPhone.forEach((tester) => {
         let cleanPhone = tester.phone.replace(/[^0-9]/g, '');
         if (cleanPhone.startsWith('0')) cleanPhone = '2' + cleanPhone;
         else if (!cleanPhone.startsWith('2')) cleanPhone = '20' + cleanPhone;

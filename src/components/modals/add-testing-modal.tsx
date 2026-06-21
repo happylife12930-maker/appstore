@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -15,12 +14,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { 
-  UserPlus, 
   Calendar, 
   Loader2,
   CheckCircle2,
   X,
-  Plus
+  Plus,
+  Edit2,
+  UserPlus
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { db } from '@/lib/firebase';
@@ -65,6 +65,7 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
   const [newTesterEmail, setNewTesterEmail] = useState('');
   const [newTesterPhone, setNewTesterPhone] = useState('');
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
+  const [editingTesterIdx, setEditingTesterIdx] = useState<number | null>(null);
 
   useEffect(() => {
     if (!db) return;
@@ -80,18 +81,40 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
     } else if (isOpen) {
       setFormData({ projectId: '', projectName: '', status: 'pending', testers: [], resourceLink: '', notes: '' });
     }
+    resetTesterForm();
+  }, [initialData, isOpen]);
+
+  const resetTesterForm = () => {
     setNewTesterEmail('');
     setNewTesterPhone('');
     setSelectedDays([]);
-  }, [initialData, isOpen]);
+    setEditingTesterIdx(null);
+  };
 
   const handleTesterAction = () => {
     if (!newTesterEmail.includes('@') || selectedDays.length === 0) return;
-    setFormData(prev => ({ 
-      ...prev, 
-      testers: [...prev.testers, { email: newTesterEmail, phone: newTesterPhone, assignedDays: [...selectedDays] }] 
-    }));
-    setNewTesterEmail(''); setNewTesterPhone(''); setSelectedDays([]);
+    
+    const testerData = { email: newTesterEmail, phone: newTesterPhone, assignedDays: [...selectedDays] };
+    
+    setFormData(prev => {
+      const newTesters = [...prev.testers];
+      if (editingTesterIdx !== null) {
+        newTesters[editingTesterIdx] = testerData;
+      } else {
+        newTesters.push(testerData);
+      }
+      return { ...prev, testers: newTesters };
+    });
+    
+    resetTesterForm();
+  };
+
+  const startEditTester = (idx: number) => {
+    const t = formData.testers[idx];
+    setNewTesterEmail(t.email);
+    setNewTesterPhone(t.phone);
+    setSelectedDays([...t.assignedDays]);
+    setEditingTesterIdx(idx);
   };
 
   const toggleDay = (day: string) => {
@@ -100,6 +123,7 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
 
   const removeTester = (idx: number) => {
     setFormData(prev => ({ ...prev, testers: prev.testers.filter((_, i) => i !== idx) }));
+    if (editingTesterIdx === idx) resetTesterForm();
   };
 
   return (
@@ -140,7 +164,12 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
 
             <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 space-y-3">
               <div className="flex items-center justify-between">
-                 <p className="text-[10px] font-black text-primary uppercase">إضافة مختبر جديد</p>
+                 <p className="text-[10px] font-black text-primary uppercase">
+                   {editingTesterIdx !== null ? 'تعديل بيانات المختبر' : 'إضافة مختبر جديد'}
+                 </p>
+                 {editingTesterIdx !== null && (
+                   <Button variant="ghost" size="sm" onClick={resetTesterForm} className="h-6 text-[9px] text-rose-500 font-bold">إلغاء التعديل</Button>
+                 )}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <Input placeholder="البريد الإلكتروني" className="rounded-lg h-8 text-[11px] font-bold" value={newTesterEmail} onChange={e => setNewTesterEmail(e.target.value)} />
@@ -156,21 +185,27 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
                   ))}
                 </div>
               </div>
-              <Button onClick={handleTesterAction} size="sm" className="w-full h-8 rounded-lg font-black text-[10px] gap-1.5">
-                <Plus className="h-3 w-3" /> إضافة المختبر للفريق
+              <Button onClick={handleTesterAction} size="sm" className={`w-full h-8 rounded-lg font-black text-[10px] gap-1.5 ${editingTesterIdx !== null ? 'bg-amber-500 hover:bg-amber-600' : ''}`}>
+                {editingTesterIdx !== null ? <Edit2 className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
+                {editingTesterIdx !== null ? 'تحديث بيانات المختبر' : 'إضافة المختبر للفريق'}
               </Button>
 
               {formData.testers.length > 0 && (
                 <div className="pt-2 grid grid-cols-1 gap-1.5">
                   {formData.testers.map((t, i) => (
-                    <div key={i} className="bg-white p-2 rounded-lg border border-slate-100 flex justify-between items-center">
+                    <div key={i} className={`bg-white p-2 rounded-lg border flex justify-between items-center ${editingTesterIdx === i ? 'border-primary ring-2 ring-primary/10' : 'border-slate-100'}`}>
                       <div className="overflow-hidden">
                         <p className="font-bold text-[10px] text-slate-800 truncate">{t.email}</p>
                         <p className="text-[8px] text-slate-400">{t.assignedDays.join('، ')}</p>
                       </div>
-                      <Button variant="ghost" size="icon" onClick={() => removeTester(i)} className="h-5 w-5 text-rose-300">
-                        <X className="h-3 w-3" />
-                      </Button>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => startEditTester(i)} className="h-6 w-6 text-primary hover:bg-primary/5">
+                          <Edit2 className="h-3 w-3" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => removeTester(i)} className="h-6 w-6 text-rose-300 hover:text-rose-500">
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
