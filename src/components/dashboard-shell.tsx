@@ -35,6 +35,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
+  SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useTranslation } from "@/components/language-provider";
@@ -63,7 +64,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const { profile, loading } = useAuth();
   const [unreadCount, setUnreadCount] = React.useState(0);
 
-  // مراقبة الرسائل غير المقروءة للإشعارات - تم التعديل ليستخدم clientId
+  // مراقبة الرسائل غير المقروءة للإشعارات
   React.useEffect(() => {
     if (!db || !profile) return;
 
@@ -110,13 +111,13 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider defaultOpen={true}>
-      <Sidebar side={dir === 'rtl' ? 'right' : 'left'} collapsible="none" className="border-l border-r">
+      <Sidebar side={dir === 'rtl' ? 'right' : 'left'} collapsible="icon" className="border-l border-r">
         <SidebarHeader className="border-b border-sidebar-border/50 py-4">
           <div className="flex items-center gap-2 px-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground font-headline font-bold text-xl">
               A
             </div>
-            <div className="flex flex-col overflow-hidden text-right">
+            <div className="flex flex-col overflow-hidden text-right group-data-[collapsible=icon]:hidden">
               <span className="font-headline font-bold text-lg leading-tight uppercase">APP STORE</span>
               <span className="text-[10px] uppercase tracking-wider text-sidebar-foreground/50 font-medium">
                 {profile?.role === 'client' ? 'بوابة المستفيد' : t('agencyAdmin')}
@@ -126,7 +127,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         </SidebarHeader>
         <SidebarContent>
           <SidebarGroup>
-            <SidebarGroupLabel>{profile?.role === 'client' ? 'قائمتي' : t('management')}</SidebarGroupLabel>
+            <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden">
+              {profile?.role === 'client' ? 'قائمتي' : t('management')}
+            </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {filteredNavItems.map((item) => (
@@ -154,7 +157,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
           {profile?.role === 'admin' && (
             <SidebarGroup>
-              <SidebarGroupLabel>إعدادات النظام</SidebarGroupLabel>
+              <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden">إعدادات النظام</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
                   <SidebarMenuItem>
@@ -183,7 +186,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                     <AvatarImage src={`https://picsum.photos/seed/${profile?.uid}/100/100`} />
                     <AvatarFallback>{profile?.name?.[0] || 'U'}</AvatarFallback>
                   </Avatar>
-                  <div className="flex flex-col items-start overflow-hidden text-right">
+                  <div className="flex flex-col items-start overflow-hidden text-right group-data-[collapsible=icon]:hidden">
                     <span className="font-medium text-sm truncate max-w-[120px]">{profile?.name || 'مستفيد'}</span>
                     <span className="text-xs text-sidebar-foreground/50">
                       {profile?.role === 'client' ? 'عميل نشط' : t(profile?.role || 'admin')}
@@ -198,6 +201,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       <SidebarInset>
         <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between border-b bg-background/80 px-6 backdrop-blur-md">
           <div className="flex items-center gap-4">
+            <SidebarTrigger className="-mr-1 ml-2" />
             <h2 className="font-headline text-lg font-bold">
               {profile?.role === 'client' && pathname === '/projects' ? 'متابعة مشاريحي' : t(navItems.find(i => i.url === pathname)?.title || "overview")}
             </h2>
