@@ -61,9 +61,15 @@ function SupportContent() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const isAdmin = profile?.role === 'admin';
 
+  // التمرير التلقائي لآخر رسالة
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      setTimeout(() => {
+        scrollRef.current?.scrollTo({
+          top: scrollRef.current.scrollHeight,
+          behavior: 'smooth'
+        });
+      }, 100);
     }
   }, [messages]);
 
@@ -139,13 +145,15 @@ function SupportContent() {
     };
 
     try {
+      // إرسال الرسالة
       await addDoc(collection(db, "support_threads", threadId, "messages"), msgData);
 
+      // تحديث حالة المحادثة وضمان خروجها من الأرشيف (status: active)
       const threadRef = doc(db, "support_threads", threadId);
       const updateData: any = {
         lastMessage: text,
         lastMessageTime: serverTimestamp(),
-        status: "active"
+        status: "active" // إجبار الحالة على نشط دائماً عند الإرسال
       };
 
       if (isAdmin) {
@@ -210,83 +218,83 @@ function SupportContent() {
   const threadDisplayName = isAdmin ? (activeThread?.clientName || cname || "مستفيد") : 'الدعم الفني - APP STORE';
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 pb-10" dir="rtl">
+    <div className="max-w-6xl mx-auto" dir="rtl">
       {!activeThreadId ? (
-        <div className="space-y-8">
-          <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-8 rounded-[2.5rem] shadow-sm border">
-            <div className="flex items-center gap-4">
-              <div className="p-4 bg-primary/10 rounded-2xl text-primary">
-                <MessageSquare className="h-8 w-8" />
+        <div className="space-y-6">
+          <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-3xl shadow-sm border">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-primary/10 rounded-xl text-primary">
+                <MessageSquare className="h-6 w-6" />
               </div>
               <div>
-                <h1 className="text-3xl font-black text-slate-800 tracking-tight">مركز المراسلات</h1>
-                <p className="text-slate-500 font-bold">إدارة استفسارات العملاء والدعم الفني</p>
+                <h1 className="text-2xl font-black text-slate-800">مركز المراسلات</h1>
+                <p className="text-xs font-bold text-slate-400">إدارة استفسارات العملاء والدعم الفني</p>
               </div>
             </div>
             
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full md:w-auto">
-              <TabsList className="grid grid-cols-2 w-full md:w-[300px] rounded-2xl p-1 bg-slate-100">
-                <TabsTrigger value="active" className="rounded-xl font-black text-sm data-[state=active]:bg-white">نشطة</TabsTrigger>
-                <TabsTrigger value="archived" className="rounded-xl font-black text-sm data-[state=active]:bg-white">الأرشيف</TabsTrigger>
+              <TabsList className="grid grid-cols-2 w-full md:w-[240px] rounded-xl p-1 bg-slate-100">
+                <TabsTrigger value="active" className="rounded-lg font-black text-xs data-[state=active]:bg-white">نشطة</TabsTrigger>
+                <TabsTrigger value="archived" className="rounded-lg font-black text-xs data-[state=active]:bg-white">الأرشيف</TabsTrigger>
               </TabsList>
             </Tabs>
           </header>
 
           <div className="relative">
-            <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5" />
+            <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 h-4 w-4" />
             <Input 
-              placeholder="ابحث باسم العميل أو رقم الهاتف للوصول السريع للمحادثة..." 
-              className="pr-12 h-16 rounded-[1.5rem] font-bold text-lg border-none shadow-sm bg-white focus-visible:ring-primary/20"
+              placeholder="ابحث باسم العميل أو رقم الهاتف..." 
+              className="pr-12 h-14 rounded-2xl font-bold border-none shadow-sm bg-white focus-visible:ring-primary/20"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredThreads.map((thread) => (
               <Card 
                 key={thread.id}
                 onClick={() => setActiveThreadId(thread.id)}
-                className="rounded-[2rem] border-none shadow-sm hover:shadow-xl transition-all bg-white overflow-hidden cursor-pointer group border border-slate-50"
+                className="rounded-2xl border-none shadow-sm hover:shadow-md transition-all bg-white overflow-hidden cursor-pointer group border border-slate-50"
               >
-                <CardHeader className="p-6 pb-2 flex flex-row items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-black text-xl group-hover:bg-primary group-hover:text-white transition-colors shadow-inner">
+                <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-black text-lg group-hover:bg-primary group-hover:text-white transition-colors">
                       {thread.clientName?.[0] || 'U'}
                     </div>
                     <div>
-                      <p className="font-black text-slate-800 text-lg">{thread.clientName}</p>
+                      <p className="font-black text-slate-800 text-sm">{thread.clientName}</p>
                       {thread.clientPhone && (
-                        <p className="text-[10px] font-bold text-slate-400 flex items-center gap-1" dir="ltr">
-                          <Phone className="h-2.5 w-2.5" /> {thread.clientPhone}
+                        <p className="text-[9px] font-bold text-slate-400 flex items-center gap-1" dir="ltr">
+                          <Phone className="h-2 w-2" /> {thread.clientPhone}
                         </p>
                       )}
                     </div>
                   </div>
                   {thread.unreadAdmin > 0 && (
-                    <Badge className="bg-rose-500 text-white rounded-full h-7 min-w-7 flex items-center justify-center p-1 text-[10px] animate-bounce">
+                    <Badge className="bg-rose-500 text-white rounded-full h-6 min-w-6 flex items-center justify-center p-1 text-[9px]">
                       {thread.unreadAdmin}
                     </Badge>
                   )}
                 </CardHeader>
-                <CardContent className="p-6 pt-2 space-y-4">
-                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                    <p className="text-xs font-bold text-slate-500 line-clamp-2 leading-relaxed">
-                      {thread.lastMessage || 'محادثة جديدة بانتظار الرد...'}
+                <CardContent className="p-4 pt-2 space-y-3">
+                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                    <p className="text-[11px] font-bold text-slate-500 line-clamp-1">
+                      {thread.lastMessage || 'محادثة جديدة...'}
                     </p>
                   </div>
-                  <div className="flex items-center justify-between pt-2">
-                    <div className="flex items-center gap-1 text-[10px] font-black text-slate-300">
-                      <Clock className="h-3 w-3" />
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1 text-[9px] font-black text-slate-300">
+                      <Clock className="h-2.5 w-2.5" />
                       <span>{thread.lastMessageTime ? format(thread.lastMessageTime.toDate(), 'eeee p', { locale: ar }) : 'الآن'}</span>
                     </div>
                     <Button 
                       variant="ghost" 
                       size="sm" 
                       onClick={(e) => handleArchiveThread(e, thread.id, activeTab === "archived")}
-                      className="h-8 rounded-lg text-slate-400 hover:text-primary hover:bg-primary/5 font-black text-[10px] gap-1"
+                      className="h-7 rounded-lg text-slate-400 hover:text-primary hover:bg-primary/5 font-black text-[9px] gap-1 px-2"
                     >
-                      {activeTab === "archived" ? <ArchiveRestore className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />}
+                      {activeTab === "archived" ? <ArchiveRestore className="h-3 w-3" /> : <Archive className="h-3 w-3" />}
                       {activeTab === "archived" ? "استعادة" : "أرشفة"}
                     </Button>
                   </div>
@@ -295,69 +303,69 @@ function SupportContent() {
             ))}
             
             {filteredThreads.length === 0 && (
-              <div className="col-span-full py-32 text-center opacity-20">
-                <MessageSquare className="h-20 w-20 mx-auto mb-4" />
-                <p className="text-2xl font-black">لا توجد محادثات في هذه القائمة</p>
+              <div className="col-span-full py-20 text-center opacity-20">
+                <MessageSquare className="h-16 w-16 mx-auto mb-3" />
+                <p className="text-xl font-black">لا توجد محادثات</p>
               </div>
             )}
           </div>
         </div>
       ) : (
-        <Card className="rounded-[2.5rem] border-none shadow-2xl flex flex-col overflow-hidden bg-white min-h-[85vh]">
-          <CardHeader className="p-8 border-b flex flex-row items-center justify-between bg-slate-50/50">
-            <div className="flex items-center gap-5">
+        <Card className="rounded-3xl border-none shadow-xl flex flex-col overflow-hidden bg-white h-[82vh]">
+          <CardHeader className="p-4 border-b flex flex-row items-center justify-between bg-slate-50/50 shrink-0">
+            <div className="flex items-center gap-4">
               <Button 
                 variant="ghost" 
                 size="icon" 
                 onClick={() => { setActiveThreadId(null); setMessages([]); router.push('/support'); }}
-                className="h-12 w-12 rounded-2xl bg-white border border-slate-200 shadow-sm hover:bg-primary hover:text-white transition-all"
+                className="h-10 w-10 rounded-xl bg-white border border-slate-200 shadow-sm hover:bg-primary hover:text-white transition-all"
               >
-                <ArrowRight className="h-6 w-6" />
+                <ArrowRight className="h-5 w-5" />
               </Button>
-              <div className="h-16 w-16 rounded-2xl bg-primary flex items-center justify-center text-white font-black text-3xl shadow-xl">
+              <div className="h-12 w-12 rounded-xl bg-primary flex items-center justify-center text-white font-black text-xl shadow-lg">
                 {isAdmin ? (threadDisplayName?.[0] || 'U') : 'A'}
               </div>
               <div>
-                <CardTitle className="text-2xl font-black text-slate-800">
+                <CardTitle className="text-lg font-black text-slate-800">
                   {threadDisplayName}
                 </CardTitle>
-                <div className="flex items-center gap-2 mt-1">
-                  <Circle className="h-2 w-2 fill-green-500 text-green-500 animate-pulse" />
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">نشط الآن</span>
+                <div className="flex items-center gap-2">
+                  <Circle className="h-1.5 w-1.5 fill-green-500 text-green-500 animate-pulse" />
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">متصل</span>
                 </div>
               </div>
             </div>
           </CardHeader>
 
-          <ScrollArea className="flex-1 p-8 bg-slate-50/20" viewportRef={scrollRef}>
-            <div className="space-y-10 max-w-5xl mx-auto">
+          <ScrollArea className="flex-1 px-4 py-6 bg-slate-50/10" viewportRef={scrollRef}>
+            <div className="space-y-6 max-w-4xl mx-auto">
               {messages.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-40 opacity-20">
-                  <div className="p-10 bg-white rounded-[3rem] shadow-sm mb-6 border">
-                    <MessageSquare className="h-16 w-16 text-primary" />
+                <div className="flex flex-col items-center justify-center py-20 opacity-20">
+                  <div className="p-6 bg-white rounded-2xl shadow-sm mb-4 border">
+                    <MessageSquare className="h-10 w-10 text-primary" />
                   </div>
-                  <p className="font-black text-2xl tracking-tight">ابدأ المحادثة الرسمية الآن...</p>
+                  <p className="font-black text-lg">ابدأ المحادثة الآن...</p>
                 </div>
               ) : (
                 messages.map((msg, idx) => {
                   const isMe = msg.senderId === profile?.uid;
                   return (
                     <div key={msg.id || idx} className={`flex ${isMe ? 'justify-start' : 'justify-end'}`}>
-                      <div className="max-w-[80%] md:max-w-[60%] space-y-2">
-                        <div className={`p-6 rounded-[2.5rem] text-lg font-bold shadow-sm leading-relaxed ${
+                      <div className="max-w-[85%] md:max-w-[70%] space-y-1">
+                        <div className={`p-4 rounded-2xl text-sm font-bold shadow-sm leading-relaxed ${
                           isMe 
                             ? 'bg-primary text-white rounded-tr-none' 
-                            : 'bg-white text-slate-800 rounded-tl-none border border-slate-100 shadow-md'
+                            : 'bg-white text-slate-800 rounded-tl-none border border-slate-100'
                         }`}>
                           {msg.text}
                         </div>
-                        <div className={`flex items-center gap-3 text-[10px] font-black text-slate-400 px-6 ${isMe ? 'justify-start' : 'justify-end'}`}>
+                        <div className={`flex items-center gap-2 text-[8px] font-black text-slate-400 px-2 ${isMe ? 'justify-start' : 'justify-end'}`}>
                           {msg.timestamp?.seconds ? (
                             <span>{format(msg.timestamp.seconds * 1000, 'p', { locale: ar })}</span>
                           ) : (
                             <span>الآن</span>
                           )}
-                          {isMe && <CheckCheck className="h-4 w-4 text-primary" />}
+                          {isMe && <CheckCheck className="h-3 w-3 text-primary" />}
                         </div>
                       </div>
                     </div>
@@ -367,11 +375,11 @@ function SupportContent() {
             </div>
           </ScrollArea>
 
-          <div className="p-10 border-t bg-white">
-            <form onSubmit={(e) => handleSendMessage(e)} className="flex gap-4 max-w-5xl mx-auto">
+          <div className="p-4 border-t bg-white shrink-0">
+            <form onSubmit={(e) => handleSendMessage(e)} className="flex gap-3 max-w-4xl mx-auto">
               <Input 
-                placeholder="اكتب رسالتك هنا..." 
-                className="flex-1 h-20 rounded-[2rem] border-none shadow-inner px-10 font-bold text-xl bg-slate-50 focus-visible:ring-primary/20 placeholder:text-slate-300"
+                placeholder="اكتب رسالتك..." 
+                className="flex-1 h-12 rounded-xl border-none shadow-inner px-5 font-bold text-sm bg-slate-50 focus-visible:ring-primary/20"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
               />
@@ -379,9 +387,9 @@ function SupportContent() {
                 type="submit" 
                 size="icon" 
                 disabled={!inputText.trim()}
-                className="h-20 w-20 rounded-[2rem] shadow-2xl active:scale-95 transition-all bg-primary hover:bg-slate-900"
+                className="h-12 w-12 rounded-xl shadow-lg active:scale-95 transition-all bg-primary"
               >
-                <Send className="h-8 w-8" />
+                <Send className="h-5 w-5" />
               </Button>
             </form>
           </div>
@@ -396,7 +404,7 @@ export default function SupportPage() {
     <Suspense fallback={
       <div className="flex flex-col items-center justify-center h-[80vh] gap-4">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="font-bold text-slate-500">جاري تحميل واجهة المراسلات...</p>
+        <p className="font-bold text-slate-500">جاري تحميل الدردشة...</p>
       </div>
     }>
       <SupportContent />
