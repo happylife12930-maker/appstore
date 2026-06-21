@@ -17,7 +17,8 @@ import {
   Phone,
   Clock,
   Trash2,
-  AlertCircle
+  AlertCircle,
+  UserPlus
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -59,6 +60,7 @@ import {
 function SupportContent() {
   const { profile, loading: authLoading } = useAuth();
   const [threads, setThreads] = useState<any[]>([]);
+  const [allClients, setAllClients] = useState<any[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
   const [inputText, setInputText] = useState("");
@@ -86,18 +88,19 @@ function SupportContent() {
   useEffect(() => {
     if (!db || !isAdmin) return;
 
-    const q = query(collection(db, "support_threads"), orderBy("lastMessageTime", "desc"));
-    const unsub = onSnapshot(q, 
-      (snap) => {
-        setThreads(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-        setLoading(false);
-      },
-      () => {
-        setLoading(false);
-      }
-    );
+    // جلب المحادثات الحالية
+    const qThreads = query(collection(db, "support_threads"), orderBy("lastMessageTime", "desc"));
+    const unsubThreads = onSnapshot(qThreads, (snap) => {
+      setThreads(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setLoading(false);
+    });
 
-    return () => unsub();
+    // جلب كافة العملاء للبحث والبدء الجديد
+    const unsubClients = onSnapshot(collection(db, "clients"), (snap) => {
+      setAllClients(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+
+    return () => { unsubThreads(); unsubClients(); };
   }, [isAdmin]);
 
   useEffect(() => {
@@ -165,9 +168,9 @@ function SupportContent() {
       };
 
       if (isAdmin) {
-        const activeThread = threads.find(t => t.id === threadId);
-        updateData.clientName = activeThread?.clientName || cname || "مستفيد";
-        updateData.clientPhone = activeThread?.clientPhone || "";
+        const client = allClients.find(c => c.id === threadId);
+        updateData.clientName = client?.name || cname || "مستفيد";
+        updateData.clientPhone = client?.phone || "";
         updateData.unreadClient = increment(1);
       } else {
         updateData.clientName = profile.name || "مستفيد";
@@ -223,16 +226,33 @@ function SupportContent() {
     }
   };
 
-  const filteredThreads = threads.filter(t => {
-    const threadStatus = t.status || "active";
-    if (threadStatus !== activeTab) return false;
+  // البحث برقم الهاتف فقط وجلب العملاء لبدء محادثة
+  const filteredResults = React.useMemo(() => {
+    const q = searchQuery.trim();
+    
+    // إذا لم يكن هناك بحث، نعرض المحادثات الحالية حسب التبويب
+    if (!q) {
+      return threads.filter(t => (t.status || "active") === activeTab);
+    }
 
-    const q = searchQuery.toLowerCase().trim();
-    if (!q) return true;
-    const nameMatch = t.clientName?.toLowerCase().includes(q);
-    const phoneMatch = t.clientPhone?.toLowerCase().includes(q);
-    return nameMatch || phoneMatch;
-  });
+    // إذا كان هناك بحث، نبحث في قائمة "كل العملاء" برقم الهاتف
+    return allClients
+      .filter(c => c.phone?.includes(q))
+      .map(client => {
+        // نتحقق إذا كان لهذا العميل محادثة مسجلة مسبقاً
+        const existingThread = threads.find(t => t.id === client.id);
+        return {
+          id: client.id,
+          clientName: client.name,
+          clientPhone: client.phone,
+          lastMessage: existingThread?.lastMessage,
+          lastMessageTime: existingThread?.lastMessageTime,
+          unreadAdmin: existingThread?.unreadAdmin,
+          status: existingThread?.status || "new", // "new" تعني لم تبدأ بعد
+          isExisting: !!existingThread
+        };
+      });
+  }, [threads, allClients, searchQuery, activeTab]);
 
   if (authLoading || loading) return (
     <div className="flex flex-col items-center justify-center h-[80vh] gap-4">
@@ -241,8 +261,8 @@ function SupportContent() {
     </div>
   );
 
-  const activeThread = threads.find(t => t.id === activeThreadId);
-  const threadDisplayName = isAdmin ? (activeThread?.clientName || cname || "مستفيد") : 'الدعم الفني - APP STORE';
+  const activeThread = threads.find(t => t.id === activeThreadId) || allClients.find(c => c.id === activeThreadId);
+  const threadDisplayName = isAdmin ? (activeThread?.clientName || activeThread?.name || cname || "مستفيد") : 'الدعم الفني - APP STORE';
 
   return (
     <div className="max-w-6xl mx-auto" dir="rtl">
@@ -255,7 +275,7 @@ function SupportContent() {
               </div>
               <div>
                 <h1 className="text-xl font-black text-slate-800">مركز المراسلات</h1>
-                <p className="text-[10px] font-bold text-slate-400">إدارة استفسارات العملاء والدعم الفني</p>
+                <p className="text-[10px] font-bold text-slate-400">ابحث برقم الهاتف لبدء دردشة فورية</p>
               </div>
             </div>
             
@@ -270,79 +290,85 @@ function SupportContent() {
           <div className="relative">
             <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 h-4 w-4" />
             <Input 
-              placeholder="ابحث باسم العميل أو رقم الهاتف..." 
-              className="pr-12 h-12 rounded-2xl font-bold border-none shadow-sm bg-white focus-visible:ring-primary/20 text-sm"
+              placeholder="ابحث برقم هاتف العميل فقط..." 
+              className="pr-12 h-14 rounded-2xl font-black border-none shadow-sm bg-white focus-visible:ring-primary/20 text-lg"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              dir="ltr"
             />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredThreads.map((thread) => (
+            {filteredResults.map((item) => (
               <Card 
-                key={thread.id}
-                onClick={() => setActiveThreadId(thread.id)}
+                key={item.id}
+                onClick={() => setActiveThreadId(item.id)}
                 className="rounded-2xl border-none shadow-sm hover:shadow-md transition-all bg-white overflow-hidden cursor-pointer group border border-slate-50"
               >
                 <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-black text-base group-hover:bg-primary group-hover:text-white transition-colors">
-                      {thread.clientName?.[0] || 'U'}
+                    <div className={`h-10 w-10 rounded-xl flex items-center justify-center font-black text-base transition-colors ${
+                      item.status === 'new' ? 'bg-green-50 text-green-600' : 'bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white'
+                    }`}>
+                      {item.status === 'new' ? <UserPlus className="h-5 w-5" /> : (item.clientName?.[0] || 'U')}
                     </div>
                     <div>
-                      <p className="font-black text-slate-800 text-xs">{thread.clientName}</p>
-                      {thread.clientPhone && (
-                        <p className="text-[8px] font-bold text-slate-400 flex items-center gap-1" dir="ltr">
-                          <Phone className="h-2 w-2" /> {thread.clientPhone}
-                        </p>
-                      )}
+                      <p className="font-black text-slate-800 text-xs">{item.clientName}</p>
+                      <p className="text-[8px] font-bold text-slate-400 flex items-center gap-1" dir="ltr">
+                        <Phone className="h-2 w-2" /> {item.clientPhone}
+                      </p>
                     </div>
                   </div>
-                  {thread.unreadAdmin > 0 && (
+                  {(item.unreadAdmin || 0) > 0 && (
                     <Badge className="bg-rose-500 text-white rounded-full h-5 min-w-5 flex items-center justify-center p-1 text-[8px]">
-                      {thread.unreadAdmin}
+                      {item.unreadAdmin}
                     </Badge>
+                  )}
+                  {item.status === 'new' && (
+                    <Badge variant="outline" className="text-[7px] font-black text-green-600 border-green-200">بدء جديد</Badge>
                   )}
                 </CardHeader>
                 <CardContent className="p-4 pt-2 space-y-3">
                   <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
                     <p className="text-[10px] font-bold text-slate-500 line-clamp-1">
-                      {thread.lastMessage || 'محادثة جديدة...'}
+                      {item.lastMessage || (item.status === 'new' ? 'لا توجد رسائل سابقة.. انقر للبدء' : 'محادثة فارغة')}
                     </p>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1 text-[8px] font-black text-slate-300">
                       <Clock className="h-2 w-2" />
-                      <span>{thread.lastMessageTime ? format(thread.lastMessageTime.toDate(), 'eeee p', { locale: ar }) : 'الآن'}</span>
+                      <span>{item.lastMessageTime ? format(item.lastMessageTime.toDate(), 'eeee p', { locale: ar }) : 'الآن'}</span>
                     </div>
-                    <div className="flex gap-1">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={(e) => handleArchiveThread(e, thread.id, activeTab === "archived")}
-                        className="h-6 rounded-lg text-slate-400 hover:text-primary hover:bg-primary/5 font-black text-[8px] gap-1 px-2"
-                      >
-                        {activeTab === "archived" ? <ArchiveRestore className="h-3 w-3" /> : <Archive className="h-3 w-3" />}
-                        {activeTab === "archived" ? "استعادة" : "أرشفة"}
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={(e) => { e.stopPropagation(); setThreadToDelete(thread.id); }}
-                        className="h-6 rounded-lg text-rose-300 hover:text-rose-600 hover:bg-rose-50 font-black text-[8px] gap-1 px-2"
-                      >
-                        <Trash2 className="h-3 w-3" /> حذف
-                      </Button>
-                    </div>
+                    {item.isExisting && (
+                      <div className="flex gap-1">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={(e) => handleArchiveThread(e, item.id, item.status === "archived")}
+                          className="h-6 rounded-lg text-slate-400 hover:text-primary hover:bg-primary/5 font-black text-[8px] gap-1 px-2"
+                        >
+                          {item.status === "archived" ? <ArchiveRestore className="h-3 w-3" /> : <Archive className="h-3 w-3" />}
+                          {item.status === "archived" ? "استعادة" : "أرشفة"}
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={(e) => { e.stopPropagation(); setThreadToDelete(item.id); }}
+                          className="h-6 rounded-lg text-rose-300 hover:text-rose-600 hover:bg-rose-50 font-black text-[8px] gap-1 px-2"
+                        >
+                          <Trash2 className="h-3 w-3" /> إخفاء
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
             ))}
             
-            {filteredThreads.length === 0 && (
+            {filteredResults.length === 0 && (
               <div className="col-span-full py-20 text-center opacity-20">
-                <MessageSquare className="h-16 w-16 mx-auto mb-3" />
-                <p className="text-xl font-black">لا توجد محادثات</p>
+                <Search className="h-16 w-16 mx-auto mb-3" />
+                <p className="text-xl font-black">لم يتم العثور على أي عميل بهذا الرقم</p>
               </div>
             )}
           </div>
@@ -368,7 +394,7 @@ function SupportContent() {
                 </CardTitle>
                 <div className="flex items-center gap-2">
                   <Circle className="h-1.5 w-1.5 fill-green-500 text-green-500 animate-pulse" />
-                  <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">متصل</span>
+                  <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">نشط الآن</span>
                 </div>
               </div>
             </div>
@@ -379,6 +405,7 @@ function SupportContent() {
                   size="icon" 
                   onClick={() => setThreadToDelete(activeThreadId)}
                   className="h-9 w-9 rounded-xl text-rose-300 hover:text-rose-600 hover:bg-rose-50"
+                  title="إخفاء من القائمة"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -393,7 +420,7 @@ function SupportContent() {
                   <div className="p-4 bg-white rounded-2xl shadow-sm mb-2 border">
                     <MessageSquare className="h-8 w-8 text-primary" />
                   </div>
-                  <p className="font-black text-sm">ابدأ المحادثة الآن...</p>
+                  <p className="font-black text-sm">ابدأ مراسلة العميل الآن...</p>
                 </div>
               ) : (
                 messages.map((msg, idx) => {
@@ -455,7 +482,7 @@ function SupportContent() {
             </div>
             <AlertDialogTitle className="text-xl font-black">إخفاء المحادثة من القائمة؟</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-500 font-bold leading-relaxed">
-              سيتم حذف المحادثة من العرض الحالي فقط، ولكن عند الرجوع إليها أو استقبال رسالة جديدة، ستتمكن من استرجاع كامل تاريخ المحادثة والرسائل السابقة.
+              سوف يتم حذف المحادثة، لكن عند الرجوع إليها ستتمكن من استرجاع كامل تاريخ المحادثة والرسائل السابقة بمجرد إرسال رسالة جديدة.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-row-reverse gap-3 mt-4">
