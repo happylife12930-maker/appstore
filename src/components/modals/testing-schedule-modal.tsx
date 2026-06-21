@@ -41,11 +41,12 @@ export function TestingScheduleModal({ isOpen, onClose }: { isOpen: boolean; onC
       const groups = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
       const newSchedule: Schedule = {};
 
-      // Initialize days
+      // تهيئة الأيام بشكل صحيح
       DAYS_OF_WEEK.forEach(day => {
         newSchedule[day] = [];
       });
 
+      // خوارزمية التوزيع الذكي للمختبرين والمشاريع
       groups.forEach((group) => {
         if (!group.testers || !Array.isArray(group.testers)) return;
         
@@ -55,29 +56,33 @@ export function TestingScheduleModal({ isOpen, onClose }: { isOpen: boolean; onC
           tester.assignedDays.forEach((day: string) => {
             const normalizedDay = day.trim();
             
-            // Skip if day is not in our standard list
-            if (!newSchedule[normalizedDay]) return;
-            
-            let projectEntry = newSchedule[normalizedDay].find(p => p.projectId === group.projectId || p.projectName === group.projectName);
-            
-            const testerInfo = { 
-              email: tester.email || "بدون بريد", 
-              phone: tester.phone || "" 
-            };
+            // التحقق من وجود اليوم في القائمة المعتمدة
+            if (newSchedule[normalizedDay] !== undefined) {
+              // البحث عما إذا كان المشروع مضافاً مسبقاً لهذا اليوم
+              let projectEntry = newSchedule[normalizedDay].find(p => 
+                p.projectName === group.projectName || p.projectId === group.projectId
+              );
 
-            if (projectEntry) {
-              // Add tester if not already in this project for this day
-              if (!projectEntry.testers.find(t => t.email === testerInfo.email)) {
-                projectEntry.testers.push(testerInfo);
+              const testerInfo = { 
+                email: tester.email || "بدون بريد", 
+                phone: tester.phone || "" 
+              };
+
+              if (projectEntry) {
+                // إضافة المختبر للمشروع إذا لم يكن موجوداً
+                if (!projectEntry.testers.find(t => t.email === testerInfo.email)) {
+                  projectEntry.testers.push(testerInfo);
+                }
+              } else {
+                // إضافة المشروع كمشاركة جديدة لهذا اليوم
+                newSchedule[normalizedDay].push({
+                  projectId: group.projectId || group.id,
+                  projectName: group.projectName || "مشروع غير مسمى",
+                  resourceLink: group.resourceLink || "",
+                  notes: group.notes || "",
+                  testers: [testerInfo],
+                });
               }
-            } else {
-              newSchedule[normalizedDay].push({
-                projectId: group.projectId || group.id,
-                projectName: group.projectName,
-                resourceLink: group.resourceLink,
-                notes: group.notes,
-                testers: [testerInfo],
-              });
             }
           });
         });
@@ -86,9 +91,9 @@ export function TestingScheduleModal({ isOpen, onClose }: { isOpen: boolean; onC
       setSchedule(newSchedule);
       setLoading(false);
     }, (error) => {
-      console.error("Schedule Load Error:", error);
+      console.error("Firestore Load Error:", error);
       setLoading(false);
-      toast({ title: "خطأ", description: "فشل تحميل جدول الاختبارات", variant: "destructive" });
+      toast({ title: "خطأ في الاتصال", description: "فشل تحميل بيانات المختبرين من النظام.", variant: "destructive" });
     });
 
     return () => unsub();
@@ -114,14 +119,14 @@ export function TestingScheduleModal({ isOpen, onClose }: { isOpen: boolean; onC
         cleanPhone = '20' + cleanPhone;
       }
 
-      const message = `*تذكير بمهمة اختبار - يوم ${day}* 🚀
+      const message = `*تنبيه بمهمة اختبار - يوم ${day}* 🚀
 
 مرحباً، نود تذكيركم بمهمة الاختبار المقررة لكم اليوم لمشروع: *${project.projectName}*
 
 *رابط نسخة الاختبار / المرفقات:*
 🔗 ${project.resourceLink || 'سيتم تزويدكم به لاحقاً'}
 
-${project.notes ? `*تعليمات وملاحظات الإدارة:*
+${project.notes ? `*تعليمات الإدارة:*
 📝 ${project.notes}` : ''}
 
 يرجى البدء في الاختبار وموافاتنا بالتقرير فور الانتهاء.
@@ -129,14 +134,14 @@ ${project.notes ? `*تعليمات وملاحظات الإدارة:*
 
       const encodedMessage = encodeURIComponent(message);
       
-      // Delays to prevent browser from blocking multiple popups
+      // تأخير بسيط لمنع حظر المتصفح للنوافذ المتعددة
       setTimeout(() => {
         window.open(`https://wa.me/${cleanPhone}?text=${encodedMessage}`, '_blank');
-      }, index * 1200);
+      }, index * 1300);
     });
 
     toast({ 
-      title: "جاري فتح المحادثات", 
+      title: "جاري إرسال التنبيهات", 
       description: `يتم الآن التواصل مع ${testersWithPhone.length} مختبر لمشروع ${project.projectName}.` 
     });
   };
@@ -169,7 +174,7 @@ ${project.notes ? `*تعليمات وملاحظات الإدارة:*
                 <div class="day-title">${day}</div>
                 ${projects.map(p => `
                   <div class="project-card">
-                    <div class="project-name">اسم المشروع: ${p.projectName}</div>
+                    <div class="project-name">المشروع: ${p.projectName}</div>
                     ${p.notes ? `<div class="notes">📝 تعليمات: ${p.notes}</div>` : ''}
                     <div class="testers-list">
                       ${p.testers.map(t => `<div class="tester-item">👤 ${t.email} <br/> <small>📞 ${t.phone || 'بدون هاتف'}</small></div>`).join('')}
@@ -186,7 +191,7 @@ ${project.notes ? `*تعليمات وملاحظات الإدارة:*
     if (printWindow) {
       printWindow.document.write(printContent);
       printWindow.document.close();
-      setTimeout(() => { printWindow.print(); }, 800);
+      setTimeout(() => { printWindow.print(); }, 1000);
     }
   };
 
@@ -201,7 +206,7 @@ ${project.notes ? `*تعليمات وملاحظات الإدارة:*
               </div>
               <div>
                 <DialogTitle className="text-3xl font-black tracking-tight">جدول الاختبارات الأسبوعي</DialogTitle>
-                <DialogDescription className="text-primary-foreground/70 font-bold text-lg mt-1">توزيع المهام وتذكير فريق الجودة بالمواعيد</DialogDescription>
+                <DialogDescription className="text-primary-foreground/70 font-bold text-lg mt-1">عرض توزيع المهام اليومي لفريق الجودة</DialogDescription>
               </div>
             </div>
             <Button size="icon" variant="ghost" onClick={onClose} className="rounded-full hover:bg-white/10 text-white h-12 w-12">
@@ -238,7 +243,7 @@ ${project.notes ? `*تعليمات وملاحظات الإدارة:*
                         <div key={idx} className="p-8 rounded-[2.5rem] border border-slate-100 bg-white shadow-sm hover:shadow-xl transition-all flex flex-col group">
                           <div className="flex justify-between items-start mb-6">
                             <div className="space-y-1">
-                              <p className="text-[10px] font-black text-primary uppercase tracking-widest opacity-60">مشروع جاري اختباره</p>
+                              <p className="text-[10px] font-black text-primary uppercase tracking-widest opacity-60">مهمة عمل جارية</p>
                               <h4 className="text-xl font-black text-slate-800 group-hover:text-primary transition-colors">{proj.projectName}</h4>
                             </div>
                             <div className="p-2 bg-slate-50 rounded-xl">
@@ -271,9 +276,9 @@ ${project.notes ? `*تعليمات وملاحظات الإدارة:*
 
                             {proj.resourceLink && (
                               <div className="p-3 bg-primary/5 rounded-2xl border border-primary/10 flex items-center justify-between group/link">
-                                <span className="text-[9px] font-black text-primary">رابط نسخة الاختبار المرفق</span>
+                                <span className="text-[9px] font-black text-primary">رابط المرفقات</span>
                                 <a href={proj.resourceLink} target="_blank" className="text-[9px] font-black text-primary underline flex items-center gap-1">
-                                  فتح <ExternalLink className="h-2 w-2" />
+                                  فتح الرابط <ExternalLink className="h-2 w-2" />
                                 </a>
                               </div>
                             )}
@@ -297,8 +302,8 @@ ${project.notes ? `*تعليمات وملاحظات الإدارة:*
                   <div className="p-10 bg-white rounded-full shadow-inner mb-4 animate-pulse">
                     <CalendarDays className="h-32 w-32 text-slate-200" />
                   </div>
-                  <h3 className="text-3xl font-black text-slate-400">الجدول فارغ تماماً</h3>
-                  <p className="text-lg font-bold text-slate-400 max-w-md mx-auto leading-relaxed">لم يتم تعيين أي مختبرين للمشاريع حالياً. قم بإضافة مهمة اختبار وتحديد أيام العمل لتظهر هنا.</p>
+                  <h3 className="text-3xl font-black text-slate-400">الجدول فارغ حالياً</h3>
+                  <p className="text-lg font-bold text-slate-400 max-w-md mx-auto leading-relaxed">لم يتم تعيين أي مختبرين للمشاريع بالأيام المحددة. قم بإضافة مختبر وتحديد أيامه لتظهر هنا.</p>
                 </div>
               )}
             </div>
@@ -320,4 +325,3 @@ ${project.notes ? `*تعليمات وملاحظات الإدارة:*
     </Dialog>
   );
 }
-
