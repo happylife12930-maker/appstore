@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -12,8 +11,6 @@ const ScrollArea = React.forwardRef<
     viewportRef?: React.Ref<HTMLDivElement>
   }
 >(({ className, children, viewportRef, ...props }, ref) => {
-  // نقوم باستخراج viewportRef من الخصائص لمنع تمريره إلى المكون الأساسي كخاصية DOM غير معروفة
-  // ثم نقوم بتمريره فقط إلى ScrollAreaPrimitive.Viewport
   return (
     <ScrollAreaPrimitive.Root
       ref={ref}

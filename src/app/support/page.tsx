@@ -1,11 +1,9 @@
-
 "use client";
 
 import * as React from "react";
 import { useState, useEffect, useRef, Suspense } from "react";
 import { 
   Send, 
-  LifeBuoy, 
   Search, 
   Loader2, 
   Circle,
@@ -14,7 +12,9 @@ import {
   ArchiveRestore,
   X,
   MessageSquare,
-  User
+  ArrowRight,
+  Phone,
+  Clock
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -39,7 +39,7 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { ar } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 function SupportContent() {
@@ -52,6 +52,7 @@ function SupportContent() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("active");
   const { toast } = useToast();
+  const router = useRouter();
   
   const searchParams = useSearchParams();
   const cid = searchParams.get('clientId');
@@ -66,7 +67,6 @@ function SupportContent() {
     }
   }, [messages]);
 
-  // مراقبة كافة المحادثات (للأدمن)
   useEffect(() => {
     if (!db || !isAdmin) return;
 
@@ -84,7 +84,6 @@ function SupportContent() {
     return () => unsub();
   }, [isAdmin]);
 
-  // تحديد المحادثة النشطة عند التحميل من رابط خارجي
   useEffect(() => {
     if (profile && !isAdmin) {
       if (profile.clientId) {
@@ -93,13 +92,11 @@ function SupportContent() {
       setLoading(false);
     } else if (isAdmin && cid) {
       setActiveThreadId(cid);
-      // التأكد من أن التبويب هو النشط إذا تم فتح العميل
       setActiveTab("active");
       setLoading(false);
     }
   }, [profile, isAdmin, cid]);
 
-  // مراقبة الرسائل في المحادثة المختارة
   useEffect(() => {
     if (!db || !activeThreadId || !profile) return;
 
@@ -113,7 +110,6 @@ function SupportContent() {
       (snap) => {
         setMessages(snap.docs.map(d => ({ id: d.id, ...d.data() })));
         
-        // تصفير العداد عند فتح المحادثة
         const threadRef = doc(db, "support_threads", activeThreadId);
         if (isAdmin) {
           updateDoc(threadRef, { unreadAdmin: 0 }).catch(() => {});
@@ -143,16 +139,13 @@ function SupportContent() {
     };
 
     try {
-      // 1. إضافة الرسالة للمجموعة الفرعية
       await addDoc(collection(db, "support_threads", threadId, "messages"), msgData);
 
-      // 2. تحديث مستند المحادثة الرئيسي مع التأكيد القوي على الحالة "active"
       const threadRef = doc(db, "support_threads", threadId);
-      
       const updateData: any = {
         lastMessage: text,
         lastMessageTime: serverTimestamp(),
-        status: "active" // إجبار الحالة على نشط لتخرج من الأرشيف فوراً
+        status: "active"
       };
 
       if (isAdmin) {
@@ -202,7 +195,7 @@ function SupportContent() {
     const q = searchQuery.toLowerCase().trim();
     if (!q) return true;
     const nameMatch = t.clientName?.toLowerCase().includes(q);
-    const phoneMatch = t.clientPhone?.includes(q);
+    const phoneMatch = t.clientPhone?.toLowerCase().includes(q);
     return nameMatch || phoneMatch;
   });
 
@@ -217,197 +210,183 @@ function SupportContent() {
   const threadDisplayName = isAdmin ? (activeThread?.clientName || cname || "مستفيد") : 'الدعم الفني - APP STORE';
 
   return (
-    <div className="max-w-[1600px] mx-auto h-[calc(100vh-120px)] flex flex-col md:flex-row gap-4" dir="rtl">
-      {isAdmin && (
-        <Card className="w-full md:w-96 rounded-3xl border-none shadow-sm flex flex-col overflow-hidden bg-white">
-          <CardHeader className="p-6 border-b bg-slate-50/50 space-y-4">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-2xl font-black flex items-center gap-3">
-                <MessageSquare className="h-6 w-6 text-primary" /> البريد
-              </CardTitle>
+    <div className="max-w-7xl mx-auto space-y-6 pb-10" dir="rtl">
+      {!activeThreadId ? (
+        <div className="space-y-8">
+          <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-8 rounded-[2.5rem] shadow-sm border">
+            <div className="flex items-center gap-4">
+              <div className="p-4 bg-primary/10 rounded-2xl text-primary">
+                <MessageSquare className="h-8 w-8" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-black text-slate-800 tracking-tight">مركز المراسلات</h1>
+                <p className="text-slate-500 font-bold">إدارة استفسارات العملاء والدعم الفني</p>
+              </div>
             </div>
             
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid grid-cols-2 w-full rounded-2xl p-1 bg-slate-200/50">
-                <TabsTrigger value="active" className="rounded-xl font-black text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">الرسائل</TabsTrigger>
-                <TabsTrigger value="archived" className="rounded-xl font-black text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">الأرشيف</TabsTrigger>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full md:w-auto">
+              <TabsList className="grid grid-cols-2 w-full md:w-[300px] rounded-2xl p-1 bg-slate-100">
+                <TabsTrigger value="active" className="rounded-xl font-black text-sm data-[state=active]:bg-white">نشطة</TabsTrigger>
+                <TabsTrigger value="archived" className="rounded-xl font-black text-sm data-[state=active]:bg-white">الأرشيف</TabsTrigger>
               </TabsList>
             </Tabs>
+          </header>
 
-            <div className="relative">
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <Input 
-                placeholder="بحث بالاسم أو الرقم..." 
-                className="pr-10 h-12 rounded-2xl bg-white border-slate-200 font-bold text-sm shadow-inner"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-          </CardHeader>
-          <ScrollArea className="flex-1">
-            <div className="p-3 space-y-2">
-              {filteredThreads.map((thread) => (
-                <div 
-                  key={thread.id}
-                  onClick={() => setActiveThreadId(thread.id)}
-                  className={`p-4 rounded-[2rem] cursor-pointer transition-all flex items-center gap-4 relative group ${
-                    activeThreadId === thread.id ? 'bg-primary text-white shadow-xl scale-[0.98]' : 'hover:bg-slate-50'
-                  }`}
-                >
-                  <div className={`h-14 w-14 rounded-2xl flex items-center justify-center font-black text-xl shadow-sm ${
-                    activeThreadId === thread.id ? 'bg-white/20 text-white' : 'bg-slate-100 text-primary'
-                  }`}>
-                    {thread.clientName?.[0] || 'U'}
-                  </div>
-                  <div className="flex-1 overflow-hidden">
-                    <div className="flex justify-between items-center mb-1">
-                      <p className={`font-black text-base truncate ${activeThreadId === thread.id ? 'text-white' : 'text-slate-800'}`}>
-                        {thread.clientName}
-                      </p>
-                      <div className="flex items-center gap-2">
-                        {thread.unreadAdmin > 0 && activeThreadId !== thread.id && (
-                          <Badge className="bg-rose-500 text-white rounded-full h-6 min-w-6 flex items-center justify-center p-1 text-[10px] animate-bounce border-2 border-white shadow-sm">
-                            {thread.unreadAdmin}
-                          </Badge>
-                        )}
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={(e) => handleArchiveThread(e, thread.id, activeTab === "archived")}
-                          className={`h-9 w-9 rounded-xl transition-all ${
-                            activeThreadId === thread.id ? 'text-white/70 hover:text-white hover:bg-white/10' : 'text-slate-300 hover:text-primary hover:bg-primary/5'
-                          }`}
-                          title={activeTab === "archived" ? "استعادة للنشطة" : "نقل للأرشيف"}
-                        >
-                          {activeTab === "archived" ? <ArchiveRestore className="h-5 w-5" /> : <Archive className="h-5 w-5" />}
-                        </Button>
-                      </div>
+          <div className="relative">
+            <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5" />
+            <Input 
+              placeholder="ابحث باسم العميل أو رقم الهاتف للوصول السريع للمحادثة..." 
+              className="pr-12 h-16 rounded-[1.5rem] font-bold text-lg border-none shadow-sm bg-white focus-visible:ring-primary/20"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredThreads.map((thread) => (
+              <Card 
+                key={thread.id}
+                onClick={() => setActiveThreadId(thread.id)}
+                className="rounded-[2rem] border-none shadow-sm hover:shadow-xl transition-all bg-white overflow-hidden cursor-pointer group border border-slate-50"
+              >
+                <CardHeader className="p-6 pb-2 flex flex-row items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-black text-xl group-hover:bg-primary group-hover:text-white transition-colors shadow-inner">
+                      {thread.clientName?.[0] || 'U'}
                     </div>
-                    <p className={`text-xs truncate ${activeThreadId === thread.id ? 'text-white/70' : 'text-slate-400 font-bold'}`}>
-                      {thread.lastMessage || 'محادثة جديدة'}
+                    <div>
+                      <p className="font-black text-slate-800 text-lg">{thread.clientName}</p>
+                      {thread.clientPhone && (
+                        <p className="text-[10px] font-bold text-slate-400 flex items-center gap-1" dir="ltr">
+                          <Phone className="h-2.5 w-2.5" /> {thread.clientPhone}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  {thread.unreadAdmin > 0 && (
+                    <Badge className="bg-rose-500 text-white rounded-full h-7 min-w-7 flex items-center justify-center p-1 text-[10px] animate-bounce">
+                      {thread.unreadAdmin}
+                    </Badge>
+                  )}
+                </CardHeader>
+                <CardContent className="p-6 pt-2 space-y-4">
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                    <p className="text-xs font-bold text-slate-500 line-clamp-2 leading-relaxed">
+                      {thread.lastMessage || 'محادثة جديدة بانتظار الرد...'}
                     </p>
                   </div>
+                  <div className="flex items-center justify-between pt-2">
+                    <div className="flex items-center gap-1 text-[10px] font-black text-slate-300">
+                      <Clock className="h-3 w-3" />
+                      <span>{thread.lastMessageTime ? format(thread.lastMessageTime.toDate(), 'eeee p', { locale: ar }) : 'الآن'}</span>
+                    </div>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={(e) => handleArchiveThread(e, thread.id, activeTab === "archived")}
+                      className="h-8 rounded-lg text-slate-400 hover:text-primary hover:bg-primary/5 font-black text-[10px] gap-1"
+                    >
+                      {activeTab === "archived" ? <ArchiveRestore className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />}
+                      {activeTab === "archived" ? "استعادة" : "أرشفة"}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+            
+            {filteredThreads.length === 0 && (
+              <div className="col-span-full py-32 text-center opacity-20">
+                <MessageSquare className="h-20 w-20 mx-auto mb-4" />
+                <p className="text-2xl font-black">لا توجد محادثات في هذه القائمة</p>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        <Card className="rounded-[2.5rem] border-none shadow-2xl flex flex-col overflow-hidden bg-white min-h-[85vh]">
+          <CardHeader className="p-8 border-b flex flex-row items-center justify-between bg-slate-50/50">
+            <div className="flex items-center gap-5">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => { setActiveThreadId(null); setMessages([]); router.push('/support'); }}
+                className="h-12 w-12 rounded-2xl bg-white border border-slate-200 shadow-sm hover:bg-primary hover:text-white transition-all"
+              >
+                <ArrowRight className="h-6 w-6" />
+              </Button>
+              <div className="h-16 w-16 rounded-2xl bg-primary flex items-center justify-center text-white font-black text-3xl shadow-xl">
+                {isAdmin ? (threadDisplayName?.[0] || 'U') : 'A'}
+              </div>
+              <div>
+                <CardTitle className="text-2xl font-black text-slate-800">
+                  {threadDisplayName}
+                </CardTitle>
+                <div className="flex items-center gap-2 mt-1">
+                  <Circle className="h-2 w-2 fill-green-500 text-green-500 animate-pulse" />
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">نشط الآن</span>
                 </div>
-              ))}
-              {filteredThreads.length === 0 && (
-                <div className="py-20 text-center opacity-30 flex flex-col items-center gap-4">
-                   <div className="p-5 bg-slate-50 rounded-full">
-                     <MessageSquare className="h-10 w-10 text-slate-300" />
-                   </div>
-                   <p className="text-sm font-black text-slate-400 uppercase tracking-widest">لا توجد محادثات</p>
+              </div>
+            </div>
+          </CardHeader>
+
+          <ScrollArea className="flex-1 p-8 bg-slate-50/20" viewportRef={scrollRef}>
+            <div className="space-y-10 max-w-5xl mx-auto">
+              {messages.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-40 opacity-20">
+                  <div className="p-10 bg-white rounded-[3rem] shadow-sm mb-6 border">
+                    <MessageSquare className="h-16 w-16 text-primary" />
+                  </div>
+                  <p className="font-black text-2xl tracking-tight">ابدأ المحادثة الرسمية الآن...</p>
                 </div>
+              ) : (
+                messages.map((msg, idx) => {
+                  const isMe = msg.senderId === profile?.uid;
+                  return (
+                    <div key={msg.id || idx} className={`flex ${isMe ? 'justify-start' : 'justify-end'}`}>
+                      <div className="max-w-[80%] md:max-w-[60%] space-y-2">
+                        <div className={`p-6 rounded-[2.5rem] text-lg font-bold shadow-sm leading-relaxed ${
+                          isMe 
+                            ? 'bg-primary text-white rounded-tr-none' 
+                            : 'bg-white text-slate-800 rounded-tl-none border border-slate-100 shadow-md'
+                        }`}>
+                          {msg.text}
+                        </div>
+                        <div className={`flex items-center gap-3 text-[10px] font-black text-slate-400 px-6 ${isMe ? 'justify-start' : 'justify-end'}`}>
+                          {msg.timestamp?.seconds ? (
+                            <span>{format(msg.timestamp.seconds * 1000, 'p', { locale: ar })}</span>
+                          ) : (
+                            <span>الآن</span>
+                          )}
+                          {isMe && <CheckCheck className="h-4 w-4 text-primary" />}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
               )}
             </div>
           </ScrollArea>
+
+          <div className="p-10 border-t bg-white">
+            <form onSubmit={(e) => handleSendMessage(e)} className="flex gap-4 max-w-5xl mx-auto">
+              <Input 
+                placeholder="اكتب رسالتك هنا..." 
+                className="flex-1 h-20 rounded-[2rem] border-none shadow-inner px-10 font-bold text-xl bg-slate-50 focus-visible:ring-primary/20 placeholder:text-slate-300"
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+              />
+              <Button 
+                type="submit" 
+                size="icon" 
+                disabled={!inputText.trim()}
+                className="h-20 w-20 rounded-[2rem] shadow-2xl active:scale-95 transition-all bg-primary hover:bg-slate-900"
+              >
+                <Send className="h-8 w-8" />
+              </Button>
+            </form>
+          </div>
         </Card>
       )}
-
-      <Card className="flex-1 rounded-3xl border-none shadow-sm flex flex-col overflow-hidden bg-white border border-slate-100">
-        {activeThreadId ? (
-          <>
-            <CardHeader className="p-6 border-b flex flex-row items-center justify-between bg-slate-50/30">
-              <div className="flex items-center gap-4">
-                <div className="h-14 w-14 rounded-2xl bg-primary flex items-center justify-center text-white font-black text-2xl shadow-lg">
-                  {isAdmin ? (threadDisplayName?.[0] || 'U') : 'A'}
-                </div>
-                <div>
-                  <CardTitle className="text-xl font-black text-slate-800">
-                    {threadDisplayName}
-                  </CardTitle>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Circle className="h-2 w-2 fill-green-500 text-green-500 animate-pulse" />
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">متصل الآن</span>
-                  </div>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                 {isAdmin && (
-                  <Button 
-                    variant="outline" 
-                    size="icon" 
-                    onClick={() => setActiveThreadId(null)}
-                    className="rounded-2xl h-12 w-12 border-slate-200 text-slate-400 hover:text-slate-600 shadow-sm"
-                  >
-                    <X className="h-6 w-6" />
-                  </Button>
-                 )}
-              </div>
-            </CardHeader>
-
-            <ScrollArea className="flex-1 p-8" viewportRef={scrollRef}>
-              <div className="space-y-8 max-w-5xl mx-auto">
-                {messages.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-32 opacity-20">
-                    <div className="p-8 bg-slate-50 rounded-[3rem] mb-6">
-                      <LifeBuoy className="h-16 w-16" />
-                    </div>
-                    <p className="font-black text-2xl tracking-tight">ابدأ المحادثة الآن...</p>
-                  </div>
-                ) : (
-                  messages.map((msg, idx) => {
-                    const isMe = msg.senderId === profile?.uid;
-                    return (
-                      <div key={msg.id || idx} className={`flex ${isMe ? 'justify-start' : 'justify-end'}`}>
-                        <div className={`max-w-[85%] md:max-w-[70%] space-y-2`}>
-                          <div className={`p-5 rounded-[2.5rem] text-base font-bold shadow-sm leading-relaxed ${
-                            isMe 
-                              ? 'bg-primary text-white rounded-tr-none' 
-                              : 'bg-slate-100 text-slate-800 rounded-tl-none border border-slate-200/50'
-                          }`}>
-                            {msg.text}
-                          </div>
-                          <div className={`flex items-center gap-3 text-[10px] font-black text-slate-400 px-4 ${isMe ? 'justify-start' : 'justify-end'}`}>
-                            {msg.timestamp?.seconds ? (
-                              <span>{format(msg.timestamp.seconds * 1000, 'p', { locale: ar })}</span>
-                            ) : (
-                              <span>الآن</span>
-                            )}
-                            {isMe && <CheckCheck className="h-4 w-4 text-primary" />}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </ScrollArea>
-
-            <div className="p-8 border-t bg-slate-50/50">
-              <form onSubmit={(e) => handleSendMessage(e)} className="flex gap-4 max-w-5xl mx-auto">
-                <Input 
-                  placeholder="اكتب رسالتك للمستفيد هنا..." 
-                  className="flex-1 h-16 rounded-[2rem] border-none shadow-xl px-8 font-bold text-lg bg-white focus-visible:ring-primary/20 placeholder:text-slate-300"
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                />
-                <Button 
-                  type="submit" 
-                  size="icon" 
-                  disabled={!inputText.trim()}
-                  className="h-16 w-16 rounded-[2rem] shadow-2xl active:scale-95 transition-all bg-primary hover:bg-slate-900"
-                >
-                  <Send className="h-7 w-7" />
-                </Button>
-              </form>
-            </div>
-          </>
-        ) : (
-          <div className="flex-1 flex flex-col items-center justify-center p-20 text-center">
-            <div className="relative">
-              <div className="absolute inset-0 bg-primary/10 blur-[100px] rounded-full" />
-              <div className="relative z-10 h-40 w-40 rounded-[3rem] bg-white shadow-2xl flex items-center justify-center text-primary mb-10 border border-slate-50">
-                <MessageSquare className="h-16 w-16" />
-              </div>
-            </div>
-            <div className="max-w-md space-y-4">
-              <h3 className="text-3xl font-black text-slate-800 tracking-tight">منصة المراسلة الفورية</h3>
-              <p className="text-slate-400 font-bold text-lg leading-relaxed">
-                تواصل مع عملائك، قدم الدعم الفني، وتابع استفسارات المشاريع من مكان واحد وبسرعة فائقة.
-              </p>
-            </div>
-          </div>
-        )}
-      </Card>
     </div>
   );
 }
@@ -417,7 +396,7 @@ export default function SupportPage() {
     <Suspense fallback={
       <div className="flex flex-col items-center justify-center h-[80vh] gap-4">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="font-bold text-slate-500">جاري تحميل واجهة المحادثات...</p>
+        <p className="font-bold text-slate-500">جاري تحميل واجهة المراسلات...</p>
       </div>
     }>
       <SupportContent />
