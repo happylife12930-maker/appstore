@@ -1,56 +1,68 @@
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- دالات المساعدة الأساسية ---
+    // --- Helper Functions ---
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    // دالة للتحقق من الدور مباشرة دون الاعتماد على قواعد أخرى (لمنع التداخل)
-    function hasRole(role) {
-      return isAuthenticated() && 
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
+    // دالة لجلب بيانات المستخدم الحالي من مجموعة users
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
     function isAdmin() {
-      return hasRole('admin');
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             getUserData().role == 'admin';
     }
 
-    // --- قواعد الأمان ---
-
+    // --- Security Rules for 'users' collection ---
     match /users/{userId} {
-      // القاعدة الأساسية: المستخدم يمكنه دائماً قراءة بياناته الخاصة (تكسر التداخل المنطقي)
-      allow get: if isAuthenticated() && request.auth.uid == userId;
-      // المدير يمكنه قراءة أي مستخدم
-      allow get, list: if isAdmin();
-      // التعديل والإنشاء
+      allow get: if (isAuthenticated() && request.auth.uid == userId) || isAdmin();
+      allow list: if isAdmin();
       allow create, update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
       allow delete: if isAdmin();
     }
 
+    // --- Security Rules for 'clients' collection ---
+    match /clients/{clientId} {
+      allow read, write: if isAdmin();
+    }
+
+    // --- Security Rules for 'projects' collection ---
     match /projects/{projectId} {
-      allow read, list: if isAdmin() || (isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.clientId == resource.data.clientId);
+      allow create, update, delete: if isAdmin();
+      // الأدمن يرى الكل، والعميل يرى مشاريعه فقط بناءً على الـ clientId المربوط بحسابه
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.clientId == getUserData().clientId);
+    }
+
+    // --- Security Rules for 'quotations' collection ---
+    match /quotations/{quotationId} {
+      // عروض الأسعار (المعرض) متاح للقراءة لكل المستخدمين المسجلين
+      allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
 
-    match /quotations/{quotationId} {
-      allow read, list: if isAuthenticated();
-      allow write, delete: if isAdmin();
-    }
-
+    // --- Security Rules for 'testing_groups' collection ---
     match /testing_groups/{groupId} {
-      allow read, write, list, delete: if isAdmin();
+      allow read, write: if isAdmin();
     }
 
+    // --- Security Rules for 'support_threads' collection ---
     match /support_threads/{threadId} {
-      allow get, write: if isAdmin() || (isAuthenticated() && request.auth.uid == threadId);
-      allow list: if isAdmin();
+      // المحادثة متاحة للآدمن ولصاحب المحادثة فقط (حيث threadId هو uid المستخدم)
+      allow read, write: if isAdmin() || (isAuthenticated() && request.auth.uid == threadId);
       
       match /messages/{msgId} {
         allow read, write: if isAdmin() || (isAuthenticated() && request.auth.uid == threadId);
       }
+    }
+
+    // --- Security Rules for 'users_provision' (Activation) ---
+    match /users_provision/{email} {
+      allow read, write: if true; // متاح مؤقتاً لعملية الربط الأولى قبل الدخول
     }
   }
 }
