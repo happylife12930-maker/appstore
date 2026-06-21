@@ -75,7 +75,7 @@ function ClientsContent() {
 
   const clientsWithProjects = useMemo(() => {
     return clients.map(client => {
-      const clientProjects = projects.filter(p => p.clientId === client.id || p.clientPhone === client.phone);
+      const clientProjects = projects.filter(p => p.clientId === client.id || p.clientPhone === client.phone || p.clientPhone === client.phone2);
       return {
         ...client,
         associatedProjects: clientProjects
@@ -90,12 +90,13 @@ function ClientsContent() {
     return clientsWithProjects.filter(c => {
       const nameMatch = normalizeText(c.name).includes(s);
       const phoneMatch = normalizeText(c.phone).includes(s);
+      const phone2Match = normalizeText(c.phone2 || "").includes(s);
       const companyMatch = normalizeText(c.company || "").includes(s);
       const projectMatch = c.associatedProjects.some(p => 
         normalizeText(p.name || "").includes(s)
       );
       
-      return nameMatch || phoneMatch || companyMatch || projectMatch;
+      return nameMatch || phoneMatch || phone2Match || companyMatch || projectMatch;
     });
   }, [clientsWithProjects, searchQuery]);
 
@@ -168,7 +169,7 @@ function ClientsContent() {
             <div class="card">
               <h3 style="margin-top: 0;">بيانات العميل</h3>
               <p><b>الاسم:</b> ${client.name}</p>
-              <p><b>الهاتف:</b> ${client.phone}</p>
+              <p><b>الهاتف:</b> ${client.phone} ${client.phone2 ? `/ ${client.phone2}` : ''}</p>
               <p><b>البريد:</b> ${client.email || '---'}</p>
               <p><b>الشركة:</b> ${client.company || '---'}</p>
             </div>
@@ -248,7 +249,7 @@ function ClientsContent() {
       <div className="relative">
         <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5" />
         <Input 
-          placeholder="ابحث باسم العميل، رقم الهاتف، أو اسم المشروع..." 
+          placeholder="ابحث باسم العميل، رقم الهاتف (الأساسي أو الإضافي)، أو اسم المشروع..." 
           className="pr-12 h-16 rounded-2xl font-bold text-lg border-none shadow-sm bg-white focus-visible:ring-primary/20"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
@@ -283,9 +284,17 @@ function ClientsContent() {
                   </div>
                   <div className="overflow-hidden">
                     <CardTitle className="text-lg font-black truncate max-w-[120px]">{client.name}</CardTitle>
-                    <div className="flex items-center gap-1 mt-1">
-                      <Phone className="h-3 w-3 text-slate-400" />
-                      <span className="text-[10px] font-bold text-slate-500 truncate" dir="ltr">{client.phone}</span>
+                    <div className="flex flex-col gap-0.5 mt-1">
+                      <div className="flex items-center gap-1">
+                        <Phone className="h-2.5 w-2.5 text-slate-400" />
+                        <span className="text-[9px] font-bold text-slate-500 truncate" dir="ltr">{client.phone}</span>
+                      </div>
+                      {client.phone2 && (
+                        <div className="flex items-center gap-1">
+                          <Phone className="h-2.5 w-2.5 text-slate-300" />
+                          <span className="text-[9px] font-bold text-slate-400 truncate" dir="ltr">{client.phone2}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

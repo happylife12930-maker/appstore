@@ -21,6 +21,7 @@ export interface ClientData {
   name: string;
   email: string;
   phone: string;
+  phone2?: string;
   company: string;
   projectName?: string;
   totalInvoices: number;
@@ -41,6 +42,7 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
     name: '',
     email: '',
     phone: '',
+    phone2: '',
     company: '',
     projectName: '',
     totalInvoices: 0,
@@ -53,6 +55,7 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
         name: initialData.name || '',
         email: initialData.email || '',
         phone: initialData.phone || '',
+        phone2: initialData.phone2 || '',
         company: initialData.company || '',
         projectName: initialData.projectName || '',
         totalInvoices: initialData.totalInvoices || 0,
@@ -63,6 +66,7 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
         name: '',
         email: '',
         phone: '',
+        phone2: '',
         company: '',
         projectName: '',
         totalInvoices: 0,
@@ -97,7 +101,7 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
               {initialData ? 'تعديل بيانات العميل' : 'إضافة عميل جديد'}
             </DialogTitle>
             <DialogDescription className="text-primary-foreground/80 font-bold text-base mt-1">
-              أدخل البيانات المالية والمشروع بدقة (ج.م)
+              أدخل البيانات المالية وأرقام التواصل بدقة
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -121,16 +125,31 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
+                <Label htmlFor="phone" className="font-black flex items-center gap-2">
+                  <Phone className="h-4 w-4 text-primary" /> رقم الهاتف الأساسي
+                </Label>
+                <Input id="phone" value={formData.phone} onChange={handleChange} placeholder="+20 1..." className="rounded-2xl h-12 border-slate-200 font-bold" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone2" className="font-black flex items-center gap-2">
+                  <Phone className="h-4 w-4 text-slate-400" /> رقم هاتف إضافي
+                </Label>
+                <Input id="phone2" value={formData.phone2} onChange={handleChange} placeholder="+20 1..." className="rounded-2xl h-12 border-slate-200 font-bold" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
                 <Label htmlFor="email" className="font-black flex items-center gap-2">
                   <Mail className="h-4 w-4 text-primary" /> البريد الإلكتروني
                 </Label>
                 <Input id="email" type="email" value={formData.email} onChange={handleChange} placeholder="example@mail.com" className="rounded-2xl h-12 border-slate-200 font-bold" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="phone" className="font-black flex items-center gap-2">
-                  <Phone className="h-4 w-4 text-primary" /> رقم الجوال
+                <Label htmlFor="company" className="font-black flex items-center gap-2">
+                  <Building className="h-4 w-4 text-primary" /> اسم الشركة
                 </Label>
-                <Input id="phone" value={formData.phone} onChange={handleChange} placeholder="+20 1..." className="rounded-2xl h-12 border-slate-200 font-bold" />
+                <Input id="company" value={formData.company} onChange={handleChange} placeholder="اسم الشركة (اختياري)" className="rounded-2xl h-12 border-slate-200 font-bold" />
               </div>
             </div>
 
