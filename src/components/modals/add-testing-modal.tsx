@@ -2,19 +2,17 @@
 'use client';
 
 import * as React from 'react';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Dialog, 
   DialogContent, 
   DialogHeader, 
   DialogTitle, 
-  DialogDescription, 
   DialogFooter 
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { 
   UserPlus, 
@@ -22,8 +20,7 @@ import {
   Loader2,
   CheckCircle2,
   X,
-  Phone,
-  Briefcase
+  Plus
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { db } from '@/lib/firebase';
@@ -72,7 +69,7 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
   useEffect(() => {
     if (!db) return;
     const unsub = onSnapshot(collection(db, "projects"), (snap) => {
-      setProjects(snap.docs.map(doc => ({ id: doc.id, name: doc.data().name, status: doc.data().status })));
+      setProjects(snap.docs.map(doc => ({ id: doc.id, name: doc.data().name })));
     });
     return () => unsub();
   }, []);
@@ -107,32 +104,32 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[550px] w-[95vw] rounded-[1.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white" dir="rtl">
-        <div className="bg-primary p-5 text-primary-foreground">
+      <DialogContent className="sm:max-w-[500px] w-[95vw] rounded-2xl border-none shadow-2xl p-0 overflow-hidden bg-white" dir="rtl">
+        <div className="bg-primary p-4 text-primary-foreground">
           <DialogHeader>
-            <DialogTitle className="text-lg font-black flex items-center gap-2">
-              <Calendar className="h-5 w-5" /> {initialData ? 'تعديل مهمة الاختبار' : 'إضافة مهمة اختبار'}
+            <DialogTitle className="text-base font-black flex items-center gap-2">
+              <Calendar className="h-4 w-4" /> {initialData ? 'تعديل المهمة' : 'تعيين مشروع للاختبار'}
             </DialogTitle>
           </DialogHeader>
         </div>
 
-        <ScrollArea className="max-h-[65vh] p-6">
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label className="text-[11px] font-black text-slate-700 pr-1">المشروع المستهدف</Label>
+        <ScrollArea className="max-h-[60vh] p-5">
+          <div className="space-y-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-[10px] font-black text-slate-700 pr-1">المشروع</Label>
                 <Select value={formData.projectId} onValueChange={(v) => setFormData({...formData, projectId: v})}>
-                  <SelectTrigger className="rounded-xl h-10 border-slate-200 text-xs font-bold"><SelectValue placeholder="اختر المشروع" /></SelectTrigger>
-                  <SelectContent className="rounded-xl font-bold">
+                  <SelectTrigger className="rounded-lg h-9 border-slate-200 text-[11px] font-bold"><SelectValue placeholder="اختر المشروع" /></SelectTrigger>
+                  <SelectContent className="rounded-lg font-bold">
                     {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-[11px] font-black text-slate-700 pr-1">حالة الاختبار</Label>
+              <div className="space-y-1">
+                <Label className="text-[10px] font-black text-slate-700 pr-1">حالة المهمة</Label>
                 <Select value={formData.status} onValueChange={(v: any) => setFormData({...formData, status: v})}>
-                  <SelectTrigger className="rounded-xl h-10 border-slate-200 text-xs font-bold"><SelectValue /></SelectTrigger>
-                  <SelectContent className="rounded-xl font-bold">
+                  <SelectTrigger className="rounded-lg h-9 border-slate-200 text-[11px] font-bold"><SelectValue /></SelectTrigger>
+                  <SelectContent className="rounded-lg font-bold">
                     <SelectItem value="pending">في الانتظار</SelectItem>
                     <SelectItem value="in_progress">قيد الاختبار</SelectItem>
                     <SelectItem value="completed">مكتمل</SelectItem>
@@ -141,62 +138,62 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-3">
-              <p className="text-[11px] font-black text-primary uppercase">إضافة مختبر جديد</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <Input placeholder="البريد الإلكتروني" className="rounded-lg h-9 text-xs border-slate-200 font-bold" value={newTesterEmail} onChange={e => setNewTesterEmail(e.target.value)} />
-                <Input placeholder="رقم الهاتف" className="rounded-lg h-9 text-xs border-slate-200 font-bold" value={newTesterPhone} onChange={e => setNewTesterPhone(e.target.value)} />
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 space-y-3">
+              <div className="flex items-center justify-between">
+                 <p className="text-[10px] font-black text-primary uppercase">إضافة مختبر جديد</p>
               </div>
-              <div className="space-y-1.5">
-                <p className="text-[10px] font-black text-slate-400">أيام العمل:</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <Input placeholder="البريد الإلكتروني" className="rounded-lg h-8 text-[11px] font-bold" value={newTesterEmail} onChange={e => setNewTesterEmail(e.target.value)} />
+                <Input placeholder="رقم الهاتف" className="rounded-lg h-8 text-[11px] font-bold" value={newTesterPhone} onChange={e => setNewTesterPhone(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <p className="text-[9px] font-black text-slate-400">أيام العمل المطلوبة:</p>
                 <div className="flex flex-wrap gap-1">
                   {DAYS.map(day => (
-                    <button key={day} onClick={() => toggleDay(day)} className={`px-2.5 py-1 rounded-lg text-[9px] font-black border transition-all ${selectedDays.includes(day) ? 'bg-primary text-white border-primary' : 'bg-white text-slate-400 border-slate-200'}`}>
+                    <button key={day} onClick={() => toggleDay(day)} className={`px-2 py-0.5 rounded-md text-[9px] font-black border transition-all ${selectedDays.includes(day) ? 'bg-primary text-white border-primary' : 'bg-white text-slate-400 border-slate-200'}`}>
                       {day}
                     </button>
                   ))}
                 </div>
               </div>
-              <Button onClick={handleTesterAction} size="sm" className="w-full h-9 rounded-lg font-black text-xs gap-2">
-                <UserPlus className="h-3.5 w-3.5" /> إضافة للفريق
+              <Button onClick={handleTesterAction} size="sm" className="w-full h-8 rounded-lg font-black text-[10px] gap-1.5">
+                <Plus className="h-3 w-3" /> إضافة المختبر للفريق
               </Button>
 
               {formData.testers.length > 0 && (
-                <div className="pt-3 space-y-1.5">
-                   <div className="space-y-1.5">
-                      {formData.testers.map((t, i) => (
-                        <div key={i} className="bg-white p-2 rounded-lg border border-slate-100 flex justify-between items-center shadow-sm">
-                          <div className="overflow-hidden">
-                            <p className="font-bold text-[10px] text-slate-800 truncate">{t.email}</p>
-                            <p className="text-[8px] text-slate-400">{t.assignedDays.join('، ')}</p>
-                          </div>
-                          <Button variant="ghost" size="icon" onClick={() => removeTester(i)} className="h-6 w-6 text-rose-300">
-                            <X className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      ))}
-                   </div>
+                <div className="pt-2 grid grid-cols-1 gap-1.5">
+                  {formData.testers.map((t, i) => (
+                    <div key={i} className="bg-white p-2 rounded-lg border border-slate-100 flex justify-between items-center">
+                      <div className="overflow-hidden">
+                        <p className="font-bold text-[10px] text-slate-800 truncate">{t.email}</p>
+                        <p className="text-[8px] text-slate-400">{t.assignedDays.join('، ')}</p>
+                      </div>
+                      <Button variant="ghost" size="icon" onClick={() => removeTester(i)} className="h-5 w-5 text-rose-300">
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
 
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <Label className="text-[11px] font-black text-slate-700 pr-1">رابط النسخة</Label>
-                <Input value={formData.resourceLink} onChange={e => setFormData({...formData, resourceLink: e.target.value})} className="rounded-xl h-10 text-xs border-slate-200" placeholder="https://..." />
+            <div className="grid grid-cols-1 gap-3">
+              <div className="space-y-1">
+                <Label className="text-[10px] font-black text-slate-700 pr-1">رابط نسخة الاختبار</Label>
+                <Input value={formData.resourceLink} onChange={e => setFormData({...formData, resourceLink: e.target.value})} className="rounded-lg h-8 text-[10px]" placeholder="https://..." />
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-[11px] font-black text-slate-700 pr-1">تعليمات إضافية</Label>
-                <Textarea value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} className="rounded-xl text-xs min-h-[80px] border-slate-200" />
+              <div className="space-y-1">
+                <Label className="text-[10px] font-black text-slate-700 pr-1">تعليمات إضافية</Label>
+                <Textarea value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} className="rounded-lg text-[10px] min-h-[60px]" placeholder="مثال: يرجى التركيز على واجهة الدخول..." />
               </div>
             </div>
           </div>
         </ScrollArea>
 
-        <DialogFooter className="p-6 bg-slate-50 border-t">
-          <Button onClick={() => onSave({...formData, projectName: projects.find(p=>p.id===formData.projectId)?.name || ''})} disabled={isLoading || !formData.projectId || formData.testers.length === 0} className="w-full h-12 rounded-xl font-black text-base shadow-xl gap-2">
-            {isLoading ? <Loader2 className="animate-spin h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
-            اعتماد مهمة الاختبار
+        <DialogFooter className="p-4 bg-slate-50 border-t">
+          <Button onClick={() => onSave({...formData, projectName: projects.find(p=>p.id===formData.projectId)?.name || ''})} disabled={isLoading || !formData.projectId || formData.testers.length === 0} className="w-full h-10 rounded-xl font-black text-sm shadow-lg gap-2">
+            {isLoading ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+            اعتماد وحفظ البيانات
           </Button>
         </DialogFooter>
       </DialogContent>
