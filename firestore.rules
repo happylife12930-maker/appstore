@@ -8,37 +8,39 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // تبسيط التحقق من الإدارة لتجنب الدوران المنطقي (Recursion)
-    function isAdmin() {
-      return isAuthenticated() && 
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    // دالة جلب بيانات المستخدم بشكل آمن
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
-    // جلب بيانات العميل المربوطة بالحساب
+    // التحقق من هوية المدير
+    function isAdmin() {
+      return isAuthenticated() && getUserData().role == 'admin';
+    }
+
+    // جلب معرف العميل المربوط بالحساب
     function getClientId() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.clientId;
+      return getUserData().clientId;
     }
 
     // --- Security Rules for 'users' collection ---
     match /users/{userId} {
-      // السماح للمستخدم بجلب بياناته الخاصة دائماً بدون طلب isAdmin لمنع التعليق
       allow get: if isAuthenticated() && request.auth.uid == userId;
-      // السماح للمدير بجلب أي بروفايل أو عرض القائمة
-      allow get, list: if isAdmin();
-      // صلاحيات الإنشاء والتعديل
+      allow list: if isAdmin();
       allow create, update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
       allow delete: if isAdmin();
     }
 
     // --- Security Rules for 'clients' collection ---
     match /clients/{clientId} {
-      allow read, write: if isAdmin();
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
     }
 
     // --- Security Rules for 'projects' collection ---
     match /projects/{projectId} {
-      allow create, update, delete: if isAdmin();
       allow read: if isAdmin() || (isAuthenticated() && resource.data.clientId == getClientId());
+      allow write: if isAdmin();
     }
 
     // --- Security Rules for 'quotations' collection ---
@@ -54,9 +56,9 @@ service cloud.firestore {
 
     // --- Security Rules for 'support_threads' collection ---
     match /support_threads/{threadId} {
-      // السماح بالقراءة والكتابة للمدير، وللعميل فقط إذا كان المعرف يطابق clientId الخاص به
+      // السماح للقراءة والكتابة بناءً على الدور أو ملكية المعرف
       allow read, write: if isAdmin() || (isAuthenticated() && threadId == getClientId());
-      // منح صلاحية الحذف الكاملة للمدير
+      // منح صلاحية الحذف الكاملة للمدير بشكل صريح وقاطع
       allow delete: if isAdmin();
       
       match /messages/{msgId} {

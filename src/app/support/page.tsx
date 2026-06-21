@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -63,7 +64,7 @@ function SupportContent() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const isAdmin = profile?.role === 'admin';
 
-  // التمرير التلقائي لآخر رسالة مع تصحيح viewportRef
+  // التمرير التلقائي لآخر رسالة
   useEffect(() => {
     if (scrollRef.current) {
       setTimeout(() => {
