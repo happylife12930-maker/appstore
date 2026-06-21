@@ -107,11 +107,11 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
     if (!newTesterEmail.includes('@') || selectedDays.length === 0) return;
     if (editingTesterIndex !== null) {
       const updated = [...formData.testers];
-      updated[editingTesterIndex] = { email: newTesterEmail, phone: newTesterPhone, assignedDays: selectedDays };
+      updated[editingTesterIndex] = { email: newTesterEmail, phone: newTesterPhone, assignedDays: [...selectedDays] };
       setFormData(prev => ({ ...prev, testers: updated }));
       setEditingTesterIndex(null);
     } else {
-      setFormData(prev => ({ ...prev, testers: [...prev.testers, { email: newTesterEmail, phone: newTesterPhone, assignedDays: selectedDays }] }));
+      setFormData(prev => ({ ...prev, testers: [...prev.testers, { email: newTesterEmail, phone: newTesterPhone, assignedDays: [...selectedDays] }] }));
     }
     setNewTesterEmail(''); setNewTesterPhone(''); setSelectedDays([]);
   };
@@ -120,34 +120,41 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
     setSelectedDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
   };
 
+  const removeTester = (idx: number) => {
+    setFormData(prev => ({ ...prev, testers: prev.testers.filter((_, i) => i !== idx) }));
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[650px] rounded-2xl p-0 overflow-hidden bg-white" dir="rtl">
-        <div className="bg-primary p-5 text-primary-foreground">
+      <DialogContent className="sm:max-w-[650px] w-[95vw] rounded-[2rem] border-none shadow-2xl p-0 overflow-hidden bg-white" dir="rtl">
+        <div className="bg-primary p-6 text-primary-foreground">
           <DialogHeader>
-            <DialogTitle className="text-lg font-black flex items-center gap-2">
-              <Calendar className="h-5 w-5" /> {initialData ? 'تعديل مهمة الاختبار' : 'إضافة مهمة اختبار'}
+            <DialogTitle className="text-xl font-black flex items-center gap-3">
+              <Calendar className="h-6 w-6" /> {initialData ? 'تعديل مهمة الاختبار' : 'إضافة مهمة اختبار'}
             </DialogTitle>
+            <DialogDescription className="text-primary-foreground/80 font-bold text-xs">
+              حدد المشروع والمختبرين وأيام العمل بدقة
+            </DialogDescription>
           </DialogHeader>
         </div>
 
-        <ScrollArea className="max-h-[70vh] p-6">
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <ScrollArea className="max-h-[70vh] p-8">
+          <div className="space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label className="text-xs font-black text-slate-600">المشروع</Label>
+                <Label className="text-xs font-black text-slate-700 pr-2">المشروع المستهدف</Label>
                 <Select value={formData.projectId} onValueChange={(v) => setFormData({...formData, projectId: v})}>
-                  <SelectTrigger className="rounded-xl h-10 font-bold"><SelectValue placeholder="اختر المشروع" /></SelectTrigger>
-                  <SelectContent className="rounded-xl">
+                  <SelectTrigger className="rounded-2xl h-12 border-slate-200 font-bold"><SelectValue placeholder="اختر المشروع" /></SelectTrigger>
+                  <SelectContent className="rounded-2xl font-bold">
                     {filteredProjects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label className="text-xs font-black text-slate-600">الحالة</Label>
+                <Label className="text-xs font-black text-slate-700 pr-2">حالة الاختبار</Label>
                 <Select value={formData.status} onValueChange={(v: any) => setFormData({...formData, status: v})}>
-                  <SelectTrigger className="rounded-xl h-10 font-bold"><SelectValue /></SelectTrigger>
-                  <SelectContent className="rounded-xl">
+                  <SelectTrigger className="rounded-2xl h-12 border-slate-200 font-bold"><SelectValue /></SelectTrigger>
+                  <SelectContent className="rounded-2xl font-bold">
                     <SelectItem value="pending">في الانتظار</SelectItem>
                     <SelectItem value="in_progress">قيد الاختبار</SelectItem>
                     <SelectItem value="completed">مكتمل</SelectItem>
@@ -156,38 +163,64 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
               </div>
             </div>
 
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-4">
-              <Label className="text-xs font-black text-primary uppercase">إضافة مختبر</Label>
-              <div className="grid grid-cols-2 gap-2">
-                <Input placeholder="البريد الإلكتروني" className="rounded-lg h-10 text-xs" value={newTesterEmail} onChange={e => setNewTesterEmail(e.target.value)} />
-                <Input placeholder="رقم الهاتف" className="rounded-lg h-10 text-xs" value={newTesterPhone} onChange={e => setNewTesterPhone(e.target.value)} />
+            <div className="p-6 rounded-[2rem] bg-slate-50 border border-slate-100 space-y-4 shadow-inner">
+              <Label className="text-xs font-black text-primary uppercase pr-2">إضافة مختبر للفريق</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Input placeholder="البريد الإلكتروني" className="rounded-xl h-11 text-sm border-slate-200 font-bold" value={newTesterEmail} onChange={e => setNewTesterEmail(e.target.value)} />
+                <Input placeholder="رقم الهاتف (واتساب)" className="rounded-xl h-11 text-sm border-slate-200 font-bold" value={newTesterPhone} onChange={e => setNewTesterPhone(e.target.value)} />
               </div>
-              <div className="flex flex-wrap gap-1">
-                {DAYS.map(day => (
-                  <button key={day} onClick={() => toggleDay(day)} className={`px-2 py-1 rounded-md text-[10px] font-bold border transition-all ${selectedDays.includes(day) ? 'bg-primary text-white border-primary' : 'bg-white text-slate-400 border-slate-200'}`}>
-                    {day}
-                  </button>
-                ))}
+              <div className="space-y-2">
+                <p className="text-[10px] font-black text-slate-400 pr-2">أيام الاختبار المقررة:</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {DAYS.map(day => (
+                    <button key={day} onClick={() => toggleDay(day)} className={`px-3 py-1.5 rounded-xl text-[10px] font-black border transition-all ${selectedDays.includes(day) ? 'bg-primary text-white border-primary shadow-md' : 'bg-white text-slate-400 border-slate-200 hover:border-primary/50'}`}>
+                      {day}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <Button onClick={handleTesterAction} size="sm" className="w-full h-9 rounded-lg font-black text-xs">حفظ المختبر</Button>
+              <Button onClick={handleTesterAction} size="sm" className="w-full h-11 rounded-xl font-black text-sm gap-2">
+                <UserPlus className="h-4 w-4" /> حفظ بيانات المختبر
+              </Button>
+
+              {formData.testers.length > 0 && (
+                <div className="pt-4 space-y-2">
+                   <p className="text-[10px] font-black text-primary uppercase pr-2">الفريق المضاف ({formData.testers.length})</p>
+                   <div className="space-y-2">
+                      {formData.testers.map((t, i) => (
+                        <div key={i} className="bg-white p-3 rounded-xl border border-slate-100 flex justify-between items-center shadow-sm">
+                          <div>
+                            <p className="font-bold text-xs text-slate-800">{t.email}</p>
+                            <p className="text-[9px] text-slate-400">{t.assignedDays.join('، ')}</p>
+                          </div>
+                          <Button variant="ghost" size="icon" onClick={() => removeTester(i)} className="h-8 w-8 text-rose-300 hover:text-rose-500">
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                   </div>
+                </div>
+              )}
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-xs font-black text-slate-600">رابط النسخة</Label>
-              <Input value={formData.resourceLink} onChange={e => setFormData({...formData, resourceLink: e.target.value})} className="rounded-xl h-10 text-xs" placeholder="https://..." />
-            </div>
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <Label className="text-xs font-black text-slate-700 pr-2">رابط نسخة التطبيق (Apk/Web)</Label>
+                <Input value={formData.resourceLink} onChange={e => setFormData({...formData, resourceLink: e.target.value})} className="rounded-2xl h-12 text-sm border-slate-200" placeholder="https://..." />
+              </div>
 
-            <div className="space-y-2">
-              <Label className="text-xs font-black text-slate-600">ملاحظات</Label>
-              <Textarea value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} className="rounded-xl text-xs min-h-[60px]" />
+              <div className="space-y-2">
+                <Label className="text-xs font-black text-slate-700 pr-2">تعليمات وملاحظات للمختبرين</Label>
+                <Textarea value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} className="rounded-2xl text-sm min-h-[100px] border-slate-200" placeholder="أدخل أي ملاحظات تقنية أو تعليمات خاصة بالاختبار هنا..." />
+              </div>
             </div>
           </div>
         </ScrollArea>
 
-        <DialogFooter className="p-4 bg-slate-50 border-t">
-          <Button onClick={() => onSave({...formData, projectName: projects.find(p=>p.id===formData.projectId)?.name || ''})} disabled={isLoading || !formData.projectId} className="w-full h-11 rounded-xl font-black text-sm gap-2">
-            {isLoading ? <Loader2 className="animate-spin h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
-            تأكيد المهمة
+        <DialogFooter className="p-8 bg-slate-50 border-t">
+          <Button onClick={() => onSave({...formData, projectName: projects.find(p=>p.id===formData.projectId)?.name || ''})} disabled={isLoading || !formData.projectId || formData.testers.length === 0} className="w-full h-16 rounded-2xl font-black text-xl shadow-2xl gap-3 active:scale-95 transition-all">
+            {isLoading ? <Loader2 className="animate-spin h-6 w-6" /> : <CheckCircle2 className="h-6 w-6" />}
+            اعتماد مهمة الاختبار
           </Button>
         </DialogFooter>
       </DialogContent>
