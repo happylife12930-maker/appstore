@@ -33,8 +33,7 @@ import {
   setDoc, 
   updateDoc,
   increment,
-  limit,
-  where
+  limit
 } from "firebase/firestore";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
@@ -67,6 +66,7 @@ function SupportContent() {
     }
   }, [messages]);
 
+  // مراقبة كافة المحادثات (للأدمن)
   useEffect(() => {
     if (!db || !isAdmin) return;
 
@@ -84,6 +84,7 @@ function SupportContent() {
     return () => unsub();
   }, [isAdmin]);
 
+  // تحديد المحادثة النشطة
   useEffect(() => {
     if (profile && !isAdmin) {
       if (profile.clientId) {
@@ -96,6 +97,7 @@ function SupportContent() {
     }
   }, [profile, isAdmin, cid]);
 
+  // مراقبة الرسائل في المحادثة المختارة
   useEffect(() => {
     if (!db || !activeThreadId || !profile) return;
 
@@ -109,6 +111,7 @@ function SupportContent() {
       (snap) => {
         setMessages(snap.docs.map(d => ({ id: d.id, ...d.data() })));
         const threadRef = doc(db, "support_threads", activeThreadId);
+        // تصفير العداد عند فتح المحادثة
         if (isAdmin) {
           updateDoc(threadRef, { unreadAdmin: 0 }).catch(() => {});
         } else {
@@ -137,24 +140,28 @@ function SupportContent() {
     };
 
     try {
+      // 1. إضافة الرسالة للمجموعة الفرعية
       await addDoc(collection(db, "support_threads", threadId, "messages"), msgData);
 
+      // 2. تحديث مستند المحادثة الرئيسي مع إعادة التفعيل (Unarchive) تلقائياً
       const threadRef = doc(db, "support_threads", threadId);
-      const activeThread = threads.find(t => t.id === threadId);
       
       const updateData: any = {
         lastMessage: text,
         lastMessageTime: serverTimestamp(),
-        clientName: isAdmin ? activeThread?.clientName || cname || "مستفيد" : profile.name,
-        clientPhone: isAdmin ? activeThread?.clientPhone || "" : profile.phone || "",
-        status: "active" // إعادة تفعيل المحادثة إذا كانت مؤرشفة عند إرسال أي رسالة
+        status: "active" // دائماً تصبح نشطة عند إرسال رسالة جديدة
       };
 
       if (isAdmin) {
+        const activeThread = threads.find(t => t.id === threadId);
+        updateData.clientName = activeThread?.clientName || cname || "مستفيد";
+        updateData.clientPhone = activeThread?.clientPhone || "";
         updateData.unreadClient = increment(1);
       } else {
+        updateData.clientName = profile.name || "مستفيد";
+        updateData.clientPhone = profile.phone || "";
+        updateData.clientId = profile.clientId || profile.uid;
         updateData.unreadAdmin = increment(1);
-        updateData.clientId = profile.clientId;
       }
 
       await setDoc(threadRef, updateData, { merge: true });
@@ -176,6 +183,7 @@ function SupportContent() {
         title: isCurrentlyArchived ? "تمت الاستعادة" : "تمت الأرشفة", 
         description: isCurrentlyArchived ? "المحادثة الآن في القائمة النشطة." : "تم نقل المحادثة إلى الأرشيف." 
       });
+      // إذا تمت أرشفة المحادثة المفتوحة حالياً، نقوم بإغلاقها من الواجهة
       if (!isCurrentlyArchived && activeThreadId === threadId) {
         setActiveThreadId(null);
         setMessages([]);
@@ -186,11 +194,9 @@ function SupportContent() {
   };
 
   const filteredThreads = threads.filter(t => {
-    // فلترة حسب التبويب (نشط أو مؤرشف)
     const threadStatus = t.status || "active";
     if (threadStatus !== activeTab) return false;
 
-    // فلترة حسب البحث
     const q = searchQuery.toLowerCase().trim();
     if (!q) return true;
     const nameMatch = t.clientName?.toLowerCase().includes(q);
