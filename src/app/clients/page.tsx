@@ -19,7 +19,6 @@ import {
   Printer,
   FileText,
   MessageCircle,
-  Send,
   Building
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,20 +26,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, deleteDoc, doc, setDoc, addDoc, serverTimestamp, increment } from "firebase/firestore";
+import { collection, onSnapshot, deleteDoc, doc, setDoc, addDoc } from "firebase/firestore";
 import { AddClientModal, type ClientData } from "@/components/modals/add-client-modal";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/components/auth-provider";
 
 // دالة توحيد النص للبحث
@@ -58,14 +48,8 @@ function ClientsContent() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<ClientData | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  
-  // Quick Message State
-  const [messageClient, setMessageClient] = useState<ClientData | null>(null);
-  const [quickMessage, setQuickMessage] = useState("");
-  const [isSendingMsg, setIsSendingMsg] = useState(false);
 
   const { toast } = useToast();
-  const { profile } = useAuth();
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -143,39 +127,6 @@ function ClientsContent() {
       toast({ title: "تم الحذف", description: "تمت إزالة العميل من النظام" });
     } catch (err) {
       toast({ title: "خطأ", variant: "destructive" });
-    }
-  };
-
-  const handleSendQuickMessage = async () => {
-    if (!db || !messageClient || !quickMessage.trim() || !profile) return;
-    setIsSendingMsg(true);
-    try {
-      const threadId = messageClient.id;
-      const msgText = quickMessage.trim();
-
-      await addDoc(collection(db, "support_threads", threadId!, "messages"), {
-        text: msgText,
-        senderId: profile.uid,
-        senderRole: 'admin',
-        timestamp: serverTimestamp()
-      });
-
-      await setDoc(doc(db, "support_threads", threadId!), {
-        clientId: threadId,
-        clientName: messageClient.name,
-        clientPhone: messageClient.phone,
-        lastMessage: msgText,
-        lastMessageTime: serverTimestamp(),
-        unreadClient: increment(1)
-      }, { merge: true });
-
-      toast({ title: "تم الإرسال", description: "تم إرسال رسالتك لقسم الدعم الفني بنجاح." });
-      setMessageClient(null);
-      setQuickMessage("");
-    } catch (err) {
-      toast({ title: "خطأ", description: "فشل إرسال الرسالة السريعة", variant: "destructive" });
-    } finally {
-      setIsSendingMsg(false);
     }
   };
 
@@ -298,7 +249,7 @@ function ClientsContent() {
         <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5" />
         <Input 
           placeholder="ابحث باسم العميل، رقم الهاتف، أو اسم المشروع..." 
-          className="pr-12 pl-12 h-16 rounded-2xl font-bold text-lg border-none shadow-sm bg-white focus-visible:ring-primary/20"
+          className="pr-12 h-16 rounded-2xl font-bold text-lg border-none shadow-sm bg-white focus-visible:ring-primary/20"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
@@ -339,14 +290,13 @@ function ClientsContent() {
                   </div>
                 </div>
                 
-                {/* شريط الإجراءات الموحد والمتناسق */}
                 <div className="flex items-center gap-1 p-1 bg-white/80 backdrop-blur-sm rounded-2xl border shadow-sm group-hover:border-primary/20 transition-all">
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    onClick={() => setMessageClient(client)} 
+                    onClick={() => router.push(`/support?clientId=${client.id}&name=${encodeURIComponent(client.name)}`)} 
                     className="h-9 w-9 rounded-xl text-primary hover:bg-primary/5" 
-                    title="مراسلة سريعة"
+                    title="فتح المحادثة"
                   >
                     <MessageCircle className="h-4.5 w-4.5" />
                   </Button>
@@ -441,43 +391,6 @@ function ClientsContent() {
           ))}
         </div>
       )}
-
-      {/* Quick Message Modal */}
-      <Dialog open={!!messageClient} onOpenChange={() => setMessageClient(null)}>
-        <DialogContent className="rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white max-w-md" dir="rtl">
-          <div className="bg-primary p-8 text-primary-foreground">
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-black flex items-center gap-3">
-                <MessageCircle className="h-6 w-6" /> مراسلة: {messageClient?.name}
-              </DialogTitle>
-              <DialogDescription className="text-primary-foreground/80 font-bold mt-2">
-                سيتم إرسال هذه الرسالة مباشرة إلى قسم الدعم الفني الخاص بالعميل.
-              </DialogDescription>
-            </DialogHeader>
-          </div>
-          <div className="p-8 space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-black text-slate-700 pr-2">نص الرسالة</label>
-              <Textarea 
-                placeholder="اكتب رسالتك السريعة هنا..." 
-                className="rounded-2xl min-h-[120px] font-bold border-slate-200"
-                value={quickMessage}
-                onChange={(e) => setQuickMessage(e.target.value)}
-              />
-            </div>
-          </div>
-          <DialogFooter className="p-8 bg-slate-50 border-t flex flex-col sm:flex-row gap-3">
-            <Button 
-              onClick={handleSendQuickMessage} 
-              disabled={isSendingMsg || !quickMessage.trim()}
-              className="w-full h-14 rounded-2xl font-black text-lg shadow-xl"
-            >
-              {isSendingMsg ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5 ml-2" />}
-              إرسال الرسالة الآن
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <AddClientModal 
         isOpen={isModalOpen} 

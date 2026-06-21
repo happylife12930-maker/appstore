@@ -2,16 +2,14 @@
 "use client";
 
 import * as React from "react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { 
   Send, 
   LifeBuoy, 
   Search, 
   Loader2, 
-  MoreVertical,
   Circle,
   CheckCheck,
-  AlertCircle
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,8 +34,9 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { ar } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
+import { useSearchParams } from "next/navigation";
 
-export default function SupportPage() {
+function SupportContent() {
   const { profile, loading: authLoading } = useAuth();
   const [threads, setThreads] = useState<any[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
@@ -46,6 +45,10 @@ export default function SupportPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  
+  const searchParams = useSearchParams();
+  const cid = searchParams.get('clientId');
+  const cname = searchParams.get('name');
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const isAdmin = profile?.role === 'admin';
@@ -76,13 +79,16 @@ export default function SupportPage() {
     return () => unsub();
   }, [isAdmin]);
 
-  // تعيين المحادثة النشطة للمستفيد تلقائياً
+  // تعيين المحادثة النشطة
   useEffect(() => {
     if (profile && !isAdmin) {
       setActiveThreadId(profile.uid);
       setLoading(false);
+    } else if (isAdmin && cid) {
+      setActiveThreadId(cid);
+      setLoading(false);
     }
-  }, [profile, isAdmin]);
+  }, [profile, isAdmin, cid]);
 
   // جلب الرسائل للمحادثة النشطة وتصفير العداد
   useEffect(() => {
@@ -138,7 +144,7 @@ export default function SupportPage() {
       const updateData: any = {
         lastMessage: text,
         lastMessageTime: serverTimestamp(),
-        clientName: isAdmin ? activeThread?.clientName || "مستفيد" : profile.name,
+        clientName: isAdmin ? activeThread?.clientName || cname || "مستفيد" : profile.name,
       };
 
       if (isAdmin) {
@@ -170,6 +176,9 @@ export default function SupportPage() {
       <p className="font-bold text-slate-500">جاري تحميل المحادثات...</p>
     </div>
   );
+
+  const activeThread = threads.find(t => t.id === activeThreadId);
+  const threadDisplayName = isAdmin ? (activeThread?.clientName || cname || "مستفيد") : 'الدعم الفني - APP STORE';
 
   return (
     <div className="max-w-7xl mx-auto h-[calc(100vh-140px)] flex flex-col md:flex-row gap-6" dir="rtl">
@@ -242,11 +251,11 @@ export default function SupportPage() {
             <CardHeader className="p-6 border-b flex flex-row items-center justify-between bg-slate-50/50">
               <div className="flex items-center gap-4">
                 <div className="h-12 w-12 rounded-2xl bg-primary flex items-center justify-center text-white font-black text-xl shadow-lg">
-                  {isAdmin ? threads.find(t => t.id === activeThreadId)?.clientName?.[0] || 'U' : 'A'}
+                  {isAdmin ? (threadDisplayName?.[0] || 'U') : 'A'}
                 </div>
                 <div>
                   <CardTitle className="text-lg font-black text-slate-800">
-                    {isAdmin ? threads.find(t => t.id === activeThreadId)?.clientName || "مستفيد" : 'الدعم الفني - APP STORE'}
+                    {threadDisplayName}
                   </CardTitle>
                   <div className="flex items-center gap-2 mt-0.5">
                     <Circle className="h-2 w-2 fill-green-500 text-green-500 animate-pulse" />
@@ -319,5 +328,13 @@ export default function SupportPage() {
         )}
       </Card>
     </div>
+  );
+}
+
+export default function SupportPage() {
+  return (
+    <Suspense fallback={<div className="flex flex-col items-center justify-center h-[70vh] gap-4"><Loader2 className="h-10 w-10 animate-spin text-primary" /><p className="font-bold text-slate-500">جاري تحميل المحادثات...</p></div>}>
+      <SupportContent />
+    </Suspense>
   );
 }
