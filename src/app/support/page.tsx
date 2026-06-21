@@ -110,8 +110,9 @@ function SupportContent() {
     const unsub = onSnapshot(q, 
       (snap) => {
         setMessages(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        
+        // تصفير العداد عند فتح المحادثة (فقط إذا كانت هناك رسائل غير مقروءة فعلاً)
         const threadRef = doc(db, "support_threads", activeThreadId);
-        // تصفير العداد عند فتح المحادثة
         if (isAdmin) {
           updateDoc(threadRef, { unreadAdmin: 0 }).catch(() => {});
         } else {
@@ -124,7 +125,7 @@ function SupportContent() {
     return () => unsub();
   }, [activeThreadId, isAdmin, profile]);
 
-  const handleSendMessage = async (e?: React.FormEvent) => {
+  const handleSendMessage = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!inputText.trim() || !activeThreadId || !profile || !db) return;
 
@@ -139,35 +140,31 @@ function SupportContent() {
       timestamp: serverTimestamp()
     };
 
-    try {
-      // 1. إضافة الرسالة للمجموعة الفرعية
-      await addDoc(collection(db, "support_threads", threadId, "messages"), msgData);
+    // 1. إضافة الرسالة للمجموعة الفرعية
+    addDoc(collection(db, "support_threads", threadId, "messages"), msgData);
 
-      // 2. تحديث مستند المحادثة الرئيسي مع إعادة التفعيل (Unarchive) تلقائياً
-      const threadRef = doc(db, "support_threads", threadId);
-      
-      const updateData: any = {
-        lastMessage: text,
-        lastMessageTime: serverTimestamp(),
-        status: "active" // دائماً تصبح نشطة عند إرسال رسالة جديدة
-      };
+    // 2. تحديث مستند المحادثة الرئيسي مع إعادة التفعيل (Unarchive) بشكل صريح
+    const threadRef = doc(db, "support_threads", threadId);
+    
+    const updateData: any = {
+      lastMessage: text,
+      lastMessageTime: serverTimestamp(),
+      status: "active" // ضمان عودتها نشطة فوراً
+    };
 
-      if (isAdmin) {
-        const activeThread = threads.find(t => t.id === threadId);
-        updateData.clientName = activeThread?.clientName || cname || "مستفيد";
-        updateData.clientPhone = activeThread?.clientPhone || "";
-        updateData.unreadClient = increment(1);
-      } else {
-        updateData.clientName = profile.name || "مستفيد";
-        updateData.clientPhone = profile.phone || "";
-        updateData.clientId = profile.clientId || profile.uid;
-        updateData.unreadAdmin = increment(1);
-      }
-
-      await setDoc(threadRef, updateData, { merge: true });
-    } catch (err) {
-      toast({ title: "خطأ", description: "فشل في إرسال الرسالة", variant: "destructive" });
+    if (isAdmin) {
+      const activeThread = threads.find(t => t.id === threadId);
+      updateData.clientName = activeThread?.clientName || cname || "مستفيد";
+      updateData.clientPhone = activeThread?.clientPhone || "";
+      updateData.unreadClient = increment(1);
+    } else {
+      updateData.clientName = profile.name || "مستفيد";
+      updateData.clientPhone = profile.phone || "";
+      updateData.clientId = profile.clientId || profile.uid;
+      updateData.unreadAdmin = increment(1);
     }
+
+    setDoc(threadRef, updateData, { merge: true });
   };
 
   const handleArchiveThread = async (e: React.MouseEvent, threadId: string, isCurrentlyArchived: boolean) => {
@@ -183,13 +180,12 @@ function SupportContent() {
         title: isCurrentlyArchived ? "تمت الاستعادة" : "تمت الأرشفة", 
         description: isCurrentlyArchived ? "المحادثة الآن في القائمة النشطة." : "تم نقل المحادثة إلى الأرشيف." 
       });
-      // إذا تمت أرشفة المحادثة المفتوحة حالياً، نقوم بإغلاقها من الواجهة
       if (!isCurrentlyArchived && activeThreadId === threadId) {
         setActiveThreadId(null);
         setMessages([]);
       }
     } catch (err) {
-      toast({ title: "خطأ", description: "فشلت العملية، حاول مرة أخرى.", variant: "destructive" });
+      toast({ title: "خطأ", description: "فشل تحديث حالة المحادثة.", variant: "destructive" });
     }
   };
 
@@ -377,7 +373,7 @@ function SupportContent() {
             </ScrollArea>
 
             <div className="p-6 border-t bg-slate-50/50">
-              <form onSubmit={handleSendMessage} className="flex gap-3">
+              <form onSubmit={(e) => handleSendMessage(e)} className="flex gap-3">
                 <Input 
                   placeholder="اكتب رسالتك هنا..." 
                   className="flex-1 h-14 rounded-2xl border-none shadow-sm px-6 font-bold bg-white focus-visible:ring-primary/20"
