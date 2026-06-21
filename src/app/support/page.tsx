@@ -16,7 +16,8 @@ import {
   ArrowRight,
   Phone,
   Clock,
-  Trash2
+  Trash2,
+  AlertCircle
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,16 @@ import { ar } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 function SupportContent() {
   const { profile, loading: authLoading } = useAuth();
@@ -54,25 +65,22 @@ function SupportContent() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("active");
+  const [threadToDelete, setThreadToDelete] = useState<string | null>(null);
+  
   const { toast } = useToast();
   const router = useRouter();
-  
   const searchParams = useSearchParams();
   const cid = searchParams.get('clientId');
   const cname = searchParams.get('name');
   
   const scrollRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const isAdmin = profile?.role === 'admin';
 
   // التمرير التلقائي لآخر رسالة
   useEffect(() => {
-    if (scrollRef.current) {
-      setTimeout(() => {
-        scrollRef.current?.scrollTo({
-          top: scrollRef.current.scrollHeight,
-          behavior: 'smooth'
-        });
-      }, 100);
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
 
@@ -112,7 +120,7 @@ function SupportContent() {
     const q = query(
       collection(db, "support_threads", activeThreadId, "messages"),
       orderBy("timestamp", "asc"),
-      limit(100)
+      limit(50)
     );
 
     const unsub = onSnapshot(q, 
@@ -197,22 +205,22 @@ function SupportContent() {
     }
   };
 
-  const handleDeleteThread = async (e: React.MouseEvent, threadId: string) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const confirmDeleteThread = async () => {
+    if (!threadToDelete || !isAdmin || !db) return;
     
-    if (!isAdmin || !db || !confirm("هل أنت متأكد من حذف هذه المحادثة نهائياً من سجلاتك؟")) return;
-    
+    const targetId = threadToDelete;
+    setThreadToDelete(null);
+
     try {
-      await deleteDoc(doc(db, "support_threads", threadId));
+      await deleteDoc(doc(db, "support_threads", targetId));
       toast({ title: "تم الحذف", description: "تم مسح المحادثة نهائياً بنجاح." });
-      if (activeThreadId === threadId) {
+      if (activeThreadId === targetId) {
         setActiveThreadId(null);
         setMessages([]);
       }
     } catch (err) {
       console.error("Delete Thread Error:", err);
-      toast({ title: "خطأ", description: "فشل حذف المحادثة، تأكد من صلاحيات الإدارة.", variant: "destructive" });
+      toast({ title: "خطأ", description: "فشل حذف المحادثة، تأكد من صلاحيات النظام.", variant: "destructive" });
     }
   };
 
@@ -321,7 +329,7 @@ function SupportContent() {
                       <Button 
                         variant="ghost" 
                         size="sm" 
-                        onClick={(e) => handleDeleteThread(e, thread.id)}
+                        onClick={(e) => { e.stopPropagation(); setThreadToDelete(thread.id); }}
                         className="h-6 rounded-lg text-rose-300 hover:text-rose-600 hover:bg-rose-50 font-black text-[8px] gap-1 px-2"
                       >
                         <Trash2 className="h-3 w-3" /> حذف
@@ -365,20 +373,22 @@ function SupportContent() {
                 </div>
               </div>
             </div>
-            <div className="flex gap-2">
-               <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={(e) => handleDeleteThread(e, activeThreadId)}
-                className="h-9 w-9 rounded-xl text-rose-300 hover:text-rose-600 hover:bg-rose-50"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
+            {isAdmin && (
+              <div className="flex gap-2">
+                 <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => setThreadToDelete(activeThreadId)}
+                  className="h-9 w-9 rounded-xl text-rose-300 hover:text-rose-600 hover:bg-rose-50"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
           </CardHeader>
 
-          <ScrollArea className="flex-1 px-4 py-4 bg-slate-50/10" viewportRef={scrollRef}>
-            <div className="space-y-4 max-w-4xl mx-auto">
+          <ScrollArea className="flex-1 bg-slate-50/10">
+            <div className="p-4 space-y-4 max-w-4xl mx-auto">
               {messages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-10 opacity-20">
                   <div className="p-4 bg-white rounded-2xl shadow-sm mb-2 border">
@@ -412,6 +422,7 @@ function SupportContent() {
                   );
                 })
               )}
+              <div ref={messagesEndRef} />
             </div>
           </ScrollArea>
 
@@ -435,6 +446,32 @@ function SupportContent() {
           </div>
         </Card>
       )}
+
+      {/* نافذة تأكيد الحذف الاحترافية */}
+      <AlertDialog open={!!threadToDelete} onOpenChange={(open) => !open && setThreadToDelete(null)}>
+        <AlertDialogContent className="rounded-[2rem] border-none shadow-2xl" dir="rtl">
+          <AlertDialogHeader>
+            <div className="h-14 w-14 rounded-2xl bg-rose-50 flex items-center justify-center text-rose-500 mb-2">
+              <AlertCircle className="h-8 w-8" />
+            </div>
+            <AlertDialogTitle className="text-xl font-black">حذف المحادثة نهائياً؟</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-500 font-bold leading-relaxed">
+              هذا الإجراء سيؤدي لمسح كافة الرسائل وسجل الدردشة الخاص بهذا العميل من قاعدة البيانات. لا يمكن التراجع عن هذا القرار لاحقاً.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-row-reverse gap-3 mt-4">
+            <AlertDialogAction 
+              onClick={confirmDeleteThread}
+              className="bg-rose-500 hover:bg-rose-600 text-white font-black rounded-xl h-12 flex-1"
+            >
+              نعم، احذف المحادثة
+            </AlertDialogAction>
+            <AlertDialogCancel className="bg-slate-100 border-none font-black rounded-xl h-12 flex-1 mt-0">
+              إلغاء
+            </AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

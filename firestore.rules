@@ -56,10 +56,10 @@ service cloud.firestore {
 
     // --- Security Rules for 'support_threads' collection ---
     match /support_threads/{threadId} {
-      // السماح للقراءة والكتابة بناءً على الدور أو ملكية المعرف
-      allow read, write: if isAdmin() || (isAuthenticated() && threadId == getClientId());
-      // منح صلاحية الحذف الكاملة للمدير بشكل صريح وقاطع
-      allow delete: if isAdmin();
+      // السماح للقراءة والكتابة والمسح للمدير
+      allow read, write, delete: if isAdmin();
+      // السماح للعميل بالوصول لمحادثته فقط
+      allow read, write: if isAuthenticated() && threadId == getClientId();
       
       match /messages/{msgId} {
         allow read, write: if isAdmin() || (isAuthenticated() && threadId == getClientId());
