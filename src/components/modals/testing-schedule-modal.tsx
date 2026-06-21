@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from "react";
@@ -28,6 +27,20 @@ interface Schedule {
 
 const DAYS_OF_WEEK = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
 
+// دالة لتطهير نص اليوم لضمان المطابقة
+const normalizeDay = (day: string) => {
+  if (!day) return "";
+  let d = day.trim();
+  if (d === "الأحد" || d === "أحد") return "الأحد";
+  if (d === "الاثنين" || d === "اثنان" || d === "إثنين") return "الاثنين";
+  if (d === "الثلاثاء" || d === "ثلاثاء") return "الثلاثاء";
+  if (d === "الأربعاء" || d === "أربعاء") return "الأربعاء";
+  if (d === "الخميس" || d === "خميس") return "الخميس";
+  if (d === "الجمعة" || d === "جمعة") return "الجمعة";
+  if (d === "السبت" || d === "سبت") return "الالسبت";
+  return d;
+};
+
 export function TestingScheduleModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void; }) {
   const [schedule, setSchedule] = React.useState<Schedule>({});
   const [loading, setLoading] = React.useState(true);
@@ -51,10 +64,8 @@ export function TestingScheduleModal({ isOpen, onClose }: { isOpen: boolean; onC
         group.testers.forEach((tester) => {
           if (!tester.assignedDays || !Array.isArray(tester.assignedDays)) return;
           
-          tester.assignedDays.forEach((day: string) => {
-            const cleanDay = day.trim();
-            // البحث عن اليوم في القائمة الموحدة لضمان المطابقة حتى مع اختلاف المسافات أو التنسيق
-            const dayKey = DAYS_OF_WEEK.find(d => d === cleanDay || cleanDay.includes(d) || d.includes(cleanDay));
+          tester.assignedDays.forEach((rawDay: string) => {
+            const dayKey = normalizeDay(rawDay);
             
             if (dayKey && newSchedule[dayKey]) {
               let projectEntry = newSchedule[dayKey].find(p => 
@@ -94,27 +105,34 @@ export function TestingScheduleModal({ isOpen, onClose }: { isOpen: boolean; onC
     return () => unsub();
   }, [isOpen]);
 
-  const handleSendWhatsApp = (project: ScheduleProject, day: string) => {
-    const testersWithPhone = project.testers.filter((t) => !!t.phone);
-    if (testersWithPhone.length === 0) {
-      toast({ title: "تنبيه", description: "لا توجد أرقام هواتف لمختبري هذا اليوم.", variant: "destructive" });
-      return;
-    }
+  const handleSendDayNotifications = (day: string) => {
+    const projects = schedule[day];
+    let totalSent = 0;
 
-    testersWithPhone.forEach((tester, index) => {
-      let cleanPhone = tester.phone.replace(/[^0-9]/g, '');
-      if (cleanPhone.startsWith('0')) cleanPhone = '2' + cleanPhone;
-      else if (!cleanPhone.startsWith('2')) cleanPhone = '20' + cleanPhone;
-
-      const message = `*تذكير بمهمة اختبار - يوم ${day}* 🚀\n\nنحيطكم علماً بمهمة الاختبار لليوم لمشروع: *${project.projectName}*\n\n🔗 رابط النسخة: ${project.resourceLink || 'سيزودكم به المدير'}\n\n${project.notes ? `📝 تعليمات: ${project.notes}` : ''}\n\nبالتوفيق، فريق APP STORE.`;
-      const encodedMessage = encodeURIComponent(message);
+    projects.forEach((project) => {
+      const testersWithPhone = project.testers.filter((t) => !!t.phone);
       
-      setTimeout(() => {
-        window.open(`https://wa.me/${cleanPhone}?text=${encodedMessage}`, '_blank');
-      }, index * 800);
+      testersWithPhone.forEach((tester, index) => {
+        let cleanPhone = tester.phone.replace(/[^0-9]/g, '');
+        if (cleanPhone.startsWith('0')) cleanPhone = '2' + cleanPhone;
+        else if (!cleanPhone.startsWith('2')) cleanPhone = '20' + cleanPhone;
+
+        const message = `*تذكير بمهمة اختبار - يوم ${day}* 🚀\n\nنحيطكم علماً بمهمة الاختبار لليوم لمشروع: *${project.projectName}*\n\n🔗 رابط النسخة: ${project.resourceLink || 'سيزودكم به المدير'}\n\n${project.notes ? `📝 تعليمات: ${project.notes}` : ''}\n\nبالتوفيق، فريق APP STORE.`;
+        const encodedMessage = encodeURIComponent(message);
+        
+        setTimeout(() => {
+          window.open(`https://wa.me/${cleanPhone}?text=${encodedMessage}`, '_blank');
+        }, totalSent * 800);
+        
+        totalSent++;
+      });
     });
 
-    toast({ title: "جاري الإرسال", description: `يتم فتح محادثات واتساب لـ ${testersWithPhone.length} مختبر.` });
+    if (totalSent > 0) {
+      toast({ title: "جاري الإرسال", description: `يتم فتح محادثات واتساب لـ ${totalSent} مختبر في يوم ${day}.` });
+    } else {
+      toast({ title: "تنبيه", description: "لا يوجد مختبرين بأرقام هواتف مسجلة لهذا اليوم.", variant: "destructive" });
+    }
   };
   
   const handlePrint = () => {
@@ -156,65 +174,72 @@ export function TestingScheduleModal({ isOpen, onClose }: { isOpen: boolean; onC
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl w-[95vw] h-[70vh] flex flex-col rounded-2xl p-0 border-none shadow-2xl overflow-hidden bg-white" dir="rtl">
-        <DialogHeader className="p-3 bg-primary text-primary-foreground shrink-0 flex flex-row items-center justify-between">
-          <div className="flex items-center gap-2">
-            <CalendarDays className="h-4 w-4 opacity-80" />
+      <DialogContent className="max-w-3xl w-[95vw] h-[80vh] flex flex-col rounded-2xl p-0 border-none shadow-2xl overflow-hidden bg-white" dir="rtl">
+        <DialogHeader className="p-4 bg-primary text-primary-foreground shrink-0 flex flex-row items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+              <CalendarDays className="h-5 w-5" />
+            </div>
             <div>
-              <DialogTitle className="text-sm font-black">جدول الاختبارات الأسبوعي</DialogTitle>
-              <DialogDescription className="text-[9px] text-primary-foreground/70 font-bold">توزيع المهام اليومي المدمج</DialogDescription>
+              <DialogTitle className="text-base font-black">جدول الاختبارات المدمج</DialogTitle>
+              <DialogDescription className="text-[10px] text-primary-foreground/70 font-bold">إرسال تنبيهات يومية لكافة المختبرين بضغطة واحدة</DialogDescription>
             </div>
           </div>
-          <Button size="icon" variant="ghost" onClick={onClose} className="rounded-full hover:bg-white/10 text-white h-7 w-7">
-            <X className="h-4 w-4" />
+          <Button size="icon" variant="ghost" onClick={onClose} className="rounded-full hover:bg-white/10 text-white h-8 w-8">
+            <X className="h-5 w-5" />
           </Button>
         </DialogHeader>
         
-        <ScrollArea className="flex-1 p-3 bg-slate-50/50">
+        <ScrollArea className="flex-1 p-4 bg-slate-50/50">
           {loading ? (
-            <div className="flex flex-col items-center justify-center h-full py-10 gap-2">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
-              <p className="font-bold text-slate-400 text-[10px]">جاري تحميل الجدول...</p>
+            <div className="flex flex-col items-center justify-center h-full py-20 gap-3">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="font-bold text-slate-400 text-xs">جاري تجميع بيانات الجدول الأسبوعي...</p>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-6">
               {DAYS_OF_WEEK.map(day => {
                 const projects = schedule[day];
                 if (!projects || projects.length === 0) return null;
                 return (
-                  <div key={day} className="space-y-2">
-                    <h3 className="text-[10px] font-black text-slate-700 bg-white px-3 py-1 rounded-lg shadow-sm border-r-4 border-primary inline-block">
-                      {day}
-                    </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div key={day} className="space-y-3">
+                    <div className="flex items-center justify-between bg-white p-2 rounded-xl shadow-sm border-r-4 border-primary">
+                      <h3 className="text-xs font-black text-slate-800 pr-2">
+                        {day}
+                      </h3>
+                      <Button 
+                        onClick={() => handleSendDayNotifications(day)}
+                        size="sm"
+                        className="h-8 rounded-lg bg-green-600 hover:bg-green-700 text-white font-black text-[10px] gap-2 px-4"
+                      >
+                        <MessageCircle className="h-3.5 w-3.5" /> إرسال تنبيهات {day} للجميع
+                      </Button>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pr-2">
                       {projects.map((proj, idx) => (
-                        <div key={idx} className="p-3 rounded-xl border border-slate-100 bg-white shadow-sm flex flex-col gap-2 hover:border-primary/20 transition-all">
+                        <div key={idx} className="p-4 rounded-xl border border-slate-100 bg-white shadow-sm flex flex-col gap-3 hover:border-primary/20 transition-all group">
                           <div className="flex justify-between items-start">
-                             <h4 className="text-xs font-black text-slate-800 leading-tight">{proj.projectName}</h4>
-                             <Info className="h-3 w-3 text-slate-300" />
+                             <h4 className="text-xs font-black text-slate-800 leading-tight flex-1">{proj.projectName}</h4>
+                             <Info className="h-3.5 w-3.5 text-slate-300" />
                           </div>
 
                           <div className="flex flex-wrap gap-1">
                             {proj.testers.map(tester => (
-                              <Badge key={tester.email} variant="outline" className="text-[8px] font-bold bg-slate-50 border-slate-100 py-0 px-1.5 h-4 rounded-md">
+                              <Badge key={tester.email} variant="outline" className="text-[9px] font-bold bg-slate-50 border-slate-100 py-0.5 px-2 h-5 rounded-md text-slate-600">
                                 {tester.email.split('@')[0]}
                               </Badge>
                             ))}
                           </div>
 
-                          <div className="flex gap-1 mt-1">
-                            {proj.resourceLink && (
-                              <a href={proj.resourceLink} target="_blank" className="text-[8px] font-bold text-primary flex items-center gap-1 hover:underline bg-primary/5 px-2 py-1 rounded-md">
-                                <ExternalLink className="h-2 w-2" /> الرابط
+                          {proj.resourceLink && (
+                            <div className="pt-2 border-t border-slate-50 flex items-center justify-between">
+                              <a href={proj.resourceLink} target="_blank" className="text-[10px] font-black text-primary flex items-center gap-1.5 hover:underline bg-primary/5 px-3 py-1 rounded-lg">
+                                <ExternalLink className="h-3 w-3" /> رابط النسخة
                               </a>
-                            )}
-                            <Button 
-                              onClick={() => handleSendWhatsApp(proj, day)}
-                              className="flex-1 h-7 rounded-md bg-green-600 hover:bg-green-700 text-white font-black text-[9px] gap-1.5"
-                            >
-                              <MessageCircle className="h-3 w-3" /> تنبيهات اليوم
-                            </Button>
-                          </div>
+                              <span className="text-[9px] font-bold text-slate-400">({proj.testers.length}) مختبرين</span>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -223,21 +248,27 @@ export function TestingScheduleModal({ isOpen, onClose }: { isOpen: boolean; onC
               })}
               
               {Object.keys(schedule).every(day => schedule[day].length === 0) && (
-                <div className="flex flex-col items-center justify-center py-16 text-center opacity-30">
-                  <CalendarDays className="h-10 w-10 mb-2 text-slate-300" />
-                  <p className="font-black text-xs text-slate-500">الجدول فارغ حالياً</p>
-                  <p className="text-[9px] font-bold text-slate-400 mt-1">يرجى إضافة مختبرين وتعيين أيام عمل لهم.</p>
+                <div className="flex flex-col items-center justify-center py-20 text-center opacity-40">
+                  <div className="h-20 w-20 rounded-full bg-slate-100 flex items-center justify-center mb-4">
+                    <CalendarDays className="h-10 w-10 text-slate-300" />
+                  </div>
+                  <p className="font-black text-sm text-slate-600">الجدول لا يحتوي على أي مهام حالياً</p>
+                  <p className="text-[11px] font-bold text-slate-400 mt-2">تأكد من تعيين مشاريع لمختبرين وتحديد أيام العمل لهم في "إدارة المختبرين".</p>
                 </div>
               )}
             </div>
           )}
         </ScrollArea>
         
-        <div className="p-3 bg-white border-t flex gap-2">
-          <Button onClick={handlePrint} disabled={loading || Object.keys(schedule).every(day => schedule[day].length === 0)} className="flex-1 h-9 rounded-xl font-black gap-2 text-[10px] bg-slate-900">
-            <Printer className="h-3.5 w-3.5" /> طباعة الجدول المختصر
+        <div className="p-4 bg-white border-t flex gap-3">
+          <Button 
+            onClick={handlePrint} 
+            disabled={loading || Object.keys(schedule).every(day => schedule[day].length === 0)} 
+            className="flex-1 h-11 rounded-xl font-black gap-2 text-xs bg-slate-900 shadow-lg"
+          >
+            <Printer className="h-4 w-4" /> طباعة الجدول الأسبوعي
           </Button>
-          <Button variant="outline" onClick={onClose} className="h-9 px-4 rounded-xl font-black text-[10px]">إغلاق</Button>
+          <Button variant="outline" onClick={onClose} className="h-11 px-8 rounded-xl font-black text-xs">إغلاق</Button>
         </div>
       </DialogContent>
     </Dialog>
