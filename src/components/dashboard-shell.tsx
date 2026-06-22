@@ -17,7 +17,6 @@ import {
   Loader2,
   Image as ImageIcon,
   Menu,
-  X,
   Bell
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -54,18 +53,23 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     if (profile.role === 'admin') {
       const unsub = onSnapshot(collection(db, "support_threads"), (snap) => {
         setUnreadCount(snap.docs.reduce((acc, d) => acc + (d.data().unreadAdmin || 0), 0));
-      });
+      }, () => {});
       return () => unsub();
     } else if (profile.clientId) {
       const unsub = onSnapshot(doc(db, "support_threads", profile.clientId), (docSnap) => {
         if (docSnap.exists()) setUnreadCount(docSnap.data().unreadClient || 0);
-      });
+      }, () => {});
       return () => unsub();
     }
   }, [profile]);
 
   if (pathname === '/login') return <>{children}</>;
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-slate-50"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
+  
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <Loader2 className="h-10 w-10 animate-spin text-primary" />
+    </div>
+  );
 
   const handleLogout = async () => await signOut(auth);
 

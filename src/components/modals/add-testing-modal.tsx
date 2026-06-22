@@ -70,7 +70,7 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
     if (!db) return;
     const unsub = onSnapshot(collection(db, "projects"), (snap) => {
       setProjects(snap.docs.map(doc => ({ id: doc.id, name: doc.data().name })));
-    });
+    }, () => {});
     return () => unsub();
   }, []);
 
@@ -167,7 +167,7 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
                    {editingTesterIdx !== null ? 'تعديل بيانات المختبر' : 'إضافة مختبر جديد'}
                  </p>
                  {editingTesterIdx !== null && (
-                   <Button variant="ghost" size="sm" onClick={resetTesterForm} className="h-6 text-[9px] text-rose-500 font-bold px-1">إلغاء</Button>
+                   <button onClick={resetTesterForm} className="text-[9px] text-rose-500 font-bold hover:underline">إلغاء</button>
                  )}
               </div>
               <div className="grid grid-cols-2 gap-2">

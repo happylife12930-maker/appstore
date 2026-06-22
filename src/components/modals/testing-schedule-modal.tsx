@@ -74,7 +74,10 @@ export function TestingScheduleModal({ isOpen, onClose }: TestingScheduleModalPr
           
           const testerInfo = {
             email: tester.email,
-            phone: tester.phone
+            phone: tester.phone,
+            resourceLink: group.resourceLink,
+            notes: group.notes,
+            projectName: group.projectName
           };
 
           if (existingProject) {
@@ -100,11 +103,11 @@ export function TestingScheduleModal({ isOpen, onClose }: TestingScheduleModalPr
       }, {} as typeof grouped);
   }, [testingGroups]);
 
-  const handleSendDayNotifications = (day: string, projects: any[]) => {
-    if (projects.length === 0) return;
+  const handleSendDayNotifications = (day: string, dayProjects: any[]) => {
+    if (dayProjects.length === 0) return;
 
     let totalSent = 0;
-    projects.forEach(project => {
+    dayProjects.forEach(project => {
       project.testers?.forEach((tester: any) => {
         if (!tester.phone) return;
         totalSent++;
@@ -188,7 +191,7 @@ export function TestingScheduleModal({ isOpen, onClose }: TestingScheduleModalPr
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4">
-              {Object.entries(groupedSchedule).map(([day, projects]) => (
+              {Object.entries(groupedSchedule).map(([day, dayProjects]) => (
                 <div key={day} className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden group">
                   <div className="px-5 py-3 bg-slate-900 text-white flex items-center justify-between transition-colors group-hover:bg-primary">
                     <div className="flex items-center gap-2">
@@ -197,14 +200,14 @@ export function TestingScheduleModal({ isOpen, onClose }: TestingScheduleModalPr
                     </div>
                     <Button 
                       size="sm" 
-                      onClick={() => handleSendDayNotifications(day, projects)}
+                      onClick={() => handleSendDayNotifications(day, dayProjects)}
                       className="h-8 rounded-xl bg-green-500 hover:bg-green-600 font-black text-[10px] gap-2 px-4 shadow-lg active:scale-95 transition-all"
                     >
                       <MessageCircle className="h-4 w-4" /> إرسال تنبيهات اليوم
                     </Button>
                   </div>
                   <div className="p-4 space-y-3">
-                    {projects.map((proj, idx) => (
+                    {dayProjects.map((proj, idx) => (
                       <div key={idx} className="p-4 rounded-2xl bg-[#f8fafc] border border-slate-100 flex flex-col gap-3 hover:border-primary/20 transition-all">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
