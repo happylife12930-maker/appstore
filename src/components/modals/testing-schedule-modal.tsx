@@ -34,11 +34,10 @@ export function TestingScheduleModal({ isOpen, onClose }: TestingScheduleModalPr
     setLoading(true);
     const q = query(collection(db, "testing_groups"));
     const unsub = onSnapshot(q, (snap) => {
-      const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setTestingGroups(data);
+      setTestingGroups(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       setLoading(false);
     }, (error) => {
-      console.error("Schedule Listener Error:", error);
+      console.warn("Schedule Fetch Error:", error);
       setLoading(false);
     });
 
@@ -48,13 +47,13 @@ export function TestingScheduleModal({ isOpen, onClose }: TestingScheduleModalPr
   const normalizeDay = (day: string) => {
     if (!day) return "";
     const d = day.trim();
-    if (d === "أحد" || d === "الأحد") return "الأحد";
-    if (d === "اثنين" || d === "الاثنين") return "الاثنين";
-    if (d === "ثلاثاء" || d === "الثلاثاء") return "الثلاثاء";
-    if (d === "أربعاء" || d === "الأربعاء") return "الأربعاء";
-    if (d === "خميس" || d === "الخميس") return "الخميس";
-    if (d === "جمعة" || d === "الجمعة") return "الجمعة";
-    if (d === "سبت" || d === "السبت") return "السبت";
+    if (d.includes("أحد")) return "الأحد";
+    if (d.includes("اثنين")) return "الاثنين";
+    if (d.includes("ثلاثاء")) return "الثلاثاء";
+    if (d.includes("أربعاء")) return "الأربعاء";
+    if (d.includes("خميس")) return "الخميس";
+    if (d.includes("جمعة")) return "الجمعة";
+    if (d.includes("سبت")) return "السبت";
     return d;
   };
 
@@ -136,102 +135,77 @@ export function TestingScheduleModal({ isOpen, onClose }: TestingScheduleModalPr
     if (!printWindow) return;
 
     const content = Object.entries(groupedSchedule).map(([day, projects]) => `
-      <div style="margin-bottom: 20px; border: 1px solid #e2e8f0; padding: 15px; border-radius: 12px; background: #fff;">
-        <h3 style="margin: 0 0 10px 0; color: #1e293b; font-size: 16px; border-bottom: 2px solid #3b82f6; display: inline-block; padding-bottom: 4px;">${day}</h3>
+      <div style="margin-bottom: 15px; border: 1px solid #eee; padding: 10px; border-radius: 8px;">
+        <h3 style="margin: 0 0 5px 0; color: #1e293b; font-size: 14px;">${day}</h3>
         ${projects.map(p => `
-          <div style="margin-top: 8px; border-right: 3px solid #3b82f6; padding-right: 10px;">
-            <p style="font-size: 13px; margin: 4px 0; font-weight: 900;">مشروع: ${p.projectName}</p>
-            <p style="font-size: 11px; margin: 2px 0; color: #64748b;">المختبرون: ${p.testers.map((t:any) => t.email).join('، ')}</p>
+          <div style="margin-top: 5px; border-right: 2px solid #3b82f6; padding-right: 8px;">
+            <p style="font-size: 11px; margin: 2px 0; font-weight: bold;">${p.projectName}</p>
+            <p style="font-size: 9px; margin: 0; color: #666;">المختبرون: ${p.testers.map((t:any) => t.email).join('، ')}</p>
           </div>
         `).join('')}
       </div>
     `).join('');
 
     printWindow.document.write(`
-      <html dir="rtl">
-        <head><title>جدول الاختبارات الأسبوعي</title><style>@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap'); body { font-family: 'Cairo', sans-serif; padding: 30px; background: #f8fafc; color: #334155; }</style></head>
-        <body>
-          <h2 style="text-align: center; font-size: 22px; font-weight: 900; color: #1e293b; margin-bottom: 30px;">جدول مهام الاختبار الأسبوعية</h2>
-          ${content || '<p style="text-align: center; color: #94a3b8; font-weight: bold; margin-top: 50px;">لا توجد مهام اختبار مجدولة حالياً</p>'}
-          <div style="margin-top: 40px; text-align: center; font-size: 10px; color: #94a3b8; border-top: 1px dashed #cbd5e1; padding-top: 20px;">هذا التقرير صادر آلياً من نظام APP STORE</div>
-          <script>window.print();</script>
-        </body>
-      </html>
+      <html dir="rtl"><body style="font-family: 'Cairo', sans-serif; padding: 20px;">
+        <h2 style="text-align: center; font-size: 18px;">جدول مهام الاختبار الأسبوعية</h2>
+        ${content}
+        <script>window.print();</script>
+      </body></html>
     `);
     printWindow.document.close();
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-xl rounded-[2rem] border-none shadow-2xl p-0 overflow-hidden bg-white max-h-[85vh] flex flex-col" dir="rtl">
-        <div className="bg-primary p-4 text-primary-foreground shrink-0 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-md">
-                <CalendarDays className="h-5 w-5" />
-              </div>
-              <DialogTitle className="text-sm font-black">جدول الاختبارات الأسبوعي</DialogTitle>
-            </div>
-            <Button onClick={handlePrint} variant="outline" className="h-8 rounded-xl bg-white/10 border-white/20 hover:bg-white/20 text-white font-black text-[10px] gap-2 transition-all">
-              <Printer className="h-4 w-4" /> طباعة الجدول
-            </Button>
+      <DialogContent className="sm:max-w-lg rounded-[1.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white max-h-[80vh] flex flex-col" dir="rtl">
+        <div className="bg-primary p-3 text-primary-foreground flex items-center justify-between shadow-sm">
+          <div className="flex items-center gap-2">
+            <CalendarDays className="h-4 w-4" />
+            <DialogTitle className="text-xs font-black">جدول الاختبارات الأسبوعي</DialogTitle>
           </div>
+          <Button onClick={handlePrint} variant="outline" className="h-7 rounded-lg bg-white/10 border-white/20 text-white font-black text-[9px] gap-1 px-2">
+            <Printer className="h-3.5 w-3.5" /> طباعة
+          </Button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 bg-[#f8fafc]">
+        <div className="flex-1 overflow-y-auto p-3 bg-[#f8fafc]">
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-20 gap-3">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">جاري جلب بيانات المختبرين...</p>
+            <div className="flex flex-col items-center justify-center py-12 gap-2">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              <p className="text-[9px] font-black text-slate-400">جاري التحميل...</p>
             </div>
           ) : Object.keys(groupedSchedule).length === 0 ? (
-            <div className="text-center py-24 opacity-30">
-              <CalendarDays className="h-16 w-16 mx-auto mb-3" />
-              <p className="font-black text-sm uppercase">لا توجد مهام اختبار مسجلة</p>
+            <div className="text-center py-16 opacity-30">
+              <CalendarDays className="h-12 w-12 mx-auto mb-2" />
+              <p className="font-black text-xs">لا توجد مهام مسجلة</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-4">
+            <div className="space-y-3">
               {Object.entries(groupedSchedule).map(([day, dayProjects]) => (
-                <div key={day} className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden group">
-                  <div className="px-5 py-3 bg-slate-900 text-white flex items-center justify-between transition-colors group-hover:bg-primary">
-                    <div className="flex items-center gap-2">
-                      <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-                      <h3 className="font-black text-xs">{day}</h3>
-                    </div>
+                <div key={day} className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+                  <div className="px-4 py-2 bg-slate-900 text-white flex items-center justify-between">
+                    <h3 className="font-black text-[11px]">{day}</h3>
                     <Button 
                       size="sm" 
                       onClick={() => handleSendDayNotifications(day, dayProjects)}
-                      className="h-8 rounded-xl bg-green-500 hover:bg-green-600 font-black text-[10px] gap-2 px-4 shadow-lg active:scale-95 transition-all"
+                      className="h-7 rounded-lg bg-green-500 hover:bg-green-600 font-black text-[9px] gap-1.5 px-3"
                     >
-                      <MessageCircle className="h-4 w-4" /> إرسال تنبيهات اليوم
+                      <MessageCircle className="h-3.5 w-3.5" /> تنبيهات اليوم
                     </Button>
                   </div>
-                  <div className="p-4 space-y-3">
+                  <div className="p-3 space-y-2">
                     {dayProjects.map((proj, idx) => (
-                      <div key={idx} className="p-4 rounded-2xl bg-[#f8fafc] border border-slate-100 flex flex-col gap-3 hover:border-primary/20 transition-all">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2 mb-1.5">
-                               <Layers className="h-4 w-4 text-primary" />
-                               <p className="font-black text-slate-800 text-sm truncate">{proj.projectName}</p>
-                            </div>
-                            <div className="flex flex-wrap items-center gap-3">
-                              <div className="flex items-center gap-1.5">
-                                <User className="h-3 w-3 text-slate-400" />
-                                <p className="text-[10px] font-bold text-slate-400 truncate max-w-[200px]">{proj.testers.map((t:any)=>t.email.split('@')[0]).join('، ')}</p>
-                              </div>
-                              <Badge variant="outline" className="text-[9px] h-5 font-black px-2 bg-white">
-                                {proj.testers.length} مختبرين
-                              </Badge>
-                            </div>
-                          </div>
-                          {proj.resourceLink && (
-                            <a href={proj.resourceLink} target="_blank" className="h-9 w-9 rounded-xl bg-white border shadow-sm text-primary flex items-center justify-center hover:bg-primary hover:text-white transition-all shrink-0">
-                              <ExternalLink className="h-4 w-4" />
-                            </a>
-                          )}
+                      <div key={idx} className="p-3 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="font-black text-slate-800 text-[10px] truncate">{proj.projectName}</p>
+                          <p className="text-[9px] text-slate-400 font-bold truncate">المختبرون: {proj.testers.length}</p>
                         </div>
-                        {proj.notes && <p className="text-[10px] text-slate-500 font-bold border-r-2 border-slate-200 pr-3 leading-relaxed line-clamp-2">{proj.notes}</p>}
+                        {proj.resourceLink && (
+                          <a href={proj.resourceLink} target="_blank" className="h-7 w-7 rounded-lg bg-white border shadow-sm text-primary flex items-center justify-center hover:bg-primary hover:text-white transition-all">
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </a>
+                        )}
                       </div>
                     ))}
                   </div>

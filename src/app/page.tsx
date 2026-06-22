@@ -8,10 +8,10 @@ import {
   LayoutDashboard, 
   ShieldCheck, 
   Loader2, 
-  Lock,
   CalendarDays,
   ArrowLeft,
-  Settings
+  LifeBuoy,
+  ShieldAlert
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
@@ -71,7 +71,7 @@ export default function DashboardPage() {
   if (loading || authLoading) return (
     <div className="flex flex-col items-center justify-center py-20 gap-4">
       <Loader2 className="h-10 w-10 animate-spin text-primary" />
-      <p className="font-bold text-slate-500">جاري التحميل...</p>
+      <p className="text-xs font-bold text-slate-500">جاري التحميل...</p>
     </div>
   );
 
@@ -79,61 +79,52 @@ export default function DashboardPage() {
   const isLinked = !!profile?.clientId;
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8" dir="rtl">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100">
+    <div className="max-w-7xl mx-auto space-y-6" dir="rtl">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-[1.5rem] shadow-sm border">
         <div className="flex items-center gap-4">
-          <div className="p-4 bg-primary/10 rounded-2xl text-primary">
-            <LayoutDashboard className="h-8 w-8" />
-          </div>
+          <div className="p-3 bg-primary/10 rounded-xl text-primary"><LayoutDashboard className="h-6 w-6" /></div>
           <div>
-            <h1 className="text-3xl font-black text-slate-800 tracking-tight">نظرة عامة على الوكالة</h1>
-            <p className="text-slate-500 font-bold">مرحباً {profile?.name}، تابع آخر المستجدات والإحصائيات</p>
+            <h1 className="text-xl font-black text-slate-800">نظرة عامة</h1>
+            <p className="text-[10px] text-slate-500 font-bold">مرحباً {profile?.name}، تابع آخر التطورات</p>
           </div>
         </div>
         {isAdmin && (
-          <Button onClick={() => setIsScheduleModalOpen(true)} className="rounded-2xl h-14 px-8 font-black text-lg gap-2 shadow-xl hover:scale-105 transition-all">
-            <CalendarDays className="h-6 w-6" /> عرض جدول الاختبارات
+          <Button onClick={() => setIsScheduleModalOpen(true)} className="rounded-xl h-11 px-6 font-black text-sm gap-2 shadow-md hover:scale-105 transition-all">
+            <CalendarDays className="h-5 w-5" /> جدول الاختبارات الأسبوعي
           </Button>
         )}
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {isAdmin ? (
           <>
-            <StatCard title="إجمالي العملاء" icon={<Users className="text-primary" />} value={stats.clients} onClick={() => router.push('/clients')} />
-            <StatCard title="مشاريع نشطة" icon={<Briefcase className="text-orange-500" />} value={stats.projects} onClick={() => router.push('/projects?status=active')} />
-            <StatCard title="مشاريع منتهية" icon={<CheckCircle className="text-green-500" />} value={stats.finished} onClick={() => router.push('/projects?status=finished')} />
-            <StatCard title="إدارة البوابة" icon={<ShieldAlert className="text-rose-500" />} value="دخول" onClick={() => router.push('/users')} />
+            <StatCard title="إجمالي العملاء" icon={<Users className="text-primary h-5 w-5" />} value={stats.clients} onClick={() => router.push('/clients')} />
+            <StatCard title="مشاريع نشطة" icon={<Briefcase className="text-orange-500 h-5 w-5" />} value={stats.projects} onClick={() => router.push('/projects?status=active')} />
+            <StatCard title="مشاريع منتهية" icon={<CheckCircle className="text-green-500 h-5 w-5" />} value={stats.finished} onClick={() => router.push('/projects?status=finished')} />
+            <StatCard title="بوابة المستخدمين" icon={<ShieldAlert className="text-rose-500 h-5 w-5" />} value="إدارة" onClick={() => router.push('/users')} />
           </>
         ) : (
           <>
-            <StatCard title="مشاريعي الجارية" icon={<Briefcase className="text-orange-500" />} value={stats.projects} onClick={() => router.push('/projects?status=active')} />
-            <StatCard title="مشاريع تم تسليمها" icon={<CheckCircle className="text-green-500" />} value={stats.finished} onClick={() => router.push('/projects?status=finished')} />
-            <StatCard title="حالة الحساب" icon={<ShieldCheck className={isLinked ? "text-green-500" : "text-rose-500"} />} value={isLinked ? "مفعل" : "معلق"} onClick={() => router.push('/profile')} />
-            <StatCard title="الدعم الفني" icon={<LifeBuoy className="text-indigo-500" />} value="مراسلة" onClick={() => router.push('/support')} />
+            <StatCard title="مشاريع جارية" icon={<Briefcase className="text-orange-500 h-5 w-5" />} value={stats.projects} onClick={() => router.push('/projects?status=active')} />
+            <StatCard title="مشاريع منتهية" icon={<CheckCircle className="text-green-500 h-5 w-5" />} value={stats.finished} onClick={() => router.push('/projects?status=finished')} />
+            <StatCard title="حالة الحساب" icon={<ShieldCheck className={(isLinked ? "text-green-500" : "text-rose-500") + " h-5 w-5"} />} value={isLinked ? "نشط" : "معلق"} onClick={() => router.push('/profile')} />
+            <StatCard title="الدعم الفني" icon={<LifeBuoy className="text-indigo-500 h-5 w-5" />} value="مراسلة" onClick={() => router.push('/support')} />
           </>
         )}
       </div>
 
-      <Card className="rounded-[2.5rem] border-none shadow-lg bg-gradient-to-br from-primary to-primary/80 p-12 text-primary-foreground text-center relative overflow-hidden">
-        <div className="absolute -bottom-12 -left-12 opacity-10"><LayoutDashboard className="h-64 w-64 rotate-12" /></div>
-        <div className="relative z-10">
-          <h2 className="text-4xl font-black mb-4">{isAdmin ? 'مركز التحكم والسيطرة' : 'متابعة شفافة لمشروعك'}</h2>
-          <p className="opacity-80 font-bold max-w-2xl mx-auto text-base leading-relaxed mb-8">
+      <Card className="rounded-[2rem] border-none shadow-lg bg-gradient-to-br from-primary to-primary/80 p-8 text-primary-foreground text-center relative overflow-hidden">
+        <div className="relative z-10 space-y-6">
+          <h2 className="text-3xl font-black">{isAdmin ? 'مركز الإدارة المتكامل' : 'رؤية شفافة لمشروعك'}</h2>
+          <p className="opacity-80 font-bold max-w-xl mx-auto text-xs leading-relaxed">
             {isAdmin 
-              ? 'قم بإدارة كل جوانب وكالتك الرقمية، من العملاء والمشاريع، وصولاً إلى المختبرين وصلاحيات المستخدمين في مكان واحد.'
-              : 'نمنحك رؤية كاملة لمشروعك. تابع مراحل التنفيذ، اطلع على الملاحظات، وتواصل معنا لضمان تحقيق رؤيتك.'}
+              ? 'تحكم في كافة جوانب الوكالة الرقمية من مكان واحد؛ العملاء، المشاريع، المختبرين، والبيانات المالية.'
+              : 'تابع مراحل تنفيذ طلباتك لحظة بلحظة، وتواصل مع فريق الدعم لضمان الحصول على أفضل النتائج.'}
           </p>
-          <div className="flex justify-center gap-4">
-             {isAdmin ? (
-               <Button onClick={() => router.push('/projects')} size="lg" className="rounded-2xl bg-white text-primary font-black shadow-lg gap-2 h-14 px-10 hover:bg-slate-50">
-                 ابدأ العمل الآن <ArrowLeft className="h-5 w-5" />
-               </Button>
-             ) : (
-               <Button onClick={() => router.push('/support')} size="lg" className="rounded-2xl bg-accent text-white font-black shadow-lg gap-2 h-14 px-10">
-                 اطلب مساعدة <LifeBuoy className="h-5 w-5" />
-               </Button>
-             )}
+          <div className="flex justify-center gap-3">
+             <Button onClick={() => router.push(isAdmin ? '/projects' : '/support')} size="lg" className="rounded-xl bg-white text-primary font-black shadow-lg gap-2 h-12 px-8 hover:bg-slate-50 text-sm">
+               {isAdmin ? 'ابدأ العمل' : 'اطلب مساعدة'} <ArrowLeft className="h-4 w-4" />
+             </Button>
           </div>
         </div>
       </Card>
@@ -145,12 +136,12 @@ export default function DashboardPage() {
 
 function StatCard({ title, icon, value, onClick }: any) {
   return (
-    <Card className="rounded-[2.5rem] border-none shadow-sm hover:shadow-xl transition-all cursor-pointer bg-white p-3 group" onClick={onClick}>
+    <Card className="rounded-[1.2rem] border-none shadow-sm hover:shadow-md transition-all cursor-pointer bg-white p-2 group" onClick={onClick}>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{title}</CardTitle>
-        <div className="h-10 w-10 rounded-2xl bg-slate-50 flex items-center justify-center group-hover:scale-110 transition-transform">{icon}</div>
+        <CardTitle className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{title}</CardTitle>
+        <div className="h-9 w-9 rounded-xl bg-slate-50 flex items-center justify-center group-hover:bg-primary/5 transition-colors">{icon}</div>
       </CardHeader>
-      <CardContent><div className="text-3xl font-black text-slate-800">{value}</div></CardContent>
+      <CardContent><div className="text-2xl font-black text-slate-800">{value}</div></CardContent>
     </Card>
   );
 }

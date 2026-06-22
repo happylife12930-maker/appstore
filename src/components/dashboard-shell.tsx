@@ -79,7 +79,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     if (!item.roles.includes(profile.role)) return false;
     if (item.permission === 'p_always') return true;
     if (item.permission === 'p_dashboard' && profile.role !== 'client') return true;
-    return profile.permissions.includes(item.permission);
+    return (profile.permissions || []).includes(item.permission);
   });
 
   const NavLinks = ({ className, onItemClick }: { className?: string; onItemClick?: () => void }) => (
