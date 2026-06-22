@@ -118,30 +118,26 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[550px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white" dir="rtl">
-        <div className="bg-primary p-6 text-primary-foreground shadow-md">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-black flex items-center gap-3">
-              <Calendar className="h-6 w-6" /> {initialData ? 'تعديل مهمة الاختبار' : 'تعيين مشروع للاختبار'}
-            </DialogTitle>
-          </DialogHeader>
+        <div className="bg-primary p-6 text-primary-foreground">
+          <DialogHeader><DialogTitle className="text-xl font-black flex items-center gap-3"><Calendar className="h-6 w-6" /> {initialData ? 'تعديل مهمة الاختبار' : 'تعيين مشروع للاختبار'}</DialogTitle></DialogHeader>
         </div>
 
         <ScrollArea className="max-h-[70vh] p-8">
           <div className="space-y-6">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-sm font-black text-slate-700 pr-2">المشروع المستهدف</Label>
+                <Label className="text-xs font-black text-slate-700 pr-2">المشروع المستهدف</Label>
                 <Select value={formData.projectId} onValueChange={(v) => setFormData({...formData, projectId: v})}>
-                  <SelectTrigger className="rounded-2xl h-12 font-bold"><SelectValue placeholder="اختر المشروع" /></SelectTrigger>
+                  <SelectTrigger className="rounded-xl h-11 font-bold text-xs"><SelectValue placeholder="اختر المشروع" /></SelectTrigger>
                   <SelectContent className="font-bold">
                     {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label className="text-sm font-black text-slate-700 pr-2">حالة الاختبار</Label>
+                <Label className="text-xs font-black text-slate-700 pr-2">حالة الاختبار</Label>
                 <Select value={formData.status} onValueChange={(v: any) => setFormData({...formData, status: v})}>
-                  <SelectTrigger className="rounded-2xl h-12 font-bold"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="rounded-xl h-11 font-bold text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent className="font-bold">
                     <SelectItem value="pending">في الانتظار</SelectItem>
                     <SelectItem value="in_progress">قيد الاختبار</SelectItem>
@@ -151,50 +147,38 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
               </div>
             </div>
 
-            <div className="p-6 rounded-[2rem] bg-slate-50 border border-slate-100 space-y-4 shadow-inner">
+            <div className="p-5 rounded-[2rem] bg-slate-50 border border-slate-100 space-y-4">
               <div className="flex items-center justify-between pr-2">
-                <p className="font-black text-primary text-sm uppercase tracking-wider">
-                  {editingTesterIdx !== null ? 'تعديل بيانات مختبر' : 'إضافة مختبر للفريق'}
-                </p>
-                {editingTesterIdx !== null && (
-                  <Button variant="ghost" onClick={resetTesterForm} className="text-xs font-black text-rose-500 h-6 px-2">إلغاء التعديل</Button>
-                )}
+                <p className="font-black text-primary text-xs uppercase tracking-wider">{editingTesterIdx !== null ? 'تعديل بيانات مختبر' : 'إضافة مختبر جديد'}</p>
+                {editingTesterIdx !== null && <Button variant="ghost" onClick={resetTesterForm} className="text-[10px] font-black text-rose-500 h-6 px-2">إلغاء</Button>}
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <Input placeholder="البريد الإلكتروني" className="rounded-xl h-10 font-bold" value={newTesterEmail} onChange={e => setNewTesterEmail(e.target.value)} />
-                <Input placeholder="رقم الهاتف (اختياري)" className="rounded-xl h-10 font-bold" value={newTesterPhone} onChange={e => setNewTesterPhone(e.target.value)} />
+                <Input placeholder="البريد الإلكتروني" className="rounded-xl h-10 font-bold text-xs" value={newTesterEmail} onChange={e => setNewTesterEmail(e.target.value)} />
+                <Input placeholder="رقم الهاتف" className="rounded-xl h-10 font-bold text-xs" value={newTesterPhone} onChange={e => setNewTesterPhone(e.target.value)} />
               </div>
-              <div className="flex flex-wrap gap-2 py-2">
+              <div className="flex flex-wrap gap-2 py-1">
                 {DAYS.map(day => (
-                  <button 
-                    key={day} 
-                    onClick={() => toggleDay(day)}
-                    className={`px-3 py-1 rounded-xl text-[10px] font-black border transition-all ${
-                      selectedDays.includes(day) ? 'bg-primary text-white border-primary shadow-md scale-105' : 'bg-white text-slate-400 border-slate-200 hover:border-primary/40'
-                    }`}
-                  >
-                    {day}
-                  </button>
+                  <button key={day} onClick={() => toggleDay(day)} className={`px-2.5 py-1 rounded-lg text-[9px] font-black border transition-all ${selectedDays.includes(day) ? 'bg-primary text-white border-primary shadow-md' : 'bg-white text-slate-400 border-slate-200 hover:border-primary/40'}`}>{day}</button>
                 ))}
               </div>
-              <Button onClick={handleTesterAction} className="w-full h-11 rounded-xl font-black gap-2 shadow-lg transition-all active:scale-95">
-                {editingTesterIdx !== null ? <Edit2 className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                {editingTesterIdx !== null ? 'تحديث بيانات المختبر' : 'إضافة المختبر للقائمة'}
+              <Button onClick={handleTesterAction} className="w-full h-10 rounded-xl font-black gap-2 text-xs shadow-md">
+                {editingTesterIdx !== null ? <Edit2 className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
+                {editingTesterIdx !== null ? 'تحديث المختبر' : 'إضافة المختبر'}
               </Button>
 
               {formData.testers.length > 0 && (
-                <div className="pt-4 space-y-3">
+                <div className="pt-2 space-y-2">
                   {formData.testers.map((t, i) => (
-                    <div key={i} className="bg-white p-4 rounded-2xl border border-slate-100 flex justify-between items-center shadow-sm group">
+                    <div key={i} className="bg-white p-3 rounded-xl border border-slate-100 flex justify-between items-center shadow-sm">
                       <div className="overflow-hidden">
-                        <p className="font-black text-sm text-slate-800 truncate">{t.email}</p>
-                        <div className="flex gap-2 flex-wrap mt-1">
-                          {t.assignedDays.map(d => <span key={d} className="text-[9px] font-bold text-primary bg-primary/5 px-1.5 rounded-md">{d}</span>)}
+                        <p className="font-black text-xs text-slate-800 truncate">{t.email}</p>
+                        <div className="flex gap-1 flex-wrap mt-1">
+                          {t.assignedDays.map(d => <span key={d} className="text-[8px] font-bold text-primary bg-primary/5 px-1.5 rounded-md">{d}</span>)}
                         </div>
                       </div>
                       <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => startEditTester(i)} className="h-8 w-8 rounded-lg text-blue-500 hover:bg-blue-50 transition-colors"><Edit2 className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" onClick={() => setFormData(p=>({...p, testers: p.testers.filter((_,idx)=>idx!==i)}))} className="h-8 w-8 rounded-lg text-rose-300 hover:text-rose-500 hover:bg-rose-50 transition-colors"><X className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => startEditTester(i)} className="h-7 w-7 rounded-lg text-blue-500 hover:bg-blue-50"><Edit2 className="h-3.5 w-3.5" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => setFormData(p=>({...p, testers: p.testers.filter((_,idx)=>idx!==i)}))} className="h-7 w-7 rounded-lg text-rose-300 hover:text-rose-500"><X className="h-3.5 w-3.5" /></Button>
                       </div>
                     </div>
                   ))}
@@ -203,22 +187,22 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
             </div>
 
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label className="text-sm font-black text-slate-700 pr-2">رابط نسخة الاختبار والمرفقات</Label>
-                <Input value={formData.resourceLink} onChange={e => setFormData({...formData, resourceLink: e.target.value})} className="rounded-2xl h-12 border-slate-200" placeholder="https://drive.google.com/..." />
+              <div className="space-y-1">
+                <Label className="text-xs font-black text-slate-700 pr-2">رابط النسخة والمرفقات</Label>
+                <Input value={formData.resourceLink} onChange={e => setFormData({...formData, resourceLink: e.target.value})} className="rounded-xl h-11 border-slate-200 text-xs" placeholder="https://..." />
               </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-black text-slate-700 pr-2">تعليمات وملاحظات إضافية</Label>
-                <Textarea value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} className="rounded-2xl min-h-[100px] border-slate-200 font-bold" placeholder="اكتب هنا أي تعليمات للمختبرين..." />
+              <div className="space-y-1">
+                <Label className="text-xs font-black text-slate-700 pr-2">تعليمات وملاحظات</Label>
+                <Textarea value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} className="rounded-xl min-h-[80px] border-slate-200 font-bold text-xs" placeholder="اكتب هنا..." />
               </div>
             </div>
           </div>
         </ScrollArea>
 
         <DialogFooter className="p-8 bg-slate-50 border-t">
-          <Button onClick={() => onSave({...formData, projectName: projects.find(p=>p.id===formData.projectId)?.name || ''})} disabled={isLoading || !formData.projectId || formData.testers.length === 0} className="w-full h-16 rounded-2xl font-black text-xl gap-3 shadow-2xl transition-all hover:scale-[1.01]">
-            {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : <CheckCircle2 className="h-6 w-6" />}
-            اعتماد وحفظ المهمة بالكامل
+          <Button onClick={() => onSave({...formData, projectName: projects.find(p=>p.id===formData.projectId)?.name || ''})} disabled={isLoading || !formData.projectId || formData.testers.length === 0} className="w-full h-14 rounded-2xl font-black text-lg gap-2 shadow-xl">
+            {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle2 className="h-5 w-5" />}
+            حفظ المهمة بالكامل
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -157,103 +157,98 @@ function ProjectsContent() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 pb-20" dir="rtl">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100">
-        <div className="flex items-center gap-5">
-          <div className="p-4 bg-primary/10 rounded-2xl text-primary">
-            <Briefcase className="h-8 w-8" />
+    <div className="max-w-7xl mx-auto space-y-6 pb-20" dir="rtl">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-primary/10 rounded-2xl text-primary">
+            <Briefcase className="h-7 w-7" />
           </div>
           <div>
-            <h1 className="text-3xl font-black text-slate-800 tracking-tight">
-              {profile?.role === 'client' ? 'مشاريعي الجارية' : 'إدارة المشاريع'}
-            </h1>
-            <p className="text-slate-500 font-bold">متابعة مراحل التنفيذ والمتطلبات بدقة</p>
+            <h1 className="text-2xl font-black text-slate-800 tracking-tight">إدارة المشاريع</h1>
+            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">متابعة مراحل التنفيذ والمتطلبات</p>
           </div>
         </div>
         {profile?.role === 'admin' && (
           <Button 
             onClick={() => { setEditingProject(null); setIsModalOpen(true); }}
-            className="rounded-2xl h-14 px-8 font-black text-lg gap-2 shadow-xl hover:scale-105 transition-all bg-primary"
+            className="rounded-xl h-11 px-6 font-black text-sm gap-2 shadow-lg hover:scale-105 transition-all bg-primary"
           >
-            <Plus className="h-6 w-6" /> إضافة مشروع جديد
+            <Plus className="h-5 w-5" /> إضافة مشروع
           </Button>
         )}
       </header>
 
-      <div className="flex flex-col lg:flex-row gap-6 items-start lg:items-center justify-between">
+      <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
         <Tabs value={statusFilter} onValueChange={setStatusFilter} className="w-full lg:w-auto">
-          <TabsList className="bg-white border p-1 h-14 rounded-2xl shadow-sm gap-2">
-            <TabsTrigger value="all" className="rounded-xl h-11 px-6 font-black text-sm data-[state=active]:bg-primary data-[state=active]:text-white transition-all gap-2">
-              <Layers className="h-4 w-4" /> الكل
-              <Badge variant={statusFilter === 'all' ? 'secondary' : 'outline'} className="rounded-lg h-5 px-1.5 text-[10px]">{stats.total}</Badge>
+          <TabsList className="bg-white border p-1 h-12 rounded-xl shadow-sm gap-2">
+            <TabsTrigger value="all" className="rounded-lg h-9 px-4 font-black text-xs data-[state=active]:bg-primary data-[state=active]:text-white transition-all gap-2">
+              الكل <Badge variant="secondary" className="rounded-md h-4 px-1 text-[8px]">{stats.total}</Badge>
             </TabsTrigger>
-            <TabsTrigger value="active" className="rounded-xl h-11 px-6 font-black text-sm data-[state=active]:bg-orange-500 data-[state=active]:text-white transition-all gap-2">
-              <Clock className="h-4 w-4" /> جاري التنفيذ
-              <Badge variant={statusFilter === 'active' ? 'secondary' : 'outline'} className="rounded-lg h-5 px-1.5 text-[10px]">{stats.active}</Badge>
+            <TabsTrigger value="active" className="rounded-lg h-9 px-4 font-black text-xs data-[state=active]:bg-orange-500 data-[state=active]:text-white transition-all gap-2">
+              جاري التنفيذ <Badge variant="secondary" className="rounded-md h-4 px-1 text-[8px]">{stats.active}</Badge>
             </TabsTrigger>
-            <TabsTrigger value="completed" className="rounded-xl h-11 px-6 font-black text-sm data-[state=active]:bg-green-500 data-[state=active]:text-white transition-all gap-2">
-              <CheckCircle2 className="h-4 w-4" /> مكتمل
-              <Badge variant={statusFilter === 'completed' ? 'secondary' : 'outline'} className="rounded-lg h-5 px-1.5 text-[10px]">{stats.completed}</Badge>
+            <TabsTrigger value="completed" className="rounded-lg h-9 px-4 font-black text-xs data-[state=active]:bg-green-500 data-[state=active]:text-white transition-all gap-2">
+              مكتمل <Badge variant="secondary" className="rounded-md h-4 px-1 text-[8px]">{stats.completed}</Badge>
             </TabsTrigger>
           </TabsList>
         </Tabs>
 
-        <div className="relative w-full lg:w-[400px]">
-          <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5" />
+        <div className="relative w-full lg:w-80">
+          <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 h-4 w-4" />
           <Input 
-            placeholder="ابحث باسم المشروع أو العميل..." 
-            className="pr-12 h-14 rounded-2xl font-bold text-base border-none shadow-sm bg-white focus-visible:ring-primary/20"
+            placeholder="ابحث بالاسم..." 
+            className="pr-10 h-11 rounded-xl font-bold text-xs border-none shadow-sm bg-white"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredProjects.map((project) => (
-          <Card key={project.id} className="rounded-[2.5rem] border-none shadow-sm hover:shadow-2xl transition-all bg-white overflow-hidden flex flex-col border border-slate-50 group">
-            <div className="relative h-48 bg-slate-100 overflow-hidden">
+          <Card key={project.id} className="rounded-[2rem] border-none shadow-sm hover:shadow-xl transition-all bg-white overflow-hidden flex flex-col border border-slate-50 group">
+            <div className="relative h-40 bg-slate-100 overflow-hidden">
               {project.images?.[0] ? (
                 <img src={project.images[0]} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt="" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-slate-300 bg-slate-50">
-                  <ImageIcon className="h-12 w-12" />
+                  <ImageIcon className="h-10 w-10" />
                 </div>
               )}
-              <Badge className={`absolute top-5 right-5 rounded-xl px-4 py-1 font-black shadow-lg ${
+              <Badge className={`absolute top-4 right-4 rounded-lg px-3 py-0.5 text-[9px] font-black shadow-lg ${
                 project.status === 'مكتمل' ? 'bg-green-500' : 'bg-primary'
               }`}>
                 {project.status}
               </Badge>
             </div>
-            <CardHeader className="p-7 pb-2">
+            <CardHeader className="p-5 pb-2">
               <div className="flex justify-between items-start">
                 <div className="flex-1 min-w-0">
-                  <CardTitle className="text-xl font-black truncate text-slate-800">{project.name}</CardTitle>
-                  <p className="text-xs font-bold text-slate-400 mt-1.5 flex items-center gap-1.5">العميل: {project.clientName}</p>
+                  <CardTitle className="text-base font-black truncate text-slate-800">{project.name}</CardTitle>
+                  <p className="text-[10px] font-bold text-slate-400 mt-1">العميل: {project.clientName}</p>
                 </div>
                 {profile?.role === 'admin' && (
-                  <div className="flex gap-1.5">
-                    <Button variant="ghost" size="icon" onClick={() => { setEditingProject(project); setIsModalOpen(true); }} className="h-9 w-9 rounded-xl text-slate-400 hover:text-primary hover:bg-primary/5 transition-all"><Edit3 className="h-4 w-4" /></Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDeleteProject(project.id!)} className="h-9 w-9 rounded-xl text-rose-300 hover:text-rose-500 hover:bg-rose-50 transition-all"><Trash2 className="h-4 w-4" /></Button>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" onClick={() => { setEditingProject(project); setIsModalOpen(true); }} className="h-8 w-8 rounded-lg text-slate-400 hover:text-primary"><Edit3 className="h-3.5 w-3.5" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleDeleteProject(project.id!)} className="h-8 w-8 rounded-lg text-rose-300 hover:text-rose-500"><Trash2 className="h-3.5 w-3.5" /></Button>
                   </div>
                 )}
               </div>
             </CardHeader>
-            <CardContent className="p-7 pt-2 space-y-5">
-              <div className="space-y-3">
-                <div className="flex justify-between text-xs font-black uppercase tracking-widest">
+            <CardContent className="p-5 pt-2 space-y-4">
+              <div className="space-y-2">
+                <div className="flex justify-between text-[10px] font-black uppercase tracking-widest">
                   <span className="text-slate-400">الإنجاز</span>
                   <span className={project.progress === 100 ? 'text-green-600' : 'text-primary'}>{project.progress}%</span>
                 </div>
-                <Progress value={project.progress} className={`h-2.5 rounded-full bg-slate-100 ${project.progress === 100 ? '[&>div]:bg-green-500' : ''}`} />
+                <Progress value={project.progress} className={`h-1.5 rounded-full bg-slate-100 ${project.progress === 100 ? '[&>div]:bg-green-500' : ''}`} />
               </div>
               <Button 
                 onClick={() => { setViewingProject(project); setIsDetailsOpen(true); }} 
                 variant="outline" 
-                className="w-full rounded-2xl h-14 font-black border-2 border-slate-100 gap-3 hover:bg-primary hover:text-white hover:border-primary transition-all shadow-sm"
+                className="w-full rounded-xl h-11 font-black text-xs border-2 border-slate-100 gap-2 hover:bg-primary hover:text-white transition-all shadow-sm"
               >
-                <ExternalLink className="h-5 w-5" /> عرض تفاصيل التنفيذ
+                <ExternalLink className="h-4 w-4" /> عرض تفاصيل التنفيذ
               </Button>
             </CardContent>
           </Card>
@@ -268,7 +263,7 @@ function ProjectsContent() {
 
 export default function ProjectsPage() {
   return (
-    <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>}>
+    <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>}>
       <ProjectsContent />
     </Suspense>
   );

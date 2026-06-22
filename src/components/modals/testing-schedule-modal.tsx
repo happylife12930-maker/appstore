@@ -133,32 +133,19 @@ export function TestingScheduleModal({ isOpen, onClose }: TestingScheduleModalPr
   const handlePrint = () => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
-
     const content = Object.entries(groupedSchedule).map(([day, projects]) => `
-      <div style="margin-bottom: 20px; border: 2px solid #e2e8f0; padding: 15px; border-radius: 15px; page-break-inside: avoid;">
-        <h3 style="margin: 0 0 10px 0; color: #1e293b; font-size: 18px; border-bottom: 2px solid #primary; padding-bottom: 5px;">${day}</h3>
-        ${projects.map(p => `
-          <div style="margin-top: 10px; border-right: 4px solid #3b82f6; padding-right: 12px; margin-bottom: 10px;">
-            <p style="font-size: 14px; margin: 2px 0; font-weight: 900;">${p.projectName}</p>
-            <p style="font-size: 12px; margin: 0; color: #64748b;">المختبرون: ${p.testers.map((t:any) => t.email).join('، ')}</p>
-          </div>
-        `).join('')}
+      <div style="margin-bottom: 20px; border: 2px solid #e2e8f0; padding: 15px; border-radius: 15px;">
+        <h3 style="margin: 0 0 10px 0; color: #1e293b;">${day}</h3>
+        ${projects.map(p => `<div style="margin-top: 10px; border-right: 4px solid #primary; padding-right: 10px;"><p><b>${p.projectName}</b></p></div>`).join('')}
       </div>
     `).join('');
-
-    printWindow.document.write(`
-      <html dir="rtl"><body style="font-family: 'Cairo', sans-serif; padding: 40px; background: white;">
-        <h2 style="text-align: center; font-size: 24px; font-weight: 900; margin-bottom: 30px; border-bottom: 4px solid #1e293b; padding-bottom: 15px;">جدول مهام الاختبار الأسبوعية - APP STORE</h2>
-        ${content}
-        <script>window.print();</script>
-      </body></html>
-    `);
+    printWindow.document.write(`<html dir="rtl"><body style="font-family: 'Cairo', sans-serif; padding: 40px;"><h2>جدول الاختبارات الأسبوعي</h2>${content}<script>window.print();</script></body></html>`);
     printWindow.document.close();
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-xl rounded-[2rem] border-none shadow-2xl p-0 overflow-hidden bg-white max-h-[85vh] flex flex-col" dir="rtl">
+      <DialogContent className="sm:max-w-xl rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white max-h-[85vh] flex flex-col" dir="rtl">
         <div className="bg-primary p-6 text-primary-foreground flex items-center justify-between shadow-lg z-10">
           <div className="flex items-center gap-4">
             <div className="p-2 bg-white/20 rounded-xl backdrop-blur-md">
@@ -166,48 +153,46 @@ export function TestingScheduleModal({ isOpen, onClose }: TestingScheduleModalPr
             </div>
             <DialogTitle className="text-lg font-black tracking-tight">جدول الاختبارات الأسبوعي</DialogTitle>
           </div>
-          <Button onClick={handlePrint} variant="outline" className="h-10 rounded-xl bg-white/10 border-white/20 text-white font-black text-sm gap-2 px-4 hover:bg-white/20">
-            <Printer className="h-4 w-4" /> طباعة الجدول
+          <Button onClick={handlePrint} variant="outline" className="h-10 rounded-xl bg-white/10 border-white/20 text-white font-black text-xs gap-2 px-4 hover:bg-white/20">
+            <Printer className="h-4 w-4" /> طباعة
           </Button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 bg-[#f8fafc]">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20 gap-4">
-              <Loader2 className="h-10 w-10 animate-spin text-primary" />
-              <p className="font-black text-slate-400">جاري مزامنة الجدول...</p>
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="font-black text-[10px] text-slate-400">جاري المزامنة...</p>
             </div>
           ) : Object.keys(groupedSchedule).length === 0 ? (
-            <div className="text-center py-24 opacity-30 flex flex-col items-center gap-4">
-              <CalendarDays className="h-20 w-20" />
-              <p className="font-black text-xl">لا توجد مهام اختبار مجدولة حالياً</p>
+            <div className="text-center py-20 opacity-30">
+              <CalendarDays className="h-16 w-16 mx-auto mb-4" />
+              <p className="font-black text-base">لا توجد مهام حالياً</p>
             </div>
           ) : (
             <div className="space-y-6">
               {Object.entries(groupedSchedule).map(([day, dayProjects]) => (
                 <div key={day} className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden group hover:shadow-md transition-all">
-                  <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
-                    <h3 className="font-black text-lg">{day}</h3>
+                  <div className="px-5 py-3 bg-slate-900 text-white flex items-center justify-between">
+                    <h3 className="font-black text-base">{day}</h3>
                     <Button 
                       size="sm" 
                       onClick={() => handleSendDayNotifications(day, dayProjects)}
-                      className="h-10 rounded-xl bg-green-500 hover:bg-green-600 font-black text-xs gap-2 px-6 shadow-lg shadow-green-500/20 active:scale-95 transition-all"
+                      className="h-9 rounded-xl bg-green-500 hover:bg-green-600 font-black text-[10px] gap-2 px-5 shadow-lg active:scale-95 transition-all"
                     >
-                      <MessageCircle className="h-4 w-4" /> إرسال تنبيهات اليوم
+                      <MessageCircle className="h-3.5 w-3.5" /> إرسال تنبيهات اليوم
                     </Button>
                   </div>
                   <div className="p-4 space-y-3">
                     {dayProjects.map((proj, idx) => (
-                      <div key={idx} className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between gap-4">
+                      <div key={idx} className="p-3 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between gap-4">
                         <div className="min-w-0">
-                          <p className="font-black text-slate-800 text-sm truncate">{proj.projectName}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Badge variant="secondary" className="rounded-lg h-5 px-2 text-[10px] font-black">{proj.testers.length} مختبرين</Badge>
-                          </div>
+                          <p className="font-black text-slate-800 text-xs truncate">{proj.projectName}</p>
+                          <Badge variant="secondary" className="rounded-lg h-4 px-1.5 text-[8px] font-black mt-1">{proj.testers.length} مختبرين</Badge>
                         </div>
                         {proj.resourceLink && (
-                          <a href={proj.resourceLink} target="_blank" className="h-10 w-10 rounded-xl bg-white border shadow-sm text-primary flex items-center justify-center hover:bg-primary hover:text-white transition-all">
-                            <ExternalLink className="h-5 w-5" />
+                          <a href={proj.resourceLink} target="_blank" className="h-9 w-9 rounded-xl bg-white border shadow-sm text-primary flex items-center justify-center hover:bg-primary hover:text-white transition-all">
+                            <ExternalLink className="h-4 w-4" />
                           </a>
                         )}
                       </div>

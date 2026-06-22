@@ -66,7 +66,7 @@ function UsersPermissionsContent() {
   ];
 
   useEffect(() => {
-    if (profile?.role !== 'admin') {
+    if (profile?.role !== 'admin' && !loading) {
       router.push("/");
       return;
     }
@@ -90,15 +90,10 @@ function UsersPermissionsContent() {
       unsubUsers();
       unsubProvision();
     };
-  }, [profile, router]);
+  }, [profile, router, loading]);
 
   const handleConfirmGrantAccess = async () => {
     if (!db || !selectedClient || !tempPassword) return;
-    if (!selectedClient.email) {
-      toast({ title: "خطأ", description: "العميل لا يملك بريداً إلكترونياً مسجلاً.", variant: "destructive" });
-      return;
-    }
-    
     setIsSubmitting(true);
     try {
       const emailLower = selectedClient.email.toLowerCase().trim();
@@ -113,131 +108,58 @@ function UsersPermissionsContent() {
         permissions: ["p_projects", "p_support"],
         createdAt: new Date().toISOString()
       });
-      
-      toast({ title: "تم التفعيل", description: "تم تزويد العميل بصلاحيات الدخول بنجاح." });
+      toast({ title: "تم التنشيط" });
       setIsPasswordModalOpen(false);
       setTempPassword("");
     } catch (err) {
-      toast({ title: "خطأ", description: "فشل تفعيل العميل.", variant: "destructive" });
+      toast({ title: "خطأ", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
   };
-
-  const handleUpdateUser = async () => {
-    if (!db || !editingUser) return;
-    setIsSubmitting(true);
-    try {
-      const userRef = doc(db, "users", editingUser.id);
-      await updateDoc(userRef, {
-        status: editingUser.status,
-        permissions: editingUser.permissions,
-        name: editingUser.name,
-        clientId: editingUser.clientId,
-        tempPassword: editingUser.tempPassword || ""
-      });
-      
-      toast({ title: "تم التحديث", description: "تم تعديل صلاحيات وبيانات المستخدم بنجاح." });
-      setIsEditModalOpen(false);
-    } catch (err: any) {
-      toast({ 
-        title: "فشل في التحديث", 
-        description: "تأكد من صلاحيات النظام وحاول مرة أخرى.", 
-        variant: "destructive" 
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const togglePermission = (permId: string) => {
-    if (!editingUser) return;
-    const currentPerms = editingUser.permissions || [];
-    const newPerms = currentPerms.includes(permId)
-      ? currentPerms.filter((p: string) => p !== permId)
-      : [...currentPerms, permId];
-    setEditingUser({ ...editingUser, permissions: newPerms });
-  };
-
-  const filteredClients = useMemo(() => {
-    const s = searchQuery.toLowerCase();
-    return allClients.filter(c => 
-      c.name?.toLowerCase().includes(s) || 
-      c.phone?.includes(searchQuery)
-    );
-  }, [allClients, searchQuery]);
 
   const activeUsersToDisplay = useMemo(() => {
     const s = searchQuery.toLowerCase().trim();
     let users = activeUsers;
-
-    if (s) {
-      users = users.filter(u => 
-        u.name?.toLowerCase().includes(s) ||
-        u.email?.toLowerCase().includes(s)
-      );
-    }
-    
-    if (roleFilter) {
-      return users.filter(u => u.role === roleFilter);
-    }
-
+    if (s) users = users.filter(u => u.name?.toLowerCase().includes(s) || u.email?.toLowerCase().includes(s));
+    if (roleFilter) return users.filter(u => u.role === roleFilter);
     return users.filter(u => u.role !== 'admin');
   }, [activeUsers, roleFilter, searchQuery]);
 
-  if (loading) return (
-    <div className="flex flex-col items-center justify-center py-20 gap-4">
-      <Loader2 className="h-12 w-12 animate-spin text-primary" />
-      <p className="font-bold text-slate-500">جاري تحميل البيانات...</p>
-    </div>
-  );
+  if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin" /></div>;
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 pb-20" dir="rtl">
-      <header className="flex items-center gap-4 bg-white p-8 rounded-[2rem] shadow-sm border">
-        <div className="p-4 bg-primary/10 rounded-2xl text-primary">
-          <ShieldCheck className="h-8 w-8" />
-        </div>
+      <header className="flex items-center gap-4 bg-white p-6 rounded-3xl shadow-sm border">
+        <div className="p-3 bg-primary/10 rounded-2xl text-primary"><ShieldCheck className="h-6 w-6" /></div>
         <div>
-          <h1 className="text-3xl font-black text-slate-800 tracking-tight">بوابة المستفيدين</h1>
-          <p className="text-slate-500 font-bold">إدارة حسابات الدخول والتحكم في الصلاحيات</p>
+          <h1 className="text-2xl font-black text-slate-800">بوابة المستفيدين</h1>
+          <p className="text-[10px] text-slate-500 font-bold uppercase">إدارة حسابات الدخول والصلاحيات</p>
         </div>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <Card className="lg:col-span-4 rounded-[2rem] border-none shadow-sm bg-white overflow-hidden border">
           <CardHeader className="bg-slate-50/50 border-b p-6">
-            <CardTitle className="text-lg font-black mb-4">
-              تفعيل مستخدمين جدد
-            </CardTitle>
-            <div className="relative">
+            <CardTitle className="text-base font-black">تفعيل مستخدمين جدد</CardTitle>
+            <div className="relative mt-3">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 h-4 w-4" />
-              <input 
-                placeholder="ابحث بالاسم أو الهاتف..."
-                className="w-full pr-10 h-12 rounded-2xl font-bold bg-white border outline-none px-4 text-sm"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+              <input placeholder="بحث بالاسم..." className="w-full pr-10 h-11 rounded-xl text-xs bg-white border outline-none px-4" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
             </div>
           </CardHeader>
           <CardContent className="p-4">
             <ScrollArea className="h-[500px]">
               <div className="space-y-3">
-                {filteredClients.map(client => {
+                {allClients.filter(c => c.name?.toLowerCase().includes(searchQuery.toLowerCase())).map(client => {
                   const isActive = activeUsers.some(u => u.email === client.email);
                   return (
-                    <div key={client.id} className="p-4 rounded-3xl bg-white border flex flex-col gap-3 shadow-sm">
+                    <div key={client.id} className="p-4 rounded-2xl bg-white border flex flex-col gap-3 shadow-sm">
                       <div className="overflow-hidden">
-                        <p className="font-black text-slate-800 text-sm truncate">{client.name}</p>
-                        <p className="text-[10px] font-bold text-slate-400" dir="ltr">{client.phone}</p>
+                        <p className="font-black text-slate-800 text-xs truncate">{client.name}</p>
+                        <p className="text-[9px] font-bold text-slate-400" dir="ltr">{client.phone}</p>
                       </div>
-                      <Button 
-                        size="sm" 
-                        disabled={isActive || !client.email}
-                        onClick={() => { setSelectedClient(client); setIsPasswordModalOpen(true); }} 
-                        className="rounded-xl font-black h-10 w-full"
-                      >
-                        {isActive ? 'نشط حالياً' : 'تفعيل الدخول'}
+                      <Button size="sm" disabled={isActive || !client.email} onClick={() => { setSelectedClient(client); setIsPasswordModalOpen(true); }} className="rounded-lg font-black h-9 text-[10px] w-full">
+                        {isActive ? 'نشط' : 'تفعيل الدخول'}
                       </Button>
                     </div>
                   );
@@ -248,27 +170,23 @@ function UsersPermissionsContent() {
         </Card>
 
         <Card className="lg:col-span-8 rounded-[2rem] border-none shadow-sm bg-white overflow-hidden border">
-          <CardHeader className="bg-primary p-6 text-primary-foreground">
-            <CardTitle className="text-xl font-black">الحسابات المسجلة</CardTitle>
+          <CardHeader className="bg-primary p-5 text-primary-foreground">
+            <CardTitle className="text-lg font-black">الحسابات المسجلة</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <div className="divide-y divide-slate-100">
               {activeUsersToDisplay.map(user => (
-                <div key={user.id} className="p-6 flex flex-col md:flex-row justify-between md:items-center gap-4 hover:bg-slate-50 transition-colors">
-                  <div className="flex items-center gap-4">
-                    <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black">
-                      {user.name?.[0]}
-                    </div>
+                <div key={user.id} className="p-4 flex justify-between items-center hover:bg-slate-50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="h-9 w-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black text-xs uppercase">{user.name?.[0]}</div>
                     <div>
-                      <p className="font-black text-slate-800 text-sm">{user.name}</p>
-                      <p className="text-[10px] font-bold text-slate-400">{user.email}</p>
+                      <p className="font-black text-slate-800 text-xs">{user.name}</p>
+                      <p className="text-[9px] font-bold text-slate-400">{user.email}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="icon" onClick={() => { setEditingUser(user); setIsEditModalOpen(true); }} className="h-9 w-9 rounded-xl border-slate-200 text-primary">
-                      <Settings2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg border-slate-200 text-primary">
+                    <Settings2 className="h-4 w-4" />
+                  </Button>
                 </div>
               ))}
             </div>
@@ -276,12 +194,11 @@ function UsersPermissionsContent() {
         </Card>
       </div>
 
-      {/* مودال كلمات المرور والإعدادات */}
       <Dialog open={isPasswordModalOpen} onOpenChange={setIsPasswordModalOpen}>
         <DialogContent className="rounded-3xl max-w-sm" dir="rtl">
-          <DialogHeader><DialogTitle className="font-black">تفعيل حساب {selectedClient?.name}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="font-black text-base">تفعيل حساب {selectedClient?.name}</DialogTitle></DialogHeader>
           <div className="p-4 space-y-4">
-            <Label className="font-black">كلمة المرور المؤقتة</Label>
+            <Label className="font-black text-xs">كلمة المرور المؤقتة</Label>
             <Input value={tempPassword} onChange={e => setTempPassword(e.target.value)} className="rounded-xl h-12 text-center text-xl font-black tracking-widest" />
           </div>
           <DialogFooter><Button onClick={handleConfirmGrantAccess} className="w-full h-12 rounded-xl font-black" disabled={isSubmitting || !tempPassword}>تأكيد التفعيل</Button></DialogFooter>
