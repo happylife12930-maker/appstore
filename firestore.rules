@@ -53,6 +53,11 @@ service cloud.firestore {
     match /testing_groups/{groupId} {
       allow read, write: if isAdmin();
     }
+    
+    // --- Security Rules for 'testing_schedule' collection ---
+    match /testing_schedule/{scheduleId} {
+      allow read, write: if isAdmin();
+    }
 
     // --- Security Rules for 'support_threads' collection ---
     match /support_threads/{threadId} {

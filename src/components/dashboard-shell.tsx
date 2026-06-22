@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from "react";
@@ -10,7 +9,6 @@ import {
   Briefcase, 
   FileText, 
   ShieldCheck, 
-  Calculator, 
   LifeBuoy, 
   CreditCard,
   LogOut,
@@ -43,7 +41,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth-provider";
 import { signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
-import { collection, query, onSnapshot, doc, getDoc } from "firebase/firestore";
+import { collection, query, onSnapshot, doc } from "firebase/firestore";
 import { Badge } from "@/components/ui/badge";
 
 // تعريف العناصر مع تحديد من يمكنه رؤيتها وصلاحيتها المطلوبة
@@ -110,115 +108,117 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   });
 
   return (
-    <SidebarProvider defaultOpen={true}>
-      <Sidebar side={dir === 'rtl' ? 'right' : 'left'} collapsible="icon" className="border-l border-r">
-        <SidebarHeader className="border-b border-sidebar-border/50 py-4">
-          <div className="flex items-center gap-2 px-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground font-headline font-bold text-xl">
-              A
+    <div dir={dir}>
+      <SidebarProvider defaultOpen={true}>
+        <Sidebar side={dir === 'rtl' ? 'right' : 'left'} className="border-l border-r">
+          <SidebarHeader className="border-b border-sidebar-border/50 py-4">
+            <div className="flex items-center gap-2 px-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground font-headline font-bold text-xl">
+                A
+              </div>
+              <div className="flex flex-col overflow-hidden text-right group-data-[collapsible=icon]:hidden">
+                <span className="font-headline font-bold text-lg leading-tight uppercase">APP STORE</span>
+                <span className="text-[10px] uppercase tracking-wider text-sidebar-foreground/50 font-medium">
+                  {profile?.role === 'client' ? 'بوابة المستفيد' : t('agencyAdmin')}
+                </span>
+              </div>
             </div>
-            <div className="flex flex-col overflow-hidden text-right group-data-[collapsible=icon]:hidden">
-              <span className="font-headline font-bold text-lg leading-tight uppercase">APP STORE</span>
-              <span className="text-[10px] uppercase tracking-wider text-sidebar-foreground/50 font-medium">
-                {profile?.role === 'client' ? 'بوابة المستفيد' : t('agencyAdmin')}
-              </span>
-            </div>
-          </div>
-        </SidebarHeader>
-        <SidebarContent>
-          <SidebarGroup>
-            <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden">
-              {profile?.role === 'client' ? 'قائمتي' : t('management')}
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {filteredNavItems.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton 
-                      asChild 
-                      isActive={pathname === item.url}
-                      tooltip={t(item.title)}
-                    >
-                      <Link href={item.url} className="relative">
-                        <item.icon />
-                        <span>{t(item.title)}</span>
-                        {item.title === 'support' && unreadCount > 0 && (
-                          <Badge className="absolute left-2 bg-rose-500 text-white rounded-full h-5 min-w-5 flex items-center justify-center p-1 text-[10px] border-2 border-white">
-                            {unreadCount}
-                          </Badge>
-                        )}
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-
-          {profile?.role === 'admin' && (
+          </SidebarHeader>
+          <SidebarContent>
             <SidebarGroup>
-              <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden">إعدادات النظام</SidebarGroupLabel>
+              <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden">
+                {profile?.role === 'client' ? 'قائمتي' : t('management')}
+              </SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton 
-                      asChild 
-                      isActive={pathname === "/users"}
-                      tooltip="إدارة الصلاحيات"
-                    >
-                      <Link href="/users">
-                        <ShieldAlert className="text-rose-500" />
-                        <span>بوابة المستفيدين</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
+                  {filteredNavItems.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton 
+                        asChild 
+                        isActive={pathname === item.url}
+                        tooltip={t(item.title)}
+                      >
+                        <Link href={item.url} className="relative">
+                          <item.icon />
+                          <span className="group-data-[collapsible=icon]:hidden">{t(item.title)}</span>
+                          {item.title === 'support' && unreadCount > 0 && (
+                            <Badge className="absolute left-2 bg-rose-500 text-white rounded-full h-5 min-w-5 flex items-center justify-center p-1 text-[10px] border-2 border-white group-data-[collapsible=icon]:-translate-x-1/2">
+                              {unreadCount}
+                            </Badge>
+                          )}
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
-          )}
-        </SidebarContent>
-        <SidebarFooter className="border-t border-sidebar-border/50 p-4">
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton size="lg" asChild>
-                <Link href="/profile">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={`https://picsum.photos/seed/${profile?.uid}/100/100`} />
-                    <AvatarFallback>{profile?.name?.[0] || 'U'}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex flex-col items-start overflow-hidden text-right group-data-[collapsible=icon]:hidden">
-                    <span className="font-medium text-sm truncate max-w-[120px]">{profile?.name || 'مستفيد'}</span>
-                    <span className="text-xs text-sidebar-foreground/50">
-                      {profile?.role === 'client' ? 'عميل نشط' : t(profile?.role || 'admin')}
-                    </span>
-                  </div>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarFooter>
-      </Sidebar>
-      <SidebarInset>
-        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between border-b bg-background/80 px-6 backdrop-blur-md">
-          <div className="flex items-center gap-4">
-            <SidebarTrigger className="-mr-1 ml-2" />
-            <h2 className="font-headline text-lg font-bold">
-              {profile?.role === 'client' && pathname === '/projects' ? 'متابعة مشاريحي' : t(navItems.find(i => i.url === pathname)?.title || "overview")}
-            </h2>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={toggleLanguage} className="rounded-full">
-              <Languages className="h-5 w-5" />
-            </Button>
-            <Button variant="ghost" size="icon" onClick={handleLogout} className="text-muted-foreground hover:text-destructive">
-              <LogOut className="h-5 w-5" />
-            </Button>
-          </div>
-        </header>
-        <main className="flex-1 overflow-y-auto p-6">
-          {children}
-        </main>
-      </SidebarInset>
-    </SidebarProvider>
+
+            {profile?.role === 'admin' && (
+              <SidebarGroup>
+                <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden">إعدادات النظام</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton 
+                        asChild 
+                        isActive={pathname === "/users"}
+                        tooltip="إدارة الصلاحيات"
+                      >
+                        <Link href="/users">
+                          <ShieldAlert className="text-rose-500" />
+                          <span className="group-data-[collapsible=icon]:hidden">بوابة المستفيدين</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
+          </SidebarContent>
+          <SidebarFooter className="border-t border-sidebar-border/50 p-2">
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton size="lg" asChild>
+                  <Link href="/profile">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={`https://picsum.photos/seed/${profile?.uid}/100/100`} />
+                      <AvatarFallback>{profile?.name?.[0] || 'U'}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex flex-col items-start overflow-hidden text-right group-data-[collapsible=icon]:hidden">
+                      <span className="font-medium text-sm truncate max-w-[120px]">{profile?.name || 'مستفيد'}</span>
+                      <span className="text-xs text-sidebar-foreground/50">
+                        {profile?.role === 'client' ? 'عميل نشط' : t(profile?.role || 'admin')}
+                      </span>
+                    </div>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarFooter>
+        </Sidebar>
+        <SidebarInset>
+          <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b bg-background/80 px-6 backdrop-blur-md">
+            <div className="flex items-center gap-4">
+              <SidebarTrigger className="-mr-1 ml-2" />
+              <h2 className="font-headline text-lg font-bold">
+                {profile?.role === 'client' && pathname === '/projects' ? 'متابعة مشاريحي' : t(navItems.find(i => i.url === pathname)?.title || "overview")}
+              </h2>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" onClick={toggleLanguage} className="rounded-full">
+                <Languages className="h-5 w-5" />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={handleLogout} className="text-muted-foreground hover:text-destructive">
+                <LogOut className="h-5 w-5" />
+              </Button>
+            </div>
+          </header>
+          <main className="flex-1 overflow-y-auto p-6 lg:p-8">
+            {children}
+          </main>
+        </SidebarInset>
+      </SidebarProvider>
+    </div>
   );
 }

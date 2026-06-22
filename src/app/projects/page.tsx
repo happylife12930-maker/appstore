@@ -50,6 +50,21 @@ function ProjectsContent() {
 
   const hasProjectPermission = profile?.role === 'admin' || profile?.permissions.includes('p_projects');
 
+  // Apply filters from URL search params
+  useEffect(() => {
+    const statusParam = searchParams.get('status');
+    if (statusParam === 'active') {
+      setStatusFilter('active');
+    } else if (statusParam === 'finished') {
+      setStatusFilter('completed');
+    }
+
+    const qParam = searchParams.get('q');
+    if (qParam) {
+      setSearchQuery(qParam);
+    }
+  }, [searchParams]);
+
   // حساب الإحصائيات للفلترة
   const stats = useMemo(() => {
     const total = projects.length;
@@ -70,11 +85,6 @@ function ProjectsContent() {
       return matchesSearch && matchesStatus;
     });
   }, [projects, searchQuery, statusFilter]);
-
-  useEffect(() => {
-    const qParam = searchParams.get('q');
-    if (qParam) setSearchQuery(qParam);
-  }, [searchParams]);
 
   useEffect(() => {
     if (!db || authLoading || !profile || !hasProjectPermission) {
