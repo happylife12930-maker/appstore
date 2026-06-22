@@ -8,6 +8,7 @@ import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query } from "firebase/firestore";
 import { useAuth } from "@/components/auth-provider";
 import { useToast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
 
 interface TestingScheduleModalProps {
   isOpen: boolean;
@@ -69,7 +70,6 @@ export function TestingScheduleModal({ isOpen, onClose }: TestingScheduleModalPr
           if (!day) return;
           if (!grouped[day]) grouped[day] = [];
           
-          // البحث عما إذا كان المشروع مسجلاً مسبقاً لهذا اليوم لتجنب التكرار
           let existingProject = grouped[day].find(p => p.projectId === (group.projectId || group.id));
           
           const testerInfo = {
@@ -105,7 +105,7 @@ export function TestingScheduleModal({ isOpen, onClose }: TestingScheduleModalPr
 
     let totalSent = 0;
     projects.forEach(project => {
-      project.testers?.forEach((tester: any, index: number) => {
+      project.testers?.forEach((tester: any) => {
         if (!tester.phone) return;
         totalSent++;
 
@@ -146,11 +146,11 @@ export function TestingScheduleModal({ isOpen, onClose }: TestingScheduleModalPr
 
     printWindow.document.write(`
       <html dir="rtl">
-        <head><title>جدول الاختبارات الأسبوعي</title><style>body { font-family: 'Cairo', sans-serif; padding: 30px; background: #f8fafc; color: #334155; }</style></head>
+        <head><title>جدول الاختبارات الأسبوعي</title><style>@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap'); body { font-family: 'Cairo', sans-serif; padding: 30px; background: #f8fafc; color: #334155; }</style></head>
         <body>
           <h2 style="text-align: center; font-size: 22px; font-weight: 900; color: #1e293b; margin-bottom: 30px;">جدول مهام الاختبار الأسبوعية</h2>
           ${content || '<p style="text-align: center; color: #94a3b8; font-weight: bold; margin-top: 50px;">لا توجد مهام اختبار مجدولة حالياً</p>'}
-          <div style="margin-top: 40px; text-align: center; font-size: 10px; color: #94a3b8; border-top: 1px dashed #cbd5e1; pt: 20px;">هذا التقرير صادر آلياً من نظام APP STORE</div>
+          <div style="margin-top: 40px; text-align: center; font-size: 10px; color: #94a3b8; border-top: 1px dashed #cbd5e1; padding-top: 20px;">هذا التقرير صادر آلياً من نظام APP STORE</div>
           <script>window.print();</script>
         </body>
       </html>
@@ -160,17 +160,17 @@ export function TestingScheduleModal({ isOpen, onClose }: TestingScheduleModalPr
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-xl rounded-2xl border-none shadow-2xl p-0 overflow-hidden bg-white max-h-[85vh] flex flex-col" dir="rtl">
+      <DialogContent className="sm:max-w-xl rounded-[2rem] border-none shadow-2xl p-0 overflow-hidden bg-white max-h-[85vh] flex flex-col" dir="rtl">
         <div className="bg-primary p-4 text-primary-foreground shrink-0 shadow-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="h-7 w-7 rounded-lg bg-white/20 flex items-center justify-center backdrop-blur-md">
-                <CalendarDays className="h-4 w-4" />
+              <div className="h-8 w-8 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-md">
+                <CalendarDays className="h-5 w-5" />
               </div>
-              <DialogTitle className="text-xs font-black">جدول الاختبارات الأسبوعي</DialogTitle>
+              <DialogTitle className="text-sm font-black">جدول الاختبارات الأسبوعي</DialogTitle>
             </div>
-            <Button onClick={handlePrint} variant="outline" className="h-8 rounded-lg bg-white/10 border-white/20 hover:bg-white/20 text-white font-black text-[10px] gap-1.5 transition-all">
-              <Printer className="h-3.5 w-3.5" /> طباعة الجدول
+            <Button onClick={handlePrint} variant="outline" className="h-8 rounded-xl bg-white/10 border-white/20 hover:bg-white/20 text-white font-black text-[10px] gap-2 transition-all">
+              <Printer className="h-4 w-4" /> طباعة الجدول
             </Button>
           </div>
         </div>
@@ -189,46 +189,46 @@ export function TestingScheduleModal({ isOpen, onClose }: TestingScheduleModalPr
           ) : (
             <div className="grid grid-cols-1 gap-4">
               {Object.entries(groupedSchedule).map(([day, projects]) => (
-                <div key={day} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden group">
-                  <div className="px-4 py-2.5 bg-slate-900 text-white flex items-center justify-between transition-colors group-hover:bg-primary">
+                <div key={day} className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden group">
+                  <div className="px-5 py-3 bg-slate-900 text-white flex items-center justify-between transition-colors group-hover:bg-primary">
                     <div className="flex items-center gap-2">
                       <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-                      <h3 className="font-black text-[11px]">{day}</h3>
+                      <h3 className="font-black text-xs">{day}</h3>
                     </div>
                     <Button 
                       size="sm" 
                       onClick={() => handleSendDayNotifications(day, projects)}
-                      className="h-7 rounded-lg bg-green-500 hover:bg-green-600 font-black text-[9px] gap-1.5 px-3 shadow-md active:scale-95 transition-all"
+                      className="h-8 rounded-xl bg-green-500 hover:bg-green-600 font-black text-[10px] gap-2 px-4 shadow-lg active:scale-95 transition-all"
                     >
-                      <MessageCircle className="h-3.5 w-3.5" /> إرسال تنبيهات اليوم
+                      <MessageCircle className="h-4 w-4" /> إرسال تنبيهات اليوم
                     </Button>
                   </div>
-                  <div className="p-3 space-y-2">
+                  <div className="p-4 space-y-3">
                     {projects.map((proj, idx) => (
-                      <div key={idx} className="p-3 rounded-xl bg-[#f8fafc] border border-slate-100 flex flex-col gap-2 hover:border-primary/20 transition-all">
-                        <div className="flex items-start justify-between gap-2">
+                      <div key={idx} className="p-4 rounded-2xl bg-[#f8fafc] border border-slate-100 flex flex-col gap-3 hover:border-primary/20 transition-all">
+                        <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                               <Layers className="h-3 w-3 text-primary" />
-                               <p className="font-black text-slate-800 text-[11px] truncate">{proj.projectName}</p>
+                            <div className="flex items-center gap-2 mb-1.5">
+                               <Layers className="h-4 w-4 text-primary" />
+                               <p className="font-black text-slate-800 text-sm truncate">{proj.projectName}</p>
                             </div>
                             <div className="flex flex-wrap items-center gap-3">
-                              <div className="flex items-center gap-1">
-                                <User className="h-2.5 w-2.5 text-slate-400" />
-                                <p className="text-[9px] font-bold text-slate-400 truncate max-w-[150px]">{proj.testers.map((t:any)=>t.email.split('@')[0]).join('، ')}</p>
+                              <div className="flex items-center gap-1.5">
+                                <User className="h-3 w-3 text-slate-400" />
+                                <p className="text-[10px] font-bold text-slate-400 truncate max-w-[200px]">{proj.testers.map((t:any)=>t.email.split('@')[0]).join('، ')}</p>
                               </div>
-                              <Badge className="bg-slate-200 text-slate-600 rounded-md text-[8px] h-4 font-black px-1.5">
+                              <Badge variant="outline" className="text-[9px] h-5 font-black px-2 bg-white">
                                 {proj.testers.length} مختبرين
                               </Badge>
                             </div>
                           </div>
                           {proj.resourceLink && (
-                            <a href={proj.resourceLink} target="_blank" className="h-7 w-7 rounded-lg bg-white border shadow-sm text-primary flex items-center justify-center hover:bg-primary hover:text-white transition-all shrink-0">
-                              <ExternalLink className="h-3.5 w-3.5" />
+                            <a href={proj.resourceLink} target="_blank" className="h-9 w-9 rounded-xl bg-white border shadow-sm text-primary flex items-center justify-center hover:bg-primary hover:text-white transition-all shrink-0">
+                              <ExternalLink className="h-4 w-4" />
                             </a>
                           )}
                         </div>
-                        {proj.notes && <p className="text-[9px] text-slate-500 font-bold border-r-2 border-slate-200 pr-2 leading-relaxed line-clamp-2">{proj.notes}</p>}
+                        {proj.notes && <p className="text-[10px] text-slate-500 font-bold border-r-2 border-slate-200 pr-3 leading-relaxed line-clamp-2">{proj.notes}</p>}
                       </div>
                     ))}
                   </div>

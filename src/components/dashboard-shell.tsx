@@ -33,13 +33,13 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 
 const navItems = [
   { title: "overview", url: "/", icon: LayoutDashboard, permission: "p_dashboard", roles: ['admin', 'tester'] },
-  { title: "profile", url: "/profile", icon: User, permission: "p_always", roles: ['client', 'admin'] },
   { title: "clients", url: "/clients", icon: Users, permission: "p_clients", roles: ['admin'] },
   { title: "projects", url: "/projects", icon: Briefcase, permission: "p_projects", roles: ['admin', 'tester', 'client'] },
   { title: "testers", url: "/testers", icon: UserCheck, permission: "p_testers", roles: ['admin'] },
   { title: "quotations", url: "/quotations", icon: ImageIcon, permission: "p_projects", roles: ['admin', 'client'] },
   { title: "payments", url: "/payments", icon: CreditCard, permission: "p_finances", roles: ['admin'] },
   { title: "support", url: "/support", icon: LifeBuoy, permission: "p_support", roles: ['admin', 'client'] },
+  { title: "profile", url: "/profile", icon: User, permission: "p_always", roles: ['client', 'admin', 'tester'] },
 ];
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
