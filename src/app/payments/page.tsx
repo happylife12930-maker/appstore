@@ -82,7 +82,7 @@ function PaymentsContent() {
           <div className="p-3 bg-primary/10 rounded-2xl text-primary"><CreditCard className="h-6 w-6" /></div>
           <div>
             <h1 className="text-xl font-black text-slate-800">إدارة المدفوعات والمالية</h1>
-            <p className="text-[10px] text-slate-500 font-bold uppercase">متابعة الموقف المالي للعملاء</p>
+            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">متابعة الموقف المالي للعملاء</p>
           </div>
         </div>
       </header>
@@ -92,9 +92,9 @@ function PaymentsContent() {
           <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 h-4 w-4" />
           <Input placeholder="ابحث بالاسم أو الهاتف..." className="pr-12 h-12 rounded-xl font-bold bg-white text-xs border-none shadow-sm" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
         </div>
-        <div className="flex items-center gap-3 bg-white p-3 px-5 rounded-xl border shadow-sm">
+        <div className="flex items-center gap-3 bg-white p-3 px-5 rounded-xl border shadow-sm h-12">
           <Switch id="unpaid" checked={showOnlyUnpaid} onCheckedChange={setShowOnlyUnpaid} />
-          <Label htmlFor="unpaid" className="font-black text-[11px] cursor-pointer">المديونيات فقط</Label>
+          <Label htmlFor="unpaid" className="font-black text-[11px] cursor-pointer whitespace-nowrap">المديونيات فقط</Label>
         </div>
       </div>
 
@@ -113,10 +113,10 @@ function PaymentsContent() {
             {filteredData.map((item) => (
               <TableRow key={item.id} className="hover:bg-slate-50 transition-colors">
                 <TableCell className="font-bold py-4">{item.name}</TableCell>
-                <TableCell className="text-xs font-bold">{(item.totalInvoices || 0).toLocaleString()} ج.م</TableCell>
-                <TableCell className="text-xs font-bold text-green-600">{(item.totalPayments || 0).toLocaleString()} ج.م</TableCell>
+                <TableCell className="text-xs font-bold">{(item.totalInvoices || 0).toLocaleString('ar-EG')} ج.م</TableCell>
+                <TableCell className="text-xs font-bold text-green-600">{(item.totalPayments || 0).toLocaleString('ar-EG')} ج.م</TableCell>
                 <TableCell className={`font-black text-sm ${item.remainingBalance > 0 ? 'text-rose-600' : 'text-green-600'}`}>
-                  {item.remainingBalance.toLocaleString()} ج.م
+                  {item.remainingBalance.toLocaleString('ar-EG')} ج.م
                 </TableCell>
                 <TableCell className="text-center">
                   <Button variant="ghost" size="sm" className="h-8 rounded-lg font-black text-[10px] gap-1 text-primary">
@@ -133,9 +133,5 @@ function PaymentsContent() {
 }
 
 export default function PaymentsPage() {
-  return (
-    <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>}>
-      <PaymentsContent />
-    </Suspense>
-  );
+  return <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>}><PaymentsContent /></Suspense>;
 }

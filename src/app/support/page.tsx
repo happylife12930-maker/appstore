@@ -166,4 +166,4 @@ function SupportContent() {
   );
 }
 
-export default function SupportPage() { return <Suspense fallback={<Loader2 className="animate-spin" />}><SupportContent /></Suspense>; }
+export default function SupportPage() { return <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="animate-spin text-primary" /></div>}><SupportContent /></Suspense>; }

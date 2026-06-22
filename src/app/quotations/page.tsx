@@ -100,22 +100,17 @@ function QuotationsContent() {
   );
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 pb-20" dir="rtl">
+    <div className="max-w-7xl mx-auto space-y-8 pb-20" dir="rtl">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">
         <div className="flex items-center gap-4">
-          <div className="p-3 bg-primary/10 rounded-2xl text-primary">
-            <ImageIcon className="h-6 w-6" />
-          </div>
+          <div className="p-3 bg-primary/10 rounded-2xl text-primary"><ImageIcon className="h-6 w-6" /></div>
           <div>
             <h1 className="text-2xl font-black text-slate-800 tracking-tight">معرض عروض الأسعار</h1>
             <p className="text-slate-500 font-bold text-xs">تصفح أحدث التصاميم والعروض</p>
           </div>
         </div>
         {isAdmin && (
-          <Button 
-            onClick={() => { setEditingQuotation(null); setIsModalOpen(true); }}
-            className="rounded-xl h-12 px-8 font-black text-sm gap-2 shadow-lg bg-primary"
-          >
+          <Button onClick={() => { setEditingQuotation(null); setIsModalOpen(true); }} className="rounded-xl h-12 px-8 font-black text-sm gap-2 shadow-lg bg-primary">
             <Plus className="h-5 w-5" /> إضافة عرض جديد
           </Button>
         )}
@@ -130,20 +125,18 @@ function QuotationsContent() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {quotations.map((q) => (
             <div key={q.id} className="space-y-4 group">
+              {/* صندوق الاسم المنفصل فوق الصورة */}
               <div className="bg-white p-4 px-6 rounded-[1.5rem] shadow-sm border-r-8 border-primary flex items-center justify-between group-hover:shadow-md transition-all">
                 <h2 className="text-lg font-black text-slate-800 truncate">{q.projectName}</h2>
                 {isAdmin && (
                   <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => { setEditingQuotation(q); setIsModalOpen(true); }} className="h-8 w-8 rounded-lg hover:bg-primary/5">
-                      <Edit3 className="h-4 w-4 text-slate-400 group-hover:text-primary" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDeleteQuotation(q.id)} className="h-8 w-8 rounded-lg hover:bg-rose-50">
-                      <Trash2 className="h-4 w-4 text-rose-300 group-hover:text-rose-500" />
-                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => { setEditingQuotation(q); setIsModalOpen(true); }} className="h-8 w-8 rounded-lg hover:bg-primary/5"><Edit3 className="h-4 w-4 text-slate-400 group-hover:text-primary" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleDeleteQuotation(q.id)} className="h-8 w-8 rounded-lg hover:bg-rose-50"><Trash2 className="h-4 w-4 text-rose-300 group-hover:text-rose-500" /></Button>
                   </div>
                 )}
               </div>
 
+              {/* معرض الصور واللمسة الاحترافية */}
               <Card className="rounded-[2rem] border-none shadow-lg overflow-hidden bg-white group-hover:scale-[1.01] transition-all cursor-pointer" onClick={() => { setViewingQuotation(q); setIsDetailsOpen(true); }}>
                 <div className="relative min-h-[250px] max-h-[500px] bg-slate-100 flex items-center justify-center overflow-hidden">
                   {q.images?.[0] ? (
@@ -178,9 +171,5 @@ function QuotationsContent() {
 }
 
 export default function QuotationsPage() {
-  return (
-    <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>}>
-      <QuotationsContent />
-    </Suspense>
-  );
+  return <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>}><QuotationsContent /></Suspense>;
 }

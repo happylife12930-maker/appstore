@@ -114,7 +114,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           )}
         >
           <ShieldAlert className="h-3.5 w-3.5" />
-          <span className="whitespace-nowrap">البوابة</span>
+          <span className="whitespace-nowrap uppercase tracking-tighter">البوابة</span>
         </Link>
       )}
     </div>
