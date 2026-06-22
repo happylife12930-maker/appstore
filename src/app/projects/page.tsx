@@ -221,7 +221,7 @@ function ProjectsContent() {
                 {profile?.role === 'admin' && (
                   <div className="flex gap-1">
                     <Button variant="ghost" size="icon" onClick={() => { setEditingProject(project); setIsModalOpen(true); }} className="h-7 w-7 rounded-lg text-slate-400 hover:text-primary"><Edit3 className="h-3.5 w-3.5" /></Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDeleteProject(project.id!)} className="h-7 w-7 rounded-lg text-rose-300 hover:text-rose-500"><Trash2 className="h-3.5 w-3.5" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleDeleteProject(project.id!)} className="h-7 w-7 rounded-lg text-rose-300 hover:text-rose-50"><Trash2 className="h-3.5 w-3.5" /></Button>
                   </div>
                 )}
               </div>
