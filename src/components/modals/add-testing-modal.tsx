@@ -178,7 +178,7 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
                       </div>
                       <div className="flex gap-1">
                         <Button variant="ghost" size="icon" onClick={() => startEditTester(i)} className="h-7 w-7 rounded-lg text-blue-500 hover:bg-blue-50"><Edit2 className="h-3.5 w-3.5" /></Button>
-                        <Button variant="ghost" size="icon" onClick={() => setFormData(p=>({...p, testers: p.testers.filter((_,idx)=>idx!==i)}))} className="h-7 w-7 rounded-lg text-rose-300 hover:text-rose-500"><X className="h-3.5 w-3.5" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => setFormData(p=>({...p, testers: p.testers.filter((_,idx)=>idx!==i)}))} className="h-7 w-7 rounded-lg text-rose-300 hover:text-rose-50"><X className="h-3.5 w-3.5" /></Button>
                       </div>
                     </div>
                   ))}

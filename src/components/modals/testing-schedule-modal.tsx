@@ -76,7 +76,8 @@ export function TestingScheduleModal({ isOpen, onClose }: TestingScheduleModalPr
             phone: tester.phone,
             resourceLink: group.resourceLink,
             notes: group.notes,
-            projectName: group.projectName
+            projectName: group.projectName,
+            assignedDays: tester.assignedDays
           };
 
           if (existingProject) {
@@ -115,11 +116,21 @@ export function TestingScheduleModal({ isOpen, onClose }: TestingScheduleModalPr
         if (cleanPhone.startsWith('0')) cleanPhone = '2' + cleanPhone;
         else if (!cleanPhone.startsWith('2')) cleanPhone = '20' + cleanPhone;
 
-        const message = `*تنبيه مهمة اختبار ليوم ${day}* 🚀\n\n` +
-          `المشروع: *${project.projectName}*\n` +
-          `رابط النسخة: ${project.resourceLink || 'سيتم إرساله لاحقاً'}\n` +
-          `${project.notes ? `تعليمات: ${project.notes}` : ''}\n\n` +
-          `يرجى المتابعة والبدء في الاختبار. بالتوفيق.`;
+        const message = `*تنبيه مهمة اختبار - APP STORE* 🚀
+
+مرحباً، يسرنا إبلاغكم بأنه قد تم تكليفكم بمهمة اختبار لمشروع: *${project.projectName}*
+
+*تفاصيل المواعيد المحددة لكم:*
+📅 ${tester.assignedDays.join('، ')}
+
+*رابط نسخة الاختبار والمرفقات:*
+🔗 ${project.resourceLink || 'سيتم تزويدكم به لاحقاً'}
+
+${project.notes ? `*تعليمات إضافية:*
+📝 ${project.notes}` : ''}
+
+يرجى البدء في الاختبار وموافاتنا بالتقارير في المواعيد المحددة.
+بالتوفيق، فريق إدارة الجودة.`;
 
         setTimeout(() => {
           window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank');
@@ -127,7 +138,7 @@ export function TestingScheduleModal({ isOpen, onClose }: TestingScheduleModalPr
       });
     });
 
-    toast({ title: `إرسال تنبيهات ${day}`, description: `يتم الآن فتح ${totalSent} محادثات واتساب لفريق اليوم.` });
+    toast({ title: `إرسال تنبيهات ${day}`, description: `يتم الآن فتح ${totalSent} محادثات واتساب لفريق اليوم بالتنسيق الاحترافي.` });
   };
 
   const handlePrint = () => {
