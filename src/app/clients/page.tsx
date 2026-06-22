@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -33,11 +32,12 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/components/auth-provider";
 
-// دالة توحيد النص للبحث
+// دالة توحيد النص للبحث - تدعم العربية الآن
 const normalizeText = (text: string) => {
   if (!text) return '';
   const arToEn = (str: string) => str.replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d).toString());
-  return arToEn(text).toLowerCase().replace(/[^a-z0-9]/g, '').trim();
+  // نحتفظ بالحروف العربية والأرقام والمسافات
+  return arToEn(text).toLowerCase().trim();
 };
 
 function ClientsContent() {
