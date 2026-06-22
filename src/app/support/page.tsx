@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -36,7 +35,6 @@ function SupportContent() {
   const { toast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const cid = searchParams.get('clientId');
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isAdmin = profile?.role === 'admin';
