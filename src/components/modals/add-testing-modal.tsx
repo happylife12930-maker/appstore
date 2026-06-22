@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -128,31 +127,31 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[500px] w-[95vw] rounded-2xl border-none shadow-2xl p-0 overflow-hidden bg-white" dir="rtl">
-        <div className="bg-primary p-4 text-primary-foreground">
+      <DialogContent className="sm:max-w-[480px] w-[95vw] rounded-2xl border-none shadow-2xl p-0 overflow-hidden bg-white" dir="rtl">
+        <div className="bg-primary p-3 text-primary-foreground">
           <DialogHeader>
-            <DialogTitle className="text-base font-black flex items-center gap-2">
+            <DialogTitle className="text-sm font-black flex items-center gap-2">
               <Calendar className="h-4 w-4" /> {initialData ? 'تعديل المهمة' : 'تعيين مشروع للاختبار'}
             </DialogTitle>
           </DialogHeader>
         </div>
 
-        <ScrollArea className="max-h-[60vh] p-5">
-          <div className="space-y-5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <ScrollArea className="max-h-[60vh] p-4">
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label className="text-[10px] font-black text-slate-700 pr-1">المشروع</Label>
+                <Label className="text-[10px] font-black text-slate-700">المشروع</Label>
                 <Select value={formData.projectId} onValueChange={(v) => setFormData({...formData, projectId: v})}>
-                  <SelectTrigger className="rounded-lg h-9 border-slate-200 text-[11px] font-bold"><SelectValue placeholder="اختر المشروع" /></SelectTrigger>
+                  <SelectTrigger className="rounded-lg h-8 border-slate-200 text-[11px] font-bold"><SelectValue placeholder="اختر المشروع" /></SelectTrigger>
                   <SelectContent className="rounded-lg font-bold">
                     {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1">
-                <Label className="text-[10px] font-black text-slate-700 pr-1">حالة المهمة</Label>
+                <Label className="text-[10px] font-black text-slate-700">حالة المهمة</Label>
                 <Select value={formData.status} onValueChange={(v: any) => setFormData({...formData, status: v})}>
-                  <SelectTrigger className="rounded-lg h-9 border-slate-200 text-[11px] font-bold"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="rounded-lg h-8 border-slate-200 text-[11px] font-bold"><SelectValue /></SelectTrigger>
                   <SelectContent className="rounded-lg font-bold">
                     <SelectItem value="pending">في الانتظار</SelectItem>
                     <SelectItem value="in_progress">قيد الاختبار</SelectItem>
@@ -162,21 +161,21 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
               </div>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 space-y-3">
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 space-y-3">
               <div className="flex items-center justify-between">
                  <p className="text-[10px] font-black text-primary uppercase">
                    {editingTesterIdx !== null ? 'تعديل بيانات المختبر' : 'إضافة مختبر جديد'}
                  </p>
                  {editingTesterIdx !== null && (
-                   <Button variant="ghost" size="sm" onClick={resetTesterForm} className="h-6 text-[9px] text-rose-500 font-bold">إلغاء التعديل</Button>
+                   <Button variant="ghost" size="sm" onClick={resetTesterForm} className="h-6 text-[9px] text-rose-500 font-bold px-1">إلغاء</Button>
                  )}
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <Input placeholder="البريد الإلكتروني" className="rounded-lg h-8 text-[11px] font-bold" value={newTesterEmail} onChange={e => setNewTesterEmail(e.target.value)} />
                 <Input placeholder="رقم الهاتف" className="rounded-lg h-8 text-[11px] font-bold" value={newTesterPhone} onChange={e => setNewTesterPhone(e.target.value)} />
               </div>
               <div className="space-y-1">
-                <p className="text-[9px] font-black text-slate-400">أيام العمل المطلوبة:</p>
+                <p className="text-[9px] font-black text-slate-400">أيام العمل المطلوب التواجد فيها:</p>
                 <div className="flex flex-wrap gap-1">
                   {DAYS.map(day => (
                     <button key={day} onClick={() => toggleDay(day)} className={`px-2 py-0.5 rounded-md text-[9px] font-black border transition-all ${selectedDays.includes(day) ? 'bg-primary text-white border-primary' : 'bg-white text-slate-400 border-slate-200'}`}>
@@ -185,21 +184,21 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
                   ))}
                 </div>
               </div>
-              <Button onClick={handleTesterAction} size="sm" className={`w-full h-8 rounded-lg font-black text-[10px] gap-1.5 ${editingTesterIdx !== null ? 'bg-amber-500 hover:bg-amber-600' : ''}`}>
+              <Button onClick={handleTesterAction} size="sm" className={`w-full h-8 rounded-lg font-black text-[10px] gap-1.5 ${editingTesterIdx !== null ? 'bg-blue-600 hover:bg-blue-700 shadow-md' : ''}`}>
                 {editingTesterIdx !== null ? <Edit2 className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
-                {editingTesterIdx !== null ? 'تحديث بيانات المختبر' : 'إضافة المختبر للفريق'}
+                {editingTesterIdx !== null ? 'تحديث وحفظ المختبر' : 'إضافة المختبر للقائمة المؤقتة'}
               </Button>
 
               {formData.testers.length > 0 && (
                 <div className="pt-2 grid grid-cols-1 gap-1.5">
                   {formData.testers.map((t, i) => (
-                    <div key={i} className={`bg-white p-2 rounded-lg border flex justify-between items-center ${editingTesterIdx === i ? 'border-primary ring-2 ring-primary/10' : 'border-slate-100'}`}>
+                    <div key={i} className={`bg-white p-2 rounded-lg border flex justify-between items-center group ${editingTesterIdx === i ? 'border-primary ring-1 ring-primary/20 bg-primary/5' : 'border-slate-100'}`}>
                       <div className="overflow-hidden">
-                        <p className="font-bold text-[10px] text-slate-800 truncate">{t.email}</p>
-                        <p className="text-[8px] text-slate-400">{t.assignedDays.join('، ')}</p>
+                        <p className="font-black text-[10px] text-slate-800 truncate">{t.email}</p>
+                        <p className="text-[8px] text-slate-400 font-bold">{t.assignedDays.join('، ')}</p>
                       </div>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => startEditTester(i)} className="h-6 w-6 text-primary hover:bg-primary/5">
+                      <div className="flex gap-1 shrink-0">
+                        <Button variant="ghost" size="icon" onClick={() => startEditTester(i)} className="h-6 w-6 text-blue-500 hover:bg-blue-50">
                           <Edit2 className="h-3 w-3" />
                         </Button>
                         <Button variant="ghost" size="icon" onClick={() => removeTester(i)} className="h-6 w-6 text-rose-300 hover:text-rose-500">
@@ -212,23 +211,23 @@ export function AddTestingModal({ isOpen, onClose, onSave, isLoading, initialDat
               )}
             </div>
 
-            <div className="grid grid-cols-1 gap-3">
+            <div className="space-y-3">
               <div className="space-y-1">
-                <Label className="text-[10px] font-black text-slate-700 pr-1">رابط نسخة الاختبار</Label>
+                <Label className="text-[10px] font-black text-slate-700">رابط نسخة الاختبار</Label>
                 <Input value={formData.resourceLink} onChange={e => setFormData({...formData, resourceLink: e.target.value})} className="rounded-lg h-8 text-[10px]" placeholder="https://..." />
               </div>
               <div className="space-y-1">
-                <Label className="text-[10px] font-black text-slate-700 pr-1">تعليمات إضافية</Label>
-                <Textarea value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} className="rounded-lg text-[10px] min-h-[60px]" placeholder="مثال: يرجى التركيز على واجهة الدخول..." />
+                <Label className="text-[10px] font-black text-slate-700">تعليمات للمختبرين</Label>
+                <Textarea value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} className="rounded-lg text-[10px] min-h-[50px]" placeholder="مثال: يرجى التركيز على واجهة تسجيل الدخول..." />
               </div>
             </div>
           </div>
         </ScrollArea>
 
-        <DialogFooter className="p-4 bg-slate-50 border-t">
-          <Button onClick={() => onSave({...formData, projectName: projects.find(p=>p.id===formData.projectId)?.name || ''})} disabled={isLoading || !formData.projectId || formData.testers.length === 0} className="w-full h-10 rounded-xl font-black text-sm shadow-lg gap-2">
+        <DialogFooter className="p-3 bg-slate-50 border-t">
+          <Button onClick={() => onSave({...formData, projectName: projects.find(p=>p.id===formData.projectId)?.name || ''})} disabled={isLoading || !formData.projectId || formData.testers.length === 0} className="w-full h-9 rounded-xl font-black text-xs shadow-md gap-2">
             {isLoading ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
-            اعتماد وحفظ البيانات
+            اعتماد وحفظ كافة البيانات
           </Button>
         </DialogFooter>
       </DialogContent>
