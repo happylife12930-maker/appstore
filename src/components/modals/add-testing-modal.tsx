@@ -20,8 +20,7 @@ import {
   CheckCircle2,
   X,
   Plus,
-  Edit2,
-  UserPlus
+  Edit2
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { db } from '@/lib/firebase';

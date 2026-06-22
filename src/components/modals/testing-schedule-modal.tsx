@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Printer, Loader2, MessageCircle, CalendarDays, ExternalLink, User } from "lucide-react";
 import { db } from "@/lib/firebase";
@@ -15,11 +15,8 @@ interface TestingScheduleModalProps {
   onClose: () => void;
 }
 
-const ARABIC_DAYS = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
-
 const daySortOrder: { [key: string]: number } = {
-  "الأحد": 1, "الاثنين": 2, "الثلاثاء": 3, "الأربعاء": 4, "الخميس": 5, "الجمعة": 6, "السبت": 7,
-  "أحد": 1, "اثنين": 2, "ثلاثاء": 3, "أربعاء": 4, "خميس": 5, "جمعة": 6, "سبت": 7
+  "الأحد": 1, "الاثنين": 2, "الثلاثاء": 3, "الأربعاء": 4, "الخميس": 5, "الجمعة": 6, "السبت": 7
 };
 
 export function TestingScheduleModal({ isOpen, onClose }: TestingScheduleModalProps) {
@@ -115,7 +112,7 @@ export function TestingScheduleModal({ isOpen, onClose }: TestingScheduleModalPr
 
     const content = Object.entries(groupedSchedule).map(([day, tasks]) => `
       <div style="margin-bottom: 15px; border: 1px solid #eee; padding: 12px; border-radius: 10px;">
-        <h3 style="margin: 0 0 10px 0; color: #1e293b; font-size: 14px; border-bottom: 2px solid #primary;">${day}</h3>
+        <h3 style="margin: 0 0 10px 0; color: #1e293b; font-size: 14px;">${day}</h3>
         ${tasks.map(t => `<p style="font-size: 11px; margin: 3px 0;"><b>${t.projectName}:</b> ${t.testerEmail}</p>`).join('')}
       </div>
     `).join('');
@@ -137,19 +134,15 @@ export function TestingScheduleModal({ isOpen, onClose }: TestingScheduleModalPr
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-xl rounded-2xl border-none shadow-2xl p-0 overflow-hidden bg-white max-h-[80vh] flex flex-col" dir="rtl">
         <div className="bg-primary p-4 text-primary-foreground shrink-0 shadow-sm">
-          <DialogHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <CalendarDays className="h-4 w-4" />
-                <div>
-                  <DialogTitle className="text-sm font-black">جدول الاختبارات الأسبوعي</DialogTitle>
-                </div>
-              </div>
-              <Button onClick={handlePrint} variant="outline" className="h-8 rounded-lg bg-white/10 border-white/20 hover:bg-white/20 text-white font-black text-[10px] gap-1.5">
-                <Printer className="h-3.5 w-3.5" /> طباعة
-              </Button>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CalendarDays className="h-4 w-4" />
+              <DialogTitle className="text-sm font-black">جدول الاختبارات الأسبوعي</DialogTitle>
             </div>
-          </DialogHeader>
+            <Button onClick={handlePrint} variant="outline" className="h-8 rounded-lg bg-white/10 border-white/20 hover:bg-white/20 text-white font-black text-[10px] gap-1.5">
+              <Printer className="h-3.5 w-3.5" /> طباعة
+            </Button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 bg-slate-50/50">
@@ -174,7 +167,7 @@ export function TestingScheduleModal({ isOpen, onClose }: TestingScheduleModalPr
                       onClick={() => handleSendDayNotifications(day, tasks)}
                       className="h-7 rounded-lg bg-green-500 hover:bg-green-600 font-black text-[9px] gap-1.5 px-3"
                     >
-                      <MessageCircle className="h-3 w-3" /> تنبيهات اليوم
+                      <MessageCircle className="h-3 w-3" /> إرسال تنبيهات اليوم
                     </Button>
                   </div>
                   <div className="p-2 space-y-1.5">

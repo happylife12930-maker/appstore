@@ -27,7 +27,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth-provider";
 import { signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
-import { collection, query, onSnapshot, doc } from "firebase/firestore";
+import { collection, onSnapshot, doc } from "firebase/firestore";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
@@ -119,7 +119,6 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div dir={dir} className="min-h-screen flex flex-col bg-background">
-      {/* Header with Horizontal Navigation */}
       <header className="sticky top-0 z-50 w-full border-b bg-white/80 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-6">
@@ -128,7 +127,6 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               <span className="font-black text-sm tracking-tighter uppercase hidden sm:block">APP STORE</span>
             </Link>
             
-            {/* Desktop Navigation */}
             <nav className="hidden lg:block overflow-x-auto no-scrollbar">
               <NavLinks />
             </nav>
@@ -150,7 +148,6 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               <LogOut className="h-4 w-4" />
             </Button>
 
-            {/* Mobile Menu Trigger */}
             <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="lg:hidden rounded-xl h-9 w-9">
@@ -170,7 +167,6 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="flex-1 p-4 md:p-8">
         {children}
       </main>
