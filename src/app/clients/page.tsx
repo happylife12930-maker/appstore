@@ -23,11 +23,6 @@ import { AddClientModal, type ClientData } from "@/components/modals/add-client-
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth-provider";
 
-const normalizeText = (text: string) => {
-  if (!text) return '';
-  return text.toLowerCase().trim();
-};
-
 function ClientsContent() {
   const { profile, loading: authLoading } = useAuth();
   const [clients, setClients] = useState<ClientData[]>([]);
@@ -61,12 +56,12 @@ function ClientsContent() {
   }, [isAdmin, authLoading]);
 
   const filteredClients = useMemo(() => {
-    const s = normalizeText(searchQuery);
+    const s = searchQuery.toLowerCase().trim();
     if (!s) return clients;
     return clients.filter(c => 
-      normalizeText(c.name).includes(s) || 
-      normalizeText(c.phone).includes(s) || 
-      normalizeText(c.company || "").includes(s)
+      c.name?.toLowerCase().includes(s) || 
+      c.phone?.includes(s) || 
+      c.company?.toLowerCase().includes(s)
     );
   }, [clients, searchQuery]);
 

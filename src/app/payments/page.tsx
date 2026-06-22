@@ -5,21 +5,11 @@ import { useState, useEffect, useMemo, Suspense } from "react";
 import { 
   CreditCard, 
   Search, 
-  Printer, 
-  Phone, 
-  Wallet, 
-  Briefcase, 
   Loader2,
-  ArrowUpDown,
-  FileText,
-  X,
-  CheckCircle2,
-  AlertCircle
+  ArrowUpDown
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { 
@@ -30,7 +20,6 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot } from "firebase/firestore";
 import { useAuth } from "@/components/auth-provider";
@@ -135,5 +124,5 @@ function PaymentsContent() {
 }
 
 export default function PaymentsPage() {
-  return <Suspense fallback={<Loader2 className="animate-spin" />}><PaymentsContent /></Suspense>;
+  return <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="animate-spin text-primary" /></div>}><PaymentsContent /></Suspense>;
 }
