@@ -16,8 +16,7 @@ import {
   User,
   Loader2,
   Image as ImageIcon,
-  Menu,
-  Bell
+  Menu
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
