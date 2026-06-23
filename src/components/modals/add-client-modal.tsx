@@ -134,7 +134,7 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[700px] w-[95vw] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white max-h-[92vh] flex flex-col" dir="rtl">
+      <DialogContent className="sm:max-w-[750px] w-[95vw] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white max-h-[92vh] flex flex-col" dir="rtl">
         {/* Header - Fixed */}
         <div className="bg-primary p-6 text-primary-foreground shrink-0 shadow-md z-20">
           <DialogHeader>
@@ -142,7 +142,7 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
               {initialData ? 'تعديل بيانات العميل' : 'إضافة عميل جديد'}
             </DialogTitle>
             <DialogDescription className="text-primary-foreground/80 font-bold mt-1">
-              إدارة البيانات المالية، الموقف الضريبي، ونظام الأقساط
+              إدارة البيانات الشخصية، الهواتف، ونظام الأقساط المالي
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -162,10 +162,15 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
                 <Input id="projectName" value={formData.projectName} onChange={handleChange} placeholder="مثال: تطبيق عقارات" className="rounded-2xl h-12 border-slate-200 font-bold bg-white" />
               </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="phone" className="font-black text-xs text-slate-500 pr-1">الهاتف الأساسي</Label>
+                <Label htmlFor="phone" className="font-black text-xs text-slate-500 pr-1">رقم الهاتف الأساسي</Label>
                 <Input id="phone" value={formData.phone} onChange={handleChange} className="rounded-2xl h-12 border-slate-200 font-bold bg-white" dir="ltr" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone2" className="font-black text-xs text-slate-500 pr-1">رقم هاتف إضافي</Label>
+                <Input id="phone2" value={formData.phone2} onChange={handleChange} placeholder="اختياري..." className="rounded-2xl h-12 border-slate-200 font-bold bg-white" dir="ltr" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email" className="font-black text-xs text-slate-500 pr-1">البريد الإلكتروني</Label>

@@ -139,7 +139,10 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
     const found = clients.find(c => c.id === formData.clientId);
     const searchNormalized = normalizeForSearch(clientSearch);
     
-    if (searchNormalized && found && !normalizeForSearch(found.phone).includes(searchNormalized) && !normalizeForSearch(found.phone2).includes(searchNormalized) && !normalizeForSearch(found.name).includes(searchNormalized)) {
+    if (searchNormalized && found && 
+        !normalizeForSearch(found.phone).includes(searchNormalized) && 
+        !normalizeForSearch(found.phone2).includes(searchNormalized) && 
+        !normalizeForSearch(found.name).includes(searchNormalized)) {
       return `جاري البحث عن: ${clientSearch}... (اختر من الأسفل)`;
     }
 
@@ -218,7 +221,7 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
               <Briefcase className="h-6 w-6" /> {initialData ? 'تعديل بيانات المشروع' : 'بدء مشروع جديد'}
             </DialogTitle>
             <DialogDescription className="text-primary-foreground/80 font-bold">
-              اربط المشروع بالعميل وحدد التكلفة والواجهات
+              اربط المشروع بالعميل (يمكنك البحث بأي من رقمي هاتفه)
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -238,7 +241,7 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
               
               <div className="space-y-3">
                 <Label className="font-black text-slate-700 pr-2 flex items-center gap-2">
-                   البحث عن العميل (اسم/هاتف) <Phone className="h-3 w-3 text-primary" />
+                   البحث عن العميل (أي رقم هاتف) <Phone className="h-3 w-3 text-primary" />
                 </Label>
                 <div className="space-y-2">
                   <div className="relative">
@@ -271,7 +274,7 @@ export function ProjectModal({ isOpen, onClose, onSave, isLoading, initialData }
                             <span className="text-sm font-black text-slate-800">{c.name}</span>
                             <div className="flex gap-2">
                               <span className="text-[10px] text-primary font-black" dir="ltr">{c.phone}</span>
-                              {c.phone2 && <span className="text-[10px] text-slate-300 font-black" dir="ltr">/ {c.phone2}</span>}
+                              {c.phone2 && <span className="text-[10px] text-slate-400 font-black" dir="ltr">/ {c.phone2}</span>}
                             </div>
                           </div>
                         </SelectItem>
