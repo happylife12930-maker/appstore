@@ -251,12 +251,12 @@ function InstallmentsContent() {
                 <div className="h-10 w-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-black shadow-lg">{pIdx + 1}</div>
                 <div>
                   <h2 className="text-xl font-black text-slate-800">{project.projectName}</h2>
-                  <p className="text-xs font-bold text-slate-400 flex items-center gap-2">
+                  <div className="text-xs font-bold text-slate-400 flex items-center gap-2">
                     العميل: {project.clientName}
                     {project.hasOverdue && (
                       <Badge className="bg-rose-500 rounded-lg text-[8px] animate-pulse">يوجد تأخير</Badge>
                     )}
-                  </p>
+                  </div>
                 </div>
               </div>
               <div className="flex items-center gap-4 min-w-[300px]">
