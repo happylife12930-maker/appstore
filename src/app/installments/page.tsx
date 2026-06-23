@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -101,13 +100,11 @@ function InstallmentsContent() {
     return projectsWithInstallments
       .map(project => {
         const filteredInstallments = project.installments.filter((inst: any) => {
-          // فلتر الحالة
           let matchesStatus = true;
           if (currentFilter === 'paid') matchesStatus = inst.status === 'paid';
           else if (currentFilter === 'pending') matchesStatus = inst.status === 'pending';
           else if (currentFilter === 'overdue') matchesStatus = inst.isOverdue;
 
-          // فلتر التاريخ
           let matchesDate = true;
           if (inst.dueDate) {
             const instDate = new Date(inst.dueDate);
@@ -189,11 +186,12 @@ function InstallmentsContent() {
       return;
     }
 
-    let windowCount = 0;
-    filteredData.forEach((project) => {
-      if (!project.clientPhone && !project.clientPhone2) return;
+    const aggregatedByPhone: Record<string, { clientName: string, projects: any[] }> = {};
 
+    filteredData.forEach((project) => {
       const targetPhone = project.clientPhone || project.clientPhone2;
+      if (!targetPhone) return;
+
       let cleanPhone = targetPhone.replace(/[^0-9]/g, '');
       if (cleanPhone.startsWith('0')) {
         cleanPhone = '2' + cleanPhone;
@@ -201,30 +199,38 @@ function InstallmentsContent() {
         cleanPhone = '20' + cleanPhone;
       }
 
-      const installmentsDetails = project.installments.map(inst => 
-        `- مبلغ: ${inst.amount.toLocaleString()} ج.م (تاريخ: ${inst.dueDate || '---'}) [${inst.status === 'paid' ? 'تم السداد ✅' : inst.isOverdue ? 'متأخر ⚠️' : 'قيد الانتظار ⏳'}]`
-      ).join('\n');
+      if (!aggregatedByPhone[cleanPhone]) {
+        aggregatedByPhone[cleanPhone] = { clientName: project.clientName, projects: [] };
+      }
+      aggregatedByPhone[cleanPhone].projects.push(project);
+    });
 
-      const message = `*تنبيه متابعة مالية - APP STORE* 🚀
-
-مرحباً سيد/ة: *${project.clientName}*
-نحيطكم علماً بموقف الأقساط المجدولة لمشروعكم: *${project.projectName}*
-
-*تفاصيل الأقساط المحددة:*
-${installmentsDetails}
-
-يرجى التفضل بمراجعة الموقف المالي والسداد في المواعيد المقررة لضمان استمرار الدعم الفني وتجنب توقف الخدمات.
-شكراً لتعاونكم الدائم.`;
-
+    let windowCount = 0;
+    Object.entries(aggregatedByPhone).forEach(([phone, data]) => {
       windowCount++;
+
+      let fullMessage = `*تنبيه متابعة مالية مجمعة - APP STORE* 🚀\n\n`;
+      fullMessage += `مرحباً سيد/ة: *${data.clientName}*\n`;
+      fullMessage += `نحيطكم علماً بموقف الأقساط المجدولة للمشاريع التالية:\n\n`;
+
+      data.projects.forEach(p => {
+        fullMessage += `📌 *مشروع: ${p.projectName}*\n`;
+        p.installments.forEach((inst: any) => {
+          fullMessage += `- مبلغ: ${inst.amount.toLocaleString()} ج.م (تاريخ: ${inst.dueDate || '---'}) [${inst.status === 'paid' ? 'تم السداد ✅' : inst.isOverdue ? 'متأخر ⚠️' : 'قيد الانتظار ⏳'}]\n`;
+        });
+        fullMessage += `\n`;
+      });
+
+      fullMessage += `يرجى التفضل بمراجعة الموقف المالي والسداد في المواعيد المقررة.\nشكراً لتعاونكم الدائم.`;
+
       setTimeout(() => {
-        window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank');
-      }, windowCount * 1200);
+        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(fullMessage)}`, '_blank');
+      }, windowCount * 1500);
     });
 
     toast({ 
-      title: "جاري فتح المحادثات", 
-      description: `يتم الآن فتح ${windowCount} محادثة واتساب لتذكير السداد.` 
+      title: "WhatsApp Reminder", 
+      description: `يتم الآن فتح ${windowCount} محادثة (محادثة مجمعة لكل عميل).` 
     });
   };
 
@@ -312,7 +318,7 @@ ${installmentsDetails}
   if (loading) return (
     <div className="flex flex-col items-center justify-center py-20 gap-4">
       <Loader2 className="h-12 w-12 animate-spin text-primary" />
-      <p className="font-black text-slate-500">جاري تحميل جدول الأقساط المطور...</p>
+      <p className="font-bold text-slate-500">جاري تحميل جدول الأقساط المطور...</p>
     </div>
   );
 
@@ -503,15 +509,15 @@ ${installmentsDetails}
                       </Badge>
                     </div>
                     
-                    <div>
-                      <p className={cn(
+                    <div className="space-y-1">
+                      <div className={cn(
                         "text-2xl font-black",
                         inst.isOverdue ? "text-rose-700" : "text-slate-800"
                       )}>
                         {(inst.amount || 0).toLocaleString('ar-EG')} <small className="text-[10px]">ج.م</small>
-                      </p>
+                      </div>
                       <div className={cn(
-                        "flex items-center gap-1.5 mt-1 font-bold text-[10px]",
+                        "flex items-center gap-1.5 font-bold text-[10px]",
                         inst.isOverdue ? "text-rose-400" : "text-slate-400"
                       )}>
                         <CalendarDays className="h-3.5 w-3.5" />

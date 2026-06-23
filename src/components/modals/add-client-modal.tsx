@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -98,7 +97,6 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
     }
   }, [initialData, isOpen]);
 
-  // الحسابات الذكية - نحسب فقط المبالغ "قيد الانتظار" للتحقق من الرصيد المتبقي
   const currentBalance = (formData.totalInvoices || 0) - (formData.totalPayments || 0);
   
   const pendingInstallmentsAmount = formData.installments?.reduce((acc, inst) => {
@@ -123,9 +121,7 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
   };
 
   const removeInstallment = (index: number) => {
-    // منع الحذف إذا كان القسط مدفوعاً
     if (formData.installments?.[index]?.status === 'paid') return;
-    
     setFormData(prev => ({
       ...prev,
       installments: prev.installments?.filter((_, i) => i !== index)
@@ -136,10 +132,8 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
     const newInstallments = [...(formData.installments || [])];
     const oldInstallment = newInstallments[index];
     
-    // منع تعديل أي شيء في القسط المسدد ما عدا "الحالة" نفسها لفك القفل
     if (oldInstallment.status === 'paid' && field !== 'status') return;
 
-    // إذا تغيرت الحالة من معلق إلى مدفوع، نقوم بتحديث إجمالي المدفوعات تلقائياً
     if (field === 'status') {
       const amount = oldInstallment.amount || 0;
       let newTotalPayments = formData.totalPayments || 0;
@@ -226,9 +220,10 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
 
           <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 shadow-inner space-y-8">
             <div className="flex items-center justify-between">
-              <h3 className="font-black text-slate-800 text-lg flex items-center gap-2">
-                <Wallet className="h-5 w-5 text-primary" /> الموقف المالي للمشروع
-              </h3>
+              <div className="flex items-center gap-2">
+                <Wallet className="h-5 w-5 text-primary" />
+                <h3 className="font-black text-slate-800 text-lg">الموقف المالي للمشروع</h3>
+              </div>
               <div className="bg-white px-4 py-2 rounded-2xl border shadow-sm flex items-center gap-4">
                 <span className="text-[10px] font-black text-slate-400 uppercase">صافي المتبقي:</span>
                 <span className={`text-xl font-black ${currentBalance > 0 ? 'text-rose-600' : 'text-green-600'}`}>
@@ -313,7 +308,6 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
                       (isExceeded && inst.status === 'pending') ? 'border-rose-200' : 'border-slate-100',
                       inst.status === 'paid' ? 'bg-green-50/50 border-green-200 opacity-90' : ''
                     )}>
-                      {/* Status Toggle */}
                       <div className="flex-shrink-0">
                         <Button
                           type="button"
@@ -407,4 +401,3 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
     </Dialog>
   );
 }
-
