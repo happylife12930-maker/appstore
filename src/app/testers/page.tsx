@@ -109,7 +109,7 @@ export default function TestersManagementPage() {
     group.testers.forEach((tester, index) => {
       if (!tester.phone) return;
 
-      // Robust Egypt (+2) normalization
+      // تنظيف الرقم وإضافة كود مصر +20
       let cleanPhone = tester.phone.replace(/[^0-9]/g, '');
       if (cleanPhone.startsWith('0')) {
         cleanPhone = '2' + cleanPhone;
@@ -135,14 +135,15 @@ ${group.notes ? `*تعليمات إضافية:*
 
       const encodedMessage = encodeURIComponent(message);
       
+      // استخدام whatsapp:// لفتح التطبيق مباشرة دون بروزر
       setTimeout(() => {
-        window.open(`https://wa.me/${cleanPhone}?text=${encodedMessage}`, '_blank');
-      }, index * 1000);
+        window.open(`whatsapp://send?phone=${cleanPhone}&text=${encodedMessage}`, `wa_tester_${cleanPhone}`);
+      }, index * 1500);
     });
 
     toast({ 
       title: "جاري إرسال التنبيهات", 
-      description: `يتم الآن فتح ${group.testers.length} محادثة واتساب مع إضافة كود مصر (+2) تلقائياً.` 
+      description: `يتم الآن فتح ${group.testers.length} محادثة مباشرة في تطبيق واتساب (+2).` 
     });
   };
 

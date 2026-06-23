@@ -195,7 +195,6 @@ function InstallmentsContent() {
       const targetRaw = phone1 || phone2;
       if (!targetRaw) return;
 
-      // Robust normalization for Egypt (+2)
       let clean = targetRaw;
       if (clean.startsWith('0')) {
         clean = '2' + clean;
@@ -234,16 +233,17 @@ function InstallmentsContent() {
 
       fullMessage += `يرجى التفضل بمراجعة الموقف المالي والسداد في المواعيد المقررة.\nشكراً لتعاونكم الدائم.`;
 
-      const url = `https://wa.me/${phone}?text=${encodeURIComponent(fullMessage)}`;
+      // استخدام whatsapp:// لفتح التطبيق مباشرة على الموبايل
+      const url = `whatsapp://send?phone=${phone}&text=${encodeURIComponent(fullMessage)}`;
 
       setTimeout(() => {
-        window.open(url, `whatsapp_reminder_${phone}`);
-      }, index * 2500); 
+        window.open(url, `whatsapp_bulk_${phone}`);
+      }, index * 2000); 
     });
 
     toast({ 
       title: "WhatsApp Payment Reminder", 
-      description: `يتم الآن فتح ${entries.length} محادثة مجمعة مع إضافة كود مصر (+2) تلقائياً.` 
+      description: `يتم الآن فتح ${entries.length} محادثة مجمعة مباشرة في تطبيق واتساب (+2).` 
     });
   };
 

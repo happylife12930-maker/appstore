@@ -81,8 +81,7 @@ export function TestingScheduleModal({ isOpen, onClose }: TestingScheduleModalPr
         if (!t.phone) return;
         count++;
         
-        // Robust Egypt (+2) normalization
-        let phone = t.phone.replace(/[^0-9]/g, '');
+        let phone = String(t.phone).replace(/[^0-9]/g, '');
         if (phone.startsWith('0')) {
           phone = '2' + phone; 
         } else if (!phone.startsWith('2')) {
@@ -105,14 +104,15 @@ ${proj.notes ? `*تعليمات إضافية:*
 يرجى البدء وموافاتنا بالنتائج فور الانتهاء.
 بالتوفيق، فريق إدارة الجودة.`;
 
+        // استخدام whatsapp:// لفتح التطبيق مباشرة
         setTimeout(() => {
-          window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
-        }, count * 1000);
+          window.open(`whatsapp://send?phone=${phone}&text=${encodeURIComponent(message)}`, `wa_day_${phone}_${count}`);
+        }, count * 1500);
       });
     });
     toast({ 
       title: `إرسال تنبيهات يوم ${day}`, 
-      description: `يتم الآن فتح ${count} محادثة واتساب مع إضافة كود مصر (+2) تلقائياً.` 
+      description: `يتم الآن فتح ${count} محادثة في تطبيق واتساب مباشرة (+2).` 
     });
   };
 
