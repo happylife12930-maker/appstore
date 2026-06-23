@@ -16,6 +16,35 @@
       },
       "required": ["uid", "email", "role"]
     },
+    "Client": {
+      "title": "Client",
+      "description": "Represents a business client with financial and installment data.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "phone2": { "type": "string" },
+        "company": { "type": "string" },
+        "projectName": { "type": "string" },
+        "totalInvoices": { "type": "number" },
+        "totalPayments": { "type": "number" },
+        "balance": { "type": "number" },
+        "paymentType": { "type": "string", "enum": ["cash", "installments"] },
+        "installments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "amount": { "type": "number" },
+              "dueDate": { "type": "string", "format": "date" },
+              "status": { "type": "string", "enum": ["pending", "paid"] }
+            }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
     "SupportThread": {
       "title": "Support Thread",
       "description": "A chat thread between a client and admin.",
@@ -121,6 +150,10 @@
     "/users/{userId}": {
       "schema": "UserProfile",
       "description": "User profiles and permissions."
+    },
+    "/clients/{clientId}": {
+      "schema": "Client",
+      "description": "Client profile and financial records."
     },
     "/projects/{projectId}": {
       "schema": "Project",
