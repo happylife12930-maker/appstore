@@ -18,7 +18,9 @@ import {
   FilterX,
   Calendar as CalendarIcon,
   MessageCircle,
-  ChevronLeft
+  ChevronLeft,
+  X,
+  Send
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,6 +28,15 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Label } from "@/components/ui/label";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription,
+  DialogFooter
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, doc, updateDoc } from "firebase/firestore";
 import { useAuth } from "@/components/auth-provider";
@@ -35,6 +46,12 @@ import { cn } from "@/lib/utils";
 
 type FilterType = 'all' | 'paid' | 'pending' | 'overdue';
 
+interface WhatsAppQueueItem {
+  phone: string;
+  clientName: string;
+  message: string;
+}
+
 function InstallmentsContent() {
   const [clients, setClients] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -42,6 +59,11 @@ function InstallmentsContent() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [loading, setLoading] = useState(true);
+  
+  // States for WhatsApp Queue
+  const [isWhatsappModalOpen, setIsWhatsappModalOpen] = useState(false);
+  const [whatsappQueue, setWhatsappQueue] = useState<WhatsAppQueueItem[]>([]);
+
   const { profile } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -182,7 +204,6 @@ function InstallmentsContent() {
     }
   };
 
-  // وظيفة معالجة الأرقام لتكون دائماً +20
   const formatPhoneForWhatsApp = (raw: any) => {
     let clean = String(raw).replace(/[^0-9]/g, '');
     if (!clean) return '';
@@ -194,13 +215,12 @@ function InstallmentsContent() {
     return clean;
   };
 
-  const handleSendWhatsAppAll = () => {
+  const handleOpenWhatsAppQueue = () => {
     if (filteredData.length === 0) {
-      toast({ title: "تنبيه", description: "لا توجد بيانات لإرسال تنبيهات لها حالياً.", variant: "destructive" });
+      toast({ title: "تنبيه", description: "لا توجد بيانات لإرسال مديونيات لها حالياً.", variant: "destructive" });
       return;
     }
 
-    // تجميع المشاريع والأقساط حسب رقم الهاتف (محادثة واحدة لكل عميل)
     const aggregatedByPhone: Record<string, { clientName: string, messageLines: string[] }> = {};
 
     filteredData.forEach((project) => {
@@ -224,29 +244,46 @@ function InstallmentsContent() {
       aggregatedByPhone[phone].messageLines.push(projectSection + '\n');
     });
 
-    const entries = Object.entries(aggregatedByPhone);
+    const entries = Object.entries(aggregatedByPhone).map(([phone, data]) => {
+      let fullMessage = data.messageLines.join('');
+      fullMessage += `يرجى التفضل بمراجعة الموقف المالي والسداد في المواعيد المقررة.\nشكراً لتعاونكم الدائم.`;
+      return {
+        phone,
+        clientName: data.clientName,
+        message: fullMessage
+      };
+    });
+
     if (entries.length === 0) {
       toast({ title: "تنبيه", description: "لا توجد أرقام هواتف صالحة للعملاء المفلترين.", variant: "destructive" });
       return;
     }
 
-    entries.forEach(([phone, data], index) => {
-      let fullMessage = data.messageLines.join('');
-      fullMessage += `يرجى التفضل بمراجعة الموقف المالي والسداد في المواعيد المقررة.\nشكراً لتعاونكم الدائم.`;
+    setWhatsappQueue(entries);
+    setIsWhatsappModalOpen(true);
+  };
 
-      // استخدام whatsapp:// لفتح التطبيق مباشرة (Mobile Context)
-      const url = `whatsapp://send?phone=${phone}&text=${encodeURIComponent(fullMessage)}`;
+  const sendSingleWhatsApp = (phone: string, message: string) => {
+    const url = `whatsapp://send?phone=${phone}&text=${encodeURIComponent(message)}`;
+    window.open(url, `wa_${phone}`);
+  };
 
-      // فاصل زمني لضمان عدم حظر المتصفح للنوافذ المتتالية
-      setTimeout(() => {
-        window.open(url, `wa_bulk_${phone}`);
-      }, index * 2000); 
+  const sendProjectWhatsApp = (project: any) => {
+    const phone = formatPhoneForWhatsApp(project.clientPhone || project.clientPhone2);
+    if (!phone) {
+      toast({ title: "خطأ", description: "لا يوجد رقم هاتف مسجل لهذا العميل", variant: "destructive" });
+      return;
+    }
+
+    let message = `*تذكير بموقف مالي - APP STORE* 🚀\n\nمرحباً سيد/ة: *${project.clientName}*\nبخصوص مشروع: *${project.projectName}*\n\nالأقساط المجدولة:\n`;
+    project.installments.forEach((inst: any) => {
+      const statusIcon = inst.status === 'paid' ? '✅' : inst.isOverdue ? '⚠️' : '⏳';
+      const statusText = inst.status === 'paid' ? 'تم السداد' : inst.isOverdue ? 'متأخر' : 'قيد الانتظار';
+      message += `- مبلغ: ${inst.amount.toLocaleString('ar-EG')} ج.م (تاريخ: ${inst.dueDate || '---'}) [${statusText} ${statusIcon}]\n`;
     });
+    message += `\nشكراً لتعاونكم.`;
 
-    toast({ 
-      title: "WhatsApp Payment Reminder", 
-      description: `يتم الآن فتح ${entries.length} محادثة مجمعة مباشرة في تطبيق واتساب (+2).` 
-    });
+    sendSingleWhatsApp(phone, message);
   };
 
   const handlePrint = () => {
@@ -367,7 +404,7 @@ function InstallmentsContent() {
              </Button>
            )}
            <Button 
-             onClick={handleSendWhatsAppAll}
+             onClick={handleOpenWhatsAppQueue}
              className="rounded-2xl h-14 px-6 font-black text-lg gap-3 bg-green-500 hover:bg-green-600 text-white shadow-lg active:scale-95 transition-all"
            >
              <MessageCircle className="h-6 w-6" /> WhatsApp Payment Reminder
@@ -467,8 +504,18 @@ function InstallmentsContent() {
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-black shadow-lg">{pIdx + 1}</div>
                 <div className="flex flex-col gap-1">
-                  <h2 className="text-xl font-black text-slate-800">{project.projectName}</h2>
-                  {/* تغيير p إلى div لمنع خطأ الهيدريشن */}
+                  <div className="flex items-center gap-3">
+                    <h2 className="text-xl font-black text-slate-800">{project.projectName}</h2>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => sendProjectWhatsApp(project)}
+                      className="h-8 w-8 rounded-full bg-green-50 text-green-600 hover:bg-green-100 hover:scale-110 transition-all shadow-sm"
+                      title="إرسال تذكير لهذا المشروع"
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                    </Button>
+                  </div>
                   <div className="text-xs font-bold text-slate-400 flex items-center gap-2">
                     <span>العميل: {project.clientName}</span>
                     {project.hasOverdue && (
@@ -562,6 +609,54 @@ function InstallmentsContent() {
           </div>
         )}
       </div>
+
+      {/* WhatsApp Queue Modal */}
+      <Dialog open={isWhatsappModalOpen} onOpenChange={setIsWhatsappModalOpen}>
+        <DialogContent className="sm:max-w-2xl rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white max-h-[85vh] flex flex-col" dir="rtl">
+          <div className="bg-green-600 p-6 text-white shrink-0 shadow-lg z-10">
+            <DialogHeader>
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-md">
+                  <MessageCircle className="h-6 w-6" />
+                </div>
+                <div>
+                  <DialogTitle className="text-xl font-black">WhatsApp Payment Reminder</DialogTitle>
+                  <DialogDescription className="text-green-100 font-bold">
+                    قائمة العملاء المفلترين للمتابعة المالية (+20)
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+          </div>
+
+          <ScrollArea className="flex-1 p-6 bg-slate-50">
+            <div className="space-y-4">
+              {whatsappQueue.map((item, idx) => (
+                <Card key={idx} className="rounded-2xl border-none shadow-sm overflow-hidden bg-white hover:shadow-md transition-all">
+                  <div className="p-5 flex items-center justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-black text-slate-800 text-sm truncate">{item.clientName}</h4>
+                      <p className="text-[10px] font-bold text-slate-400" dir="ltr">+{item.phone}</p>
+                    </div>
+                    <Button 
+                      onClick={() => sendSingleWhatsApp(item.phone, item.message)}
+                      className="rounded-xl h-11 px-6 font-black text-xs gap-2 bg-green-500 hover:bg-green-600 text-white shadow-lg active:scale-95 transition-all"
+                    >
+                      <Send className="h-3.5 w-3.5" /> إرسال الآن
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </ScrollArea>
+
+          <DialogFooter className="p-6 bg-white border-t">
+            <Button onClick={() => setIsWhatsappModalOpen(false)} variant="outline" className="w-full h-12 rounded-xl font-black">
+              إغلاق القائمة
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
