@@ -14,7 +14,8 @@ import {
   ArrowRight,
   TrendingUp,
   Printer,
-  BellRing
+  BellRing,
+  FilterX
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,9 +29,12 @@ import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
+type FilterType = 'all' | 'paid' | 'pending' | 'overdue';
+
 function InstallmentsContent() {
   const [clients, setClients] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentFilter, setCurrentFilter] = useState<FilterType>('all');
   const [loading, setLoading] = useState(true);
   const { profile } = useAuth();
   const router = useRouter();
@@ -51,7 +55,7 @@ function InstallmentsContent() {
     return () => unsub();
   }, [profile, router, loading]);
 
-  // استخراج المشاريع التي لها أقساط
+  // استخراج المشاريع التي لها أقساط مع حساب البيانات الإحصائية
   const projectsWithInstallments = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -82,13 +86,30 @@ function InstallmentsContent() {
       });
   }, [clients]);
 
+  // الفلترة والبحث المتقدم
   const filteredData = useMemo(() => {
     const s = searchQuery.toLowerCase();
-    return projectsWithInstallments.filter(p => 
-      p.projectName.toLowerCase().includes(s) || 
-      p.clientName.toLowerCase().includes(s)
-    );
-  }, [projectsWithInstallments, searchQuery]);
+    
+    return projectsWithInstallments
+      .map(project => {
+        // فلترة الأقساط داخل كل مشروع بناءً على الفلتر المختار
+        const filteredInstallments = project.installments.filter((inst: any) => {
+          if (currentFilter === 'all') return true;
+          if (currentFilter === 'paid') return inst.status === 'paid';
+          if (currentFilter === 'pending') return inst.status === 'pending';
+          if (currentFilter === 'overdue') return inst.isOverdue;
+          return true;
+        });
+
+        return { ...project, installments: filteredInstallments };
+      })
+      .filter(p => {
+        // إخفاء المشروع إذا لم يطابق البحث أو إذا لم يحتوي على أقساط تطابق الفلتر
+        const matchesSearch = p.projectName.toLowerCase().includes(s) || p.clientName.toLowerCase().includes(s);
+        const hasMatchingInstallments = p.installments.length > 0;
+        return matchesSearch && hasMatchingInstallments;
+      });
+  }, [projectsWithInstallments, searchQuery, currentFilter]);
 
   const toggleInstallmentStatus = async (clientId: string, instIndex: number) => {
     if (!db) return;
@@ -120,8 +141,15 @@ function InstallmentsContent() {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
+    const filterTitle = {
+      all: 'الشاملة',
+      paid: 'المحصلة (المسددة)',
+      pending: 'المعلقة',
+      overdue: 'المتأخرة ⚠️'
+    }[currentFilter];
+
     const rows = filteredData.flatMap(p => 
-      p.installments.map((inst: any, idx: number) => `
+      p.installments.map((inst: any) => `
         <tr style="${inst.isOverdue ? 'background-color: #fff1f2;' : ''}">
           <td style="padding: 12px; border: 1px solid #e2e8f0; font-weight: bold;">${p.projectName}</td>
           <td style="padding: 12px; border: 1px solid #e2e8f0;">${p.clientName}</td>
@@ -137,11 +165,12 @@ function InstallmentsContent() {
     printWindow.document.write(`
       <html dir="rtl">
         <head>
-          <title>تقرير جدول الأقساط - APP STORE</title>
+          <title>تقرير الأقساط ${filterTitle} - APP STORE</title>
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap');
             body { font-family: 'Cairo', sans-serif; padding: 40px; color: #1e293b; }
-            h1 { text-align: center; font-size: 24px; font-weight: 900; border-bottom: 4px solid #1e293b; padding-bottom: 15px; margin-bottom: 30px; }
+            h1 { text-align: center; font-size: 24px; font-weight: 900; border-bottom: 4px solid #1e293b; padding-bottom: 15px; margin-bottom: 10px; }
+            .filter-badge { text-align: center; color: #64748b; font-weight: bold; margin-bottom: 30px; }
             table { width: 100%; border-collapse: collapse; margin-top: 20px; }
             th { background-color: #f8fafc; color: #64748b; font-size: 12px; text-transform: uppercase; padding: 12px; border: 1px solid #e2e8f0; text-align: right; }
             .footer { margin-top: 40px; font-size: 10px; text-align: center; color: #94a3b8; }
@@ -149,6 +178,7 @@ function InstallmentsContent() {
         </head>
         <body>
           <h1>تقرير جدولة الأقساط ومتابعة التحصيل</h1>
+          <div class="filter-badge">نوع التقرير: ${filterTitle}</div>
           <p>تاريخ استخراج التقرير: ${new Date().toLocaleDateString('ar-EG')}</p>
           <table>
             <thead>
@@ -161,7 +191,7 @@ function InstallmentsContent() {
               </tr>
             </thead>
             <tbody>
-              ${rows}
+              ${rows || '<tr><td colspan="5" style="text-align:center; padding: 50px;">لا توجد بيانات تطابق الفلتر المختار</td></tr>'}
             </tbody>
           </table>
           <div class="footer">صادر عن نظام إدارة APP STORE للمقاولات البرمجية</div>
@@ -209,20 +239,54 @@ function InstallmentsContent() {
             <p className="text-slate-500 font-bold">إدارة مبالغ التعاقد المجدولة والتحصيل لكل مشروع</p>
           </div>
         </div>
-        <Button 
-          onClick={handlePrint}
-          variant="outline"
-          className="rounded-2xl h-14 px-8 font-black text-lg gap-3 border-2 border-primary text-primary hover:bg-primary/5 transition-all shadow-sm"
-        >
-          <Printer className="h-6 w-6" /> طباعة كشف شامل
-        </Button>
+        <div className="flex items-center gap-3">
+           {currentFilter !== 'all' && (
+             <Button 
+               variant="ghost" 
+               onClick={() => setCurrentFilter('all')}
+               className="rounded-xl h-12 font-black text-xs gap-2 text-rose-500 hover:bg-rose-50"
+             >
+               <FilterX className="h-4 w-4" /> إلغاء الفلترة
+             </Button>
+           )}
+           <Button 
+             onClick={handlePrint}
+             variant="outline"
+             className="rounded-2xl h-14 px-8 font-black text-lg gap-3 border-2 border-primary text-primary hover:bg-primary/5 transition-all shadow-sm"
+           >
+             <Printer className="h-6 w-6" /> طباعة التقرير المفلتر
+           </Button>
+        </div>
       </header>
 
-      {/* Stats Cards */}
+      {/* Stats Cards / Filters */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <StatCard title="إجمالي الأقساط" value={stats.total} icon={<Wallet className="text-primary" />} color="bg-primary/5" />
-        <StatCard title="تم تحصيله" value={stats.paid} icon={<CheckCircle2 className="text-green-500" />} color="bg-green-50" textColor="text-green-700" />
-        <StatCard title="مبالغ معلقة" value={stats.pending} icon={<Clock className="text-orange-500" />} color="bg-orange-50" textColor="text-orange-700" />
+        <StatCard 
+          title="إجمالي الأقساط" 
+          value={stats.total} 
+          icon={<Wallet className="text-primary" />} 
+          color="bg-primary/5" 
+          active={currentFilter === 'all'}
+          onClick={() => setCurrentFilter('all')}
+        />
+        <StatCard 
+          title="تم تحصيله" 
+          value={stats.paid} 
+          icon={<CheckCircle2 className="text-green-500" />} 
+          color="bg-green-50" 
+          textColor="text-green-700" 
+          active={currentFilter === 'paid'}
+          onClick={() => setCurrentFilter('paid')}
+        />
+        <StatCard 
+          title="مبالغ معلقة" 
+          value={stats.pending} 
+          icon={<Clock className="text-orange-500" />} 
+          color="bg-orange-50" 
+          textColor="text-orange-700" 
+          active={currentFilter === 'pending'}
+          onClick={() => setCurrentFilter('pending')}
+        />
         <StatCard 
           title="أقساط متأخرة" 
           value={stats.overdueCount} 
@@ -230,13 +294,15 @@ function InstallmentsContent() {
           color="bg-rose-50" 
           textColor="text-rose-700" 
           unit="قسط"
+          active={currentFilter === 'overdue'}
+          onClick={() => setCurrentFilter('overdue')}
         />
       </div>
 
       <div className="relative">
         <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5" />
         <Input 
-          placeholder="بحث باسم المشروع أو العميل لمراجعة الأقساط..." 
+          placeholder="بحث باسم المشروع أو العميل لمراجعة الأقساط المفلترة..." 
           className="pr-12 h-14 rounded-2xl font-bold text-base border-none shadow-sm bg-white focus-visible:ring-primary/20"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
@@ -335,9 +401,12 @@ function InstallmentsContent() {
         ))}
 
         {filteredData.length === 0 && (
-          <div className="py-24 text-center opacity-30 space-y-4">
-            <AlertCircle className="h-20 w-20 mx-auto" />
-            <p className="text-2xl font-black uppercase tracking-widest">لا توجد أقساط مجدولة تطابق البحث</p>
+          <div className="py-24 text-center opacity-30 space-y-4 bg-white rounded-[3rem] border border-dashed border-slate-200">
+            <FilterX className="h-20 w-20 mx-auto text-slate-300" />
+            <p className="text-2xl font-black uppercase tracking-widest text-slate-400">
+              لا توجد أقساط تطابق الفلتر أو البحث المختار
+            </p>
+            <Button variant="link" onClick={() => { setCurrentFilter('all'); setSearchQuery(''); }} className="font-bold text-primary">إعادة تعيين كافة الفلاتر</Button>
           </div>
         )}
       </div>
@@ -345,16 +414,38 @@ function InstallmentsContent() {
   );
 }
 
-function StatCard({ title, value, icon, color, textColor = "text-slate-800", unit = "ج.م" }: any) {
+function StatCard({ title, value, icon, color, textColor = "text-slate-800", unit = "ج.م", active, onClick }: any) {
   return (
-    <Card className={`rounded-[2rem] border-none shadow-sm p-8 ${color} border border-white/20`}>
+    <Card 
+      onClick={onClick}
+      className={cn(
+        "rounded-[2rem] border shadow-sm p-8 transition-all cursor-pointer hover:scale-105 active:scale-95 group",
+        color,
+        active ? "border-primary ring-4 ring-primary/10 shadow-lg" : "border-white/20"
+      )}
+    >
       <div className="flex justify-between items-center mb-4">
         <span className="font-black text-[10px] uppercase tracking-widest text-slate-400">{title}</span>
-        <div className="p-3 bg-white rounded-xl shadow-sm">{icon}</div>
+        <div className={cn(
+          "p-3 rounded-xl shadow-sm transition-all",
+          active ? "bg-primary text-white" : "bg-white"
+        )}>
+          {icon}
+        </div>
       </div>
-      <div className={`text-3xl font-black ${textColor}`}>
-        {value.toLocaleString('ar-EG')} <span className="text-sm font-bold opacity-60">${unit}</span>
+      <div className={cn(
+        "text-3xl font-black transition-all",
+        active ? "scale-110" : "",
+        textColor
+      )}>
+        {value.toLocaleString('ar-EG')} <span className="text-sm font-bold opacity-60">{unit}</span>
       </div>
+      {active && (
+        <div className="mt-3 flex items-center gap-1.5 text-[8px] font-black text-primary uppercase">
+          <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+          الفلتر مفعل حالياً
+        </div>
+      )}
     </Card>
   );
 }
