@@ -17,6 +17,7 @@ import {
   BellRing,
   FilterX,
   Calendar as CalendarIcon,
+  MessageCircle,
   ChevronLeft
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -80,6 +81,8 @@ function InstallmentsContent() {
         return {
           clientId: c.id,
           clientName: c.name,
+          clientPhone: c.phone,
+          clientPhone2: c.phone2,
           projectName: c.projectName || "مشروع بدون اسم",
           installments,
           progress,
@@ -120,7 +123,7 @@ function InstallmentsContent() {
         return { ...project, installments: filteredInstallments };
       })
       .filter(p => {
-        const matchesSearch = p.projectName.toLowerCase().includes(s) || p.clientName.toLowerCase().includes(s);
+        const matchesSearch = p.projectName.toLowerCase().includes(s) || p.clientName.toLowerCase().includes(s) || (p.clientPhone && p.clientPhone.includes(searchQuery)) || (p.clientPhone2 && p.clientPhone2.includes(searchQuery));
         const hasMatchingInstallments = p.installments.length > 0;
         return matchesSearch && hasMatchingInstallments;
       });
@@ -132,7 +135,6 @@ function InstallmentsContent() {
     let paid = 0;
     let overdueCount = 0;
     
-    // نحسب الإحصائيات بناءً على المشاريع المفلترة حالياً (بما في ذلك التاريخ)
     filteredData.forEach(p => {
       p.installments.forEach((inst: any) => {
         if (inst.status === 'paid') paid += inst.amount;
@@ -151,9 +153,6 @@ function InstallmentsContent() {
     const client = clients.find(c => c.id === clientId);
     if (!client) return;
 
-    // العثور على القسط الفعلي في مصفوفة العميل الأصلية
-    // لأن instIndex في filteredData قد يختلف عن المصفوفة الأصلية
-    // سنستخدم بيانات القسط للمطابقة
     const targetInst = filteredData.find(p => p.clientId === clientId)?.installments[instIndex];
     if (!targetInst) return;
 
@@ -182,6 +181,51 @@ function InstallmentsContent() {
     } catch (err) {
       toast({ title: "خطأ في التحديث", variant: "destructive" });
     }
+  };
+
+  const handleSendWhatsAppAll = () => {
+    if (filteredData.length === 0) {
+      toast({ title: "تنبيه", description: "لا توجد بيانات لإرسال تنبيهات لها حالياً.", variant: "destructive" });
+      return;
+    }
+
+    let windowCount = 0;
+    filteredData.forEach((project) => {
+      if (!project.clientPhone && !project.clientPhone2) return;
+
+      const targetPhone = project.clientPhone || project.clientPhone2;
+      let cleanPhone = targetPhone.replace(/[^0-9]/g, '');
+      if (cleanPhone.startsWith('0')) {
+        cleanPhone = '2' + cleanPhone;
+      } else if (!cleanPhone.startsWith('2')) {
+        cleanPhone = '20' + cleanPhone;
+      }
+
+      const installmentsDetails = project.installments.map(inst => 
+        `- مبلغ: ${inst.amount.toLocaleString()} ج.م (تاريخ: ${inst.dueDate || '---'}) [${inst.status === 'paid' ? 'تم السداد ✅' : inst.isOverdue ? 'متأخر ⚠️' : 'قيد الانتظار ⏳'}]`
+      ).join('\n');
+
+      const message = `*تنبيه متابعة مالية - APP STORE* 🚀
+
+مرحباً سيد/ة: *${project.clientName}*
+نحيطكم علماً بموقف الأقساط المجدولة لمشروعكم: *${project.projectName}*
+
+*تفاصيل الأقساط المحددة:*
+${installmentsDetails}
+
+يرجى التفضل بمراجعة الموقف المالي والسداد في المواعيد المقررة لضمان استمرار الدعم الفني وتجنب توقف الخدمات.
+شكراً لتعاونكم الدائم.`;
+
+      windowCount++;
+      setTimeout(() => {
+        window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank');
+      }, windowCount * 1200);
+    });
+
+    toast({ 
+      title: "جاري فتح المحادثات", 
+      description: `يتم الآن فتح ${windowCount} محادثة واتساب للعملاء المفلترين.` 
+    });
   };
 
   const handlePrint = () => {
@@ -291,27 +335,32 @@ function InstallmentsContent() {
             <p className="text-slate-500 font-bold">إدارة مبالغ التعاقد المجدولة والتحصيل بكل مشروع</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
            {(currentFilter !== 'all' || searchQuery || startDate || endDate) && (
              <Button 
                variant="ghost" 
                onClick={resetFilters}
                className="rounded-xl h-12 font-black text-xs gap-2 text-rose-500 hover:bg-rose-50"
              >
-               <FilterX className="h-4 w-4" /> إلغاء كافة الفلاتر
+               <FilterX className="h-4 w-4" /> إلغاء الفلاتر
              </Button>
            )}
+           <Button 
+             onClick={handleSendWhatsAppAll}
+             className="rounded-2xl h-14 px-6 font-black text-lg gap-3 bg-green-500 hover:bg-green-600 text-white shadow-lg active:scale-95 transition-all"
+           >
+             <MessageCircle className="h-6 w-6" /> إرسال تنبيهات واتساب للمفلترين
+           </Button>
            <Button 
              onClick={handlePrint}
              variant="outline"
              className="rounded-2xl h-14 px-8 font-black text-lg gap-3 border-2 border-primary text-primary hover:bg-primary/5 transition-all shadow-sm"
            >
-             <Printer className="h-6 w-6" /> طباعة التقرير المفلتر
+             <Printer className="h-6 w-6" /> طباعة التقرير
            </Button>
         </div>
       </header>
 
-      {/* Stats Cards / Filters */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <StatCard 
           title="إجمالي الأقساط" 
@@ -353,11 +402,11 @@ function InstallmentsContent() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-end bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
         <div className="lg:col-span-6 space-y-2">
-          <Label className="font-black text-xs text-slate-500 pr-1">بحث بالاسم</Label>
+          <Label className="font-black text-xs text-slate-500 pr-1">بحث بالاسم أو الهاتف</Label>
           <div className="relative">
             <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5" />
             <Input 
-              placeholder="ابحث باسم المشروع أو العميل..." 
+              placeholder="ابحث باسم المشروع، العميل، أو رقم الهاتف..." 
               className="pr-12 h-14 rounded-2xl font-bold text-base border-slate-100 bg-slate-50/50 focus-visible:ring-primary/20"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
