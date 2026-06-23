@@ -224,7 +224,7 @@ ${installmentsDetails}
 
     toast({ 
       title: "جاري فتح المحادثات", 
-      description: `يتم الآن فتح ${windowCount} محادثة واتساب للعملاء المفلترين.` 
+      description: `يتم الآن فتح ${windowCount} محادثة واتساب لتذكير السداد.` 
     });
   };
 
@@ -349,7 +349,7 @@ ${installmentsDetails}
              onClick={handleSendWhatsAppAll}
              className="rounded-2xl h-14 px-6 font-black text-lg gap-3 bg-green-500 hover:bg-green-600 text-white shadow-lg active:scale-95 transition-all"
            >
-             <MessageCircle className="h-6 w-6" /> إرسال تنبيهات واتساب للمفلترين
+             <MessageCircle className="h-6 w-6" /> WhatsApp Payment Reminder
            </Button>
            <Button 
              onClick={handlePrint}
