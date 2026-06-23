@@ -186,12 +186,15 @@ function InstallmentsContent() {
       return;
     }
 
+    // تجميع المشاريع حسب رقم الهاتف لفتح محادثة واحدة لكل شخص
     const aggregatedByPhone: Record<string, { clientName: string, projects: any[] }> = {};
 
     filteredData.forEach((project) => {
+      // نختار الرقم الأساسي، وإذا لم يوجد نختار الإضافي
       const targetPhone = project.clientPhone || project.clientPhone2;
       if (!targetPhone) return;
 
+      // تنظيف الرقم وإضافة كود مصر
       let cleanPhone = targetPhone.replace(/[^0-9]/g, '');
       if (cleanPhone.startsWith('0')) {
         cleanPhone = '2' + cleanPhone;
@@ -216,21 +219,25 @@ function InstallmentsContent() {
       data.projects.forEach(p => {
         fullMessage += `📌 *مشروع: ${p.projectName}*\n`;
         p.installments.forEach((inst: any) => {
-          fullMessage += `- مبلغ: ${inst.amount.toLocaleString()} ج.م (تاريخ: ${inst.dueDate || '---'}) [${inst.status === 'paid' ? 'تم السداد ✅' : inst.isOverdue ? 'متأخر ⚠️' : 'قيد الانتظار ⏳'}]\n`;
+          const statusIcon = inst.status === 'paid' ? '✅' : inst.isOverdue ? '⚠️' : '⏳';
+          const statusText = inst.status === 'paid' ? 'تم السداد' : inst.isOverdue ? 'متأخر' : 'قيد الانتظار';
+          fullMessage += `- مبلغ: ${inst.amount.toLocaleString()} ج.م (تاريخ: ${inst.dueDate || '---'}) [${statusText} ${statusIcon}]\n`;
         });
         fullMessage += `\n`;
       });
 
       fullMessage += `يرجى التفضل بمراجعة الموقف المالي والسداد في المواعيد المقررة.\nشكراً لتعاونكم الدائم.`;
 
+      // نستخدم Timeout بفاصل زمني كافي (1.5 ثانية) لضمان عدم حظر المتصفح للنوافذ
       setTimeout(() => {
-        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(fullMessage)}`, '_blank');
+        const url = `https://wa.me/${phone}?text=${encodeURIComponent(fullMessage)}`;
+        window.open(url, '_blank');
       }, windowCount * 1500);
     });
 
     toast({ 
-      title: "WhatsApp Reminder", 
-      description: `يتم الآن فتح ${windowCount} محادثة (محادثة مجمعة لكل عميل).` 
+      title: "WhatsApp Payment Reminder", 
+      description: `يتم الآن فتح ${windowCount} محادثة (رسالة مجمعة لكل عميل).` 
     });
   };
 
@@ -276,7 +283,7 @@ function InstallmentsContent() {
             .date-badge { color: #3b82f6; font-weight: bold; font-size: 12px; margin-top: 5px; }
             table { width: 100%; border-collapse: collapse; margin-top: 20px; }
             th { background-color: #f8fafc; color: #64748b; font-size: 12px; text-transform: uppercase; padding: 12px; border: 1px solid #e2e8f0; text-align: right; }
-            td { font-size: 13px; }
+            td { font-size: 13px; border-bottom: 1px solid #f1f5f9; padding: 12px; }
             .summary { margin-top: 30px; padding: 20px; background: #f8fafc; border-radius: 15px; border: 1px solid #e2e8f0; display: flex; justify-content: space-between; }
             .footer { margin-top: 40px; font-size: 10px; text-align: center; color: #94a3b8; }
           </style>
@@ -447,7 +454,7 @@ function InstallmentsContent() {
 
       <div className="space-y-10">
         {filteredData.map((project, pIdx) => (
-          <div key={project.clientId} className="space-y-4">
+          <div key={project.clientId + pIdx} className="space-y-4">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-4">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-black shadow-lg">{pIdx + 1}</div>
