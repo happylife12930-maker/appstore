@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Printer, Loader2, MessageCircle, CalendarDays, ExternalLink, Send } from "lucide-react";
+import { Printer, Loader2, MessageCircle, CalendarDays, ExternalLink } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query } from "firebase/firestore";
 import { useAuth } from "@/components/auth-provider";

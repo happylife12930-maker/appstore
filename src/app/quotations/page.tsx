@@ -74,4 +74,4 @@ function QuotationsContent() {
   );
 }
 
-export default function QuotationsPage() { return <Suspense fallback={<Loader2 className="animate-spin" />}><QuotationsContent /></Suspense>; }
+export default function QuotationsPage() { return <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="animate-spin text-primary" /></div>}><QuotationsContent /></Suspense>; }
