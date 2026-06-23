@@ -15,7 +15,19 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { 
-  Loader2, User, Mail, Phone, Building, Wallet, CreditCard, X, Plus, Calendar, Trash2, Banknote 
+  Loader2, 
+  User, 
+  Mail, 
+  Phone, 
+  Building, 
+  Wallet, 
+  CreditCard, 
+  X, 
+  Plus, 
+  Calendar, 
+  Trash2, 
+  Banknote,
+  DollarSign
 } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Badge } from '@/components/ui/badge';
@@ -122,9 +134,9 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[700px] w-[95vw] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white max-h-[90vh] flex flex-col" dir="rtl">
-        {/* Header */}
-        <div className="bg-primary p-6 text-primary-foreground shrink-0 shadow-md z-10">
+      <DialogContent className="sm:max-w-[700px] w-[95vw] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white max-h-[92vh] flex flex-col" dir="rtl">
+        {/* Header - Fixed */}
+        <div className="bg-primary p-6 text-primary-foreground shrink-0 shadow-md z-20">
           <DialogHeader>
             <DialogTitle className="text-2xl font-black flex items-center gap-3">
               {initialData ? 'تعديل بيانات العميل' : 'إضافة عميل جديد'}
@@ -135,29 +147,29 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
           </DialogHeader>
         </div>
 
-        {/* Scrollable Content Area */}
-        <div className="flex-1 overflow-y-auto p-6 md:p-10 space-y-10 custom-scrollbar">
+        {/* Scrollable Content Area - Flexible */}
+        <div className="flex-1 overflow-y-auto p-6 md:p-10 space-y-10 custom-scrollbar bg-[#fcfcfc]">
           {/* Basic Info Section */}
           <div className="space-y-6">
             <h3 className="font-black text-slate-800 text-lg flex items-center gap-2 border-r-4 border-primary pr-3">بيانات التواصل والشركة</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="name" className="font-black text-xs text-slate-500 pr-1">اسم العميل بالكامل</Label>
-                <Input id="name" value={formData.name} onChange={handleChange} placeholder="أدخل اسم العميل..." className="rounded-2xl h-12 border-slate-200 font-bold" />
+                <Input id="name" value={formData.name} onChange={handleChange} placeholder="أدخل اسم العميل..." className="rounded-2xl h-12 border-slate-200 font-bold bg-white" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="projectName" className="font-black text-xs text-slate-500 pr-1">اسم المشروع</Label>
-                <Input id="projectName" value={formData.projectName} onChange={handleChange} placeholder="مثال: تطبيق عقارات" className="rounded-2xl h-12 border-slate-200 font-bold" />
+                <Input id="projectName" value={formData.projectName} onChange={handleChange} placeholder="مثال: تطبيق عقارات" className="rounded-2xl h-12 border-slate-200 font-bold bg-white" />
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="phone" className="font-black text-xs text-slate-500 pr-1">الهاتف الأساسي</Label>
-                <Input id="phone" value={formData.phone} onChange={handleChange} className="rounded-2xl h-12 border-slate-200 font-bold" dir="ltr" />
+                <Input id="phone" value={formData.phone} onChange={handleChange} className="rounded-2xl h-12 border-slate-200 font-bold bg-white" dir="ltr" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email" className="font-black text-xs text-slate-500 pr-1">البريد الإلكتروني</Label>
-                <Input id="email" type="email" value={formData.email} onChange={handleChange} className="rounded-2xl h-12 border-slate-200 font-bold" dir="ltr" />
+                <Input id="email" type="email" value={formData.email} onChange={handleChange} className="rounded-2xl h-12 border-slate-200 font-bold bg-white" dir="ltr" />
               </div>
             </div>
           </div>
@@ -179,7 +191,7 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-2">
                 <Label htmlFor="totalInvoices" className="font-black text-xs text-slate-600">إجمالي التعاقد</Label>
-                <Input id="totalInvoices" type="number" value={formData.totalInvoices} onChange={handleChange} className="rounded-2xl h-14 border-slate-200 font-black text-xl text-center shadow-sm" />
+                <Input id="totalInvoices" type="number" value={formData.totalInvoices} onChange={handleChange} className="rounded-2xl h-14 border-slate-200 font-black text-xl text-center shadow-sm bg-white" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="totalPayments" className="font-black text-xs text-green-600">إجمالي ما تم سداده</Label>
@@ -193,7 +205,7 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
               <RadioGroup 
                 value={formData.paymentType} 
                 onValueChange={(val) => setFormData({...formData, paymentType: val as any})}
-                className="flex gap-4"
+                className="flex flex-col sm:flex-row gap-4"
               >
                 <div className={`flex items-center space-x-2 space-x-reverse flex-1 p-4 rounded-2xl border-2 transition-all cursor-pointer ${formData.paymentType === 'cash' ? 'bg-primary/5 border-primary shadow-sm' : 'bg-white border-slate-100'}`} onClick={() => setFormData({...formData, paymentType: 'cash'})}>
                   <RadioGroupItem value="cash" id="cash" className="hidden" />
@@ -219,7 +231,7 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
                 <div className="flex items-center justify-between">
                   <h4 className="font-black text-slate-700 text-sm flex items-center gap-2">
                     جدولة الأقساط المستحقة
-                    <Badge variant="outline" className="rounded-lg h-5 px-1.5 font-bold">{formData.installments?.length || 0}</Badge>
+                    <Badge variant="outline" className="rounded-lg h-5 px-1.5 font-bold bg-white">{formData.installments?.length || 0}</Badge>
                   </h4>
                   <Button 
                     type="button" 
@@ -242,7 +254,7 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
                             type="number" 
                             value={inst.amount} 
                             onChange={(e) => handleInstallmentChange(idx, 'amount', e.target.value)}
-                            className="rounded-xl h-11 pr-8 font-black border-slate-100" 
+                            className="rounded-xl h-11 pr-8 font-black border-slate-100 bg-slate-50/30" 
                             placeholder="0.00"
                           />
                           <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-300" />
@@ -255,7 +267,7 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
                             type="date" 
                             value={inst.dueDate} 
                             onChange={(e) => handleInstallmentChange(idx, 'dueDate', e.target.value)}
-                            className="rounded-xl h-11 font-bold border-slate-100" 
+                            className="rounded-xl h-11 font-bold border-slate-100 bg-slate-50/30" 
                           />
                         </div>
                       </div>
@@ -271,26 +283,28 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
                   ))}
                   
                   {(!formData.installments || formData.installments.length === 0) && (
-                    <div className="p-10 border-2 border-dashed rounded-[2rem] text-center text-slate-300">
-                      <p className="font-black text-xs uppercase">لم يتم تحديد أي أقساط بعد</p>
+                    <div className="p-10 border-2 border-dashed rounded-[2rem] text-center text-slate-300 bg-white/50">
+                      <p className="font-black text-xs uppercase tracking-widest">لم يتم جدولة أي أقساط بعد</p>
                     </div>
                   )}
                 </div>
               </div>
             )}
           </div>
+          
+          <div className="h-4" /> {/* Spacer for bottom scroll padding */}
         </div>
 
-        {/* Footer */}
-        <DialogFooter className="p-6 bg-slate-50 border-t shrink-0 z-10 shadow-[0_-4px_15px_rgba(0,0,0,0.02)]">
+        {/* Footer - Fixed */}
+        <DialogFooter className="p-6 bg-slate-50 border-t shrink-0 z-20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
           <Button 
             type="submit" 
             onClick={handleSaveClick} 
             disabled={isLoading || !formData.name} 
-            className="rounded-[1.5rem] font-black h-16 px-10 text-xl shadow-2xl w-full hover:scale-[1.01] active:scale-95 transition-all gap-3"
+            className="rounded-[1.5rem] font-black h-16 px-10 text-xl shadow-2xl w-full hover:scale-[1.01] active:scale-95 transition-all gap-3 bg-primary"
           >
             {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : <CreditCard className="h-6 w-6" />}
-            {initialData ? 'تحديث بيانات العميل بالكامل' : 'تأكيد وحفظ بيانات العميل'}
+            {initialData ? 'تحديث كافة بيانات العميل' : 'تأكيد الحساب وإضافة العميل'}
           </Button> 
         </DialogFooter>
       </DialogContent>
