@@ -186,6 +186,7 @@ function InstallmentsContent() {
       return;
     }
 
+    // تجميع المشاريع حسب رقم الهاتف
     const aggregatedByPhone: Record<string, { clientName: string, projects: any[] }> = {};
 
     filteredData.forEach((project) => {
@@ -195,6 +196,7 @@ function InstallmentsContent() {
       const targetRaw = phone1 || phone2;
       if (!targetRaw) return;
 
+      // تنظيف وإضافة كود مصر 20
       let clean = targetRaw;
       if (clean.startsWith('0')) {
         clean = '2' + clean;
@@ -205,6 +207,8 @@ function InstallmentsContent() {
       if (!aggregatedByPhone[clean]) {
         aggregatedByPhone[clean] = { clientName: project.clientName, projects: [] };
       }
+      
+      // تجنب تكرار المشروع في الرسالة المجمعة
       if (!aggregatedByPhone[clean].projects.some(p => p.projectName === project.projectName)) {
         aggregatedByPhone[clean].projects.push(project);
       }
@@ -212,7 +216,7 @@ function InstallmentsContent() {
 
     const entries = Object.entries(aggregatedByPhone);
     if (entries.length === 0) {
-      toast({ title: "تنبيه", description: "لا توجد أرقام هواتف صالحة للمفلترين.", variant: "destructive" });
+      toast({ title: "تنبيه", description: "لا توجد أرقام هواتف صالحة للعملاء المفلترين.", variant: "destructive" });
       return;
     }
 
@@ -464,7 +468,7 @@ function InstallmentsContent() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-4">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-black shadow-lg">{pIdx + 1}</div>
-                <div>
+                <div className="flex flex-col gap-1">
                   <h2 className="text-xl font-black text-slate-800">{project.projectName}</h2>
                   <div className="text-xs font-bold text-slate-400 flex items-center gap-2">
                     <span>العميل: {project.clientName}</span>
