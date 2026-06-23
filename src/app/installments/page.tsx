@@ -189,25 +189,23 @@ function InstallmentsContent() {
     const aggregatedByPhone: Record<string, { clientName: string, projects: any[] }> = {};
 
     filteredData.forEach((project) => {
-      // Logic: Prefer primary phone, then secondary
       const phone1 = project.clientPhone ? String(project.clientPhone).replace(/[^0-9]/g, '') : '';
       const phone2 = project.clientPhone2 ? String(project.clientPhone2).replace(/[^0-9]/g, '') : '';
       
       const targetRaw = phone1 || phone2;
       if (!targetRaw) return;
 
-      // Robust normalization with country code
+      // Robust normalization for Egypt (+2)
       let clean = targetRaw;
-      if (clean.startsWith('0') && clean.length === 11) {
+      if (clean.startsWith('0')) {
         clean = '2' + clean;
-      } else if (!clean.startsWith('2') && clean.length === 10) {
+      } else if (!clean.startsWith('2')) {
         clean = '20' + clean;
       }
 
       if (!aggregatedByPhone[clean]) {
         aggregatedByPhone[clean] = { clientName: project.clientName, projects: [] };
       }
-      // Group projects for this phone
       if (!aggregatedByPhone[clean].projects.some(p => p.projectName === project.projectName)) {
         aggregatedByPhone[clean].projects.push(project);
       }
@@ -238,7 +236,6 @@ function InstallmentsContent() {
 
       const url = `https://wa.me/${phone}?text=${encodeURIComponent(fullMessage)}`;
 
-      // Open with sequential delay and unique window names to prevent browser blocking
       setTimeout(() => {
         window.open(url, `whatsapp_reminder_${phone}`);
       }, index * 2500); 
@@ -246,7 +243,7 @@ function InstallmentsContent() {
 
     toast({ 
       title: "WhatsApp Payment Reminder", 
-      description: `يتم الآن فتح ${entries.length} محادثة مجمعة. تأكد من السماح بالنوافذ المنبثقة (Allow Pop-ups) في المتصفح.` 
+      description: `يتم الآن فتح ${entries.length} محادثة مجمعة مع إضافة كود مصر (+2) تلقائياً.` 
     });
   };
 
@@ -331,19 +328,19 @@ function InstallmentsContent() {
     printWindow.document.close();
   };
 
-  if (loading) return (
-    <div className="flex flex-col items-center justify-center py-20 gap-4">
-      <Loader2 className="h-12 w-12 animate-spin text-primary" />
-      <p className="font-bold text-slate-500">جاري تحميل جدول الأقساط المطور...</p>
-    </div>
-  );
-
   const resetFilters = () => {
     setCurrentFilter('all');
     setSearchQuery('');
     setStartDate("");
     setEndDate("");
   };
+
+  if (loading) return (
+    <div className="flex flex-col items-center justify-center py-20 gap-4">
+      <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      <p className="font-bold text-slate-500">جاري تحميل جدول الأقساط المطور...</p>
+    </div>
+  );
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 pb-20" dir="rtl">
@@ -469,7 +466,6 @@ function InstallmentsContent() {
                 <div className="h-10 w-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-black shadow-lg">{pIdx + 1}</div>
                 <div>
                   <h2 className="text-xl font-black text-slate-800">{project.projectName}</h2>
-                  {/* Fixed Hydration Error: Changed p to div to allow Badge (div) child */}
                   <div className="text-xs font-bold text-slate-400 flex items-center gap-2">
                     <span>العميل: {project.clientName}</span>
                     {project.hasOverdue && (

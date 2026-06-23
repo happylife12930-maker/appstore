@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -110,7 +109,7 @@ export default function TestersManagementPage() {
     group.testers.forEach((tester, index) => {
       if (!tester.phone) return;
 
-      // تنظيف الرقم وإضافة كود مصر +2
+      // Robust Egypt (+2) normalization
       let cleanPhone = tester.phone.replace(/[^0-9]/g, '');
       if (cleanPhone.startsWith('0')) {
         cleanPhone = '2' + cleanPhone;
@@ -136,7 +135,6 @@ ${group.notes ? `*تعليمات إضافية:*
 
       const encodedMessage = encodeURIComponent(message);
       
-      // استخدام setTimeout بفاصل زمني لضمان فتح جميع النوافذ وعدم حظر المتصفح لها
       setTimeout(() => {
         window.open(`https://wa.me/${cleanPhone}?text=${encodedMessage}`, '_blank');
       }, index * 1000);
@@ -144,7 +142,7 @@ ${group.notes ? `*تعليمات إضافية:*
 
     toast({ 
       title: "جاري إرسال التنبيهات", 
-      description: `يتم الآن فتح ${group.testers.length} محادثة واتساب للفريق.` 
+      description: `يتم الآن فتح ${group.testers.length} محادثة واتساب مع إضافة كود مصر (+2) تلقائياً.` 
     });
   };
 

@@ -80,9 +80,14 @@ export function TestingScheduleModal({ isOpen, onClose }: TestingScheduleModalPr
       proj.testers.forEach((t: any) => {
         if (!t.phone) return;
         count++;
+        
+        // Robust Egypt (+2) normalization
         let phone = t.phone.replace(/[^0-9]/g, '');
-        if (phone.startsWith('0')) phone = '2' + phone; 
-        else if (!phone.startsWith('2')) phone = '20' + phone;
+        if (phone.startsWith('0')) {
+          phone = '2' + phone; 
+        } else if (!phone.startsWith('2')) {
+          phone = '20' + phone;
+        }
 
         const message = `*تنبيه مهمة اختبار - APP STORE* 🚀
 
@@ -107,7 +112,7 @@ ${proj.notes ? `*تعليمات إضافية:*
     });
     toast({ 
       title: `إرسال تنبيهات يوم ${day}`, 
-      description: `يتم الآن فتح ${count} محادثة واتساب لكافة المختبرين.` 
+      description: `يتم الآن فتح ${count} محادثة واتساب مع إضافة كود مصر (+2) تلقائياً.` 
     });
   };
 
