@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from "react";
@@ -16,7 +17,8 @@ import {
   User,
   Loader2,
   Image as ImageIcon,
-  Menu
+  Menu,
+  CalendarDays
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -33,6 +35,7 @@ const navItems = [
   { title: "overview", url: "/", icon: LayoutDashboard, permission: "p_dashboard", roles: ['admin', 'tester'] },
   { title: "clients", url: "/clients", icon: Users, permission: "p_clients", roles: ['admin'] },
   { title: "projects", url: "/projects", icon: Briefcase, permission: "p_projects", roles: ['admin', 'tester', 'client'] },
+  { title: "installments", url: "/installments", icon: CalendarDays, permission: "p_finances", roles: ['admin'] },
   { title: "testers", url: "/testers", icon: UserCheck, permission: "p_testers", roles: ['admin'] },
   { title: "quotations", url: "/quotations", icon: ImageIcon, permission: "p_projects", roles: ['admin', 'client'] },
   { title: "payments", url: "/payments", icon: CreditCard, permission: "p_finances", roles: ['admin'] },
