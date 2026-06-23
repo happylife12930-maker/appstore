@@ -27,10 +27,13 @@ import {
   Calendar, 
   Trash2, 
   Banknote,
-  DollarSign
+  DollarSign,
+  AlertCircle,
+  Info
 } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Badge } from '@/components/ui/badge';
+import { useToast } from "@/hooks/use-toast";
 
 export interface Installment {
   amount: number;
@@ -63,6 +66,7 @@ interface AddClientModalProps {
 }
 
 export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData }: AddClientModalProps) {
+  const { toast } = useToast();
   const [formData, setFormData] = useState<Partial<ClientData>>({
     name: '',
     email: '',
@@ -90,6 +94,10 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
       });
     }
   }, [initialData, isOpen]);
+
+  const currentBalance = (formData.totalInvoices || 0) - (formData.totalPayments || 0);
+  const totalInstallmentsAmount = formData.installments?.reduce((acc, inst) => acc + (inst.amount || 0), 0) || 0;
+  const isExceeded = formData.paymentType === 'installments' && totalInstallmentsAmount > currentBalance;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
@@ -120,34 +128,44 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
   };
 
   const handleSaveClick = () => {
-    if (!formData.name) return;
-    const balance = (formData.totalInvoices || 0) - (formData.totalPayments || 0);
+    if (!formData.name) {
+      toast({ title: "بيانات ناقصة", description: "يرجى إدخال اسم العميل على الأقل", variant: "destructive" });
+      return;
+    }
+
+    if (isExceeded) {
+      toast({ 
+        title: "خطأ في الحسابات", 
+        description: "لا يمكن أن يكون مجموع الأقساط أكبر من الرصيد المتبقي!", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
     const dataForSave: ClientData = {
       ...(formData as ClientData),
-      balance,
+      balance: currentBalance,
       createdAt: initialData?.createdAt || new Date().toISOString()
     };
     onSave(dataForSave);
   };
 
-  const currentBalance = (formData.totalInvoices || 0) - (formData.totalPayments || 0);
-
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[750px] w-[95vw] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white max-h-[92vh] flex flex-col" dir="rtl">
-        {/* Header - Fixed */}
+        {/* Header */}
         <div className="bg-primary p-6 text-primary-foreground shrink-0 shadow-md z-20">
           <DialogHeader>
             <DialogTitle className="text-2xl font-black flex items-center gap-3">
               {initialData ? 'تعديل بيانات العميل' : 'إضافة عميل جديد'}
             </DialogTitle>
             <DialogDescription className="text-primary-foreground/80 font-bold mt-1">
-              إدارة البيانات الشخصية، الهواتف، ونظام الأقساط المالي
+              إدارة البيانات الشخصية، نظام الهواتف المزدوج، وجدولة الأقساط المالية
             </DialogDescription>
           </DialogHeader>
         </div>
 
-        {/* Scrollable Content Area - Flexible */}
+        {/* Scrollable Content Area */}
         <div className="flex-1 overflow-y-auto p-6 md:p-10 space-y-10 custom-scrollbar bg-[#fcfcfc]">
           {/* Basic Info Section */}
           <div className="space-y-6">
@@ -155,26 +173,26 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="name" className="font-black text-xs text-slate-500 pr-1">اسم العميل بالكامل</Label>
-                <Input id="name" value={formData.name} onChange={handleChange} placeholder="أدخل اسم العميل..." className="rounded-2xl h-12 border-slate-200 font-bold bg-white" />
+                <Input id="name" value={formData.name} onChange={handleChange} placeholder="أدخل اسم العميل..." className="rounded-2xl h-12 border-slate-200 font-bold bg-white shadow-sm" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="projectName" className="font-black text-xs text-slate-500 pr-1">اسم المشروع</Label>
-                <Input id="projectName" value={formData.projectName} onChange={handleChange} placeholder="مثال: تطبيق عقارات" className="rounded-2xl h-12 border-slate-200 font-bold bg-white" />
+                <Input id="projectName" value={formData.projectName} onChange={handleChange} placeholder="مثال: تطبيق توصيل" className="rounded-2xl h-12 border-slate-200 font-bold bg-white shadow-sm" />
               </div>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="phone" className="font-black text-xs text-slate-500 pr-1">رقم الهاتف الأساسي</Label>
-                <Input id="phone" value={formData.phone} onChange={handleChange} className="rounded-2xl h-12 border-slate-200 font-bold bg-white" dir="ltr" />
+                <Label htmlFor="phone" className="font-black text-xs text-slate-500 pr-1 flex items-center gap-1">رقم الهاتف (1) <Badge variant="outline" className="text-[8px] h-3 px-1">أساسي</Badge></Label>
+                <Input id="phone" value={formData.phone} onChange={handleChange} className="rounded-2xl h-12 border-slate-200 font-bold bg-white shadow-sm" dir="ltr" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="phone2" className="font-black text-xs text-slate-500 pr-1">رقم هاتف إضافي</Label>
-                <Input id="phone2" value={formData.phone2} onChange={handleChange} placeholder="اختياري..." className="rounded-2xl h-12 border-slate-200 font-bold bg-white" dir="ltr" />
+                <Label htmlFor="phone2" className="font-black text-xs text-slate-500 pr-1 flex items-center gap-1">رقم الهاتف (2) <Badge variant="ghost" className="text-[8px] h-3 px-1 opacity-50">إضافي</Badge></Label>
+                <Input id="phone2" value={formData.phone2} onChange={handleChange} placeholder="اختياري..." className="rounded-2xl h-12 border-slate-200 font-bold bg-white shadow-sm" dir="ltr" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email" className="font-black text-xs text-slate-500 pr-1">البريد الإلكتروني</Label>
-                <Input id="email" type="email" value={formData.email} onChange={handleChange} className="rounded-2xl h-12 border-slate-200 font-bold bg-white" dir="ltr" />
+                <Input id="email" type="email" value={formData.email} onChange={handleChange} className="rounded-2xl h-12 border-slate-200 font-bold bg-white shadow-sm" dir="ltr" />
               </div>
             </div>
           </div>
@@ -204,7 +222,7 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
               </div>
             </div>
 
-            {/* Payment Type Options */}
+            {/* Payment Type */}
             <div className="space-y-4 pt-4 border-t border-slate-200">
               <Label className="font-black text-slate-700 text-sm">طريقة سداد المتبقي</Label>
               <RadioGroup 
@@ -230,28 +248,41 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
               </RadioGroup>
             </div>
 
-            {/* Installments List Section */}
+            {/* Installments Section */}
             {formData.paymentType === 'installments' && (
               <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
                 <div className="flex items-center justify-between">
-                  <h4 className="font-black text-slate-700 text-sm flex items-center gap-2">
-                    جدولة الأقساط المستحقة
-                    <Badge variant="outline" className="rounded-lg h-5 px-1.5 font-bold bg-white">{formData.installments?.length || 0}</Badge>
-                  </h4>
+                  <div className="flex flex-col gap-1">
+                    <h4 className="font-black text-slate-700 text-sm flex items-center gap-2">
+                      جدولة الأقساط المستحقة
+                      <Badge variant="outline" className="rounded-lg h-5 px-1.5 font-bold bg-white">{formData.installments?.length || 0}</Badge>
+                    </h4>
+                    <p className={`text-[9px] font-bold ${isExceeded ? 'text-rose-500 animate-pulse' : 'text-slate-400'}`}>
+                      {isExceeded ? '⚠️ إجمالي الأقساط يتجاوز الرصيد المتبقي!' : `إجمالي الأقساط المجدولة: ${totalInstallmentsAmount.toLocaleString()} ج.م`}
+                    </p>
+                  </div>
                   <Button 
                     type="button" 
                     onClick={addInstallment} 
                     variant="outline" 
                     size="sm" 
+                    disabled={totalInstallmentsAmount >= currentBalance && currentBalance > 0}
                     className="rounded-xl font-black gap-1.5 border-orange-200 text-orange-600 hover:bg-orange-50 h-9"
                   >
                     <Plus className="h-4 w-4" /> إضافة قسط
                   </Button>
                 </div>
 
+                {isExceeded && (
+                  <div className="p-3 bg-rose-50 border border-rose-100 rounded-xl flex items-center gap-3 text-rose-600 animate-in slide-in-from-right-4">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    <p className="text-[10px] font-black leading-tight">تنبيه: لقد قمت بجدولة أرقام ( {totalInstallmentsAmount} ج.م ) وهي أكبر من الرصيد المتبقي للعميل ( {currentBalance} ج.م ). يرجى تعديل المبالغ للحفظ.</p>
+                  </div>
+                )}
+
                 <div className="space-y-3">
                   {formData.installments?.map((inst, idx) => (
-                    <div key={idx} className="bg-white p-4 rounded-3xl border shadow-sm flex flex-col sm:flex-row gap-4 items-end sm:items-center">
+                    <div key={idx} className={`bg-white p-4 rounded-3xl border shadow-sm flex flex-col sm:flex-row gap-4 items-end sm:items-center transition-all ${isExceeded ? 'border-rose-200' : 'border-slate-100'}`}>
                       <div className="flex-1 space-y-1 w-full">
                         <Label className="text-[10px] font-black text-slate-400 uppercase pr-1">قيمة القسط</Label>
                         <div className="relative">
@@ -267,14 +298,12 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
                       </div>
                       <div className="flex-1 space-y-1 w-full">
                         <Label className="text-[10px] font-black text-slate-400 uppercase pr-1">تاريخ الاستحقاق</Label>
-                        <div className="relative">
-                          <Input 
-                            type="date" 
-                            value={inst.dueDate} 
-                            onChange={(e) => handleInstallmentChange(idx, 'dueDate', e.target.value)}
-                            className="rounded-xl h-11 font-bold border-slate-100 bg-slate-50/30" 
-                          />
-                        </div>
+                        <Input 
+                          type="date" 
+                          value={inst.dueDate} 
+                          onChange={(e) => handleInstallmentChange(idx, 'dueDate', e.target.value)}
+                          className="rounded-xl h-11 font-bold border-slate-100 bg-slate-50/30" 
+                        />
                       </div>
                       <Button 
                         variant="ghost" 
@@ -297,16 +326,16 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
             )}
           </div>
           
-          <div className="h-4" /> {/* Spacer for bottom scroll padding */}
+          <div className="h-4" />
         </div>
 
-        {/* Footer - Fixed */}
+        {/* Footer */}
         <DialogFooter className="p-6 bg-slate-50 border-t shrink-0 z-20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
           <Button 
             type="submit" 
             onClick={handleSaveClick} 
-            disabled={isLoading || !formData.name} 
-            className="rounded-[1.5rem] font-black h-16 px-10 text-xl shadow-2xl w-full hover:scale-[1.01] active:scale-95 transition-all gap-3 bg-primary"
+            disabled={isLoading || !formData.name || isExceeded} 
+            className={`rounded-[1.5rem] font-black h-16 px-10 text-xl shadow-2xl w-full hover:scale-[1.01] active:scale-95 transition-all gap-3 ${isExceeded ? 'bg-slate-300' : 'bg-primary'}`}
           >
             {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : <CreditCard className="h-6 w-6" />}
             {initialData ? 'تحديث كافة بيانات العميل' : 'تأكيد الحساب وإضافة العميل'}
