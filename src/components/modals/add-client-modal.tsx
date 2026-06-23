@@ -98,10 +98,9 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
     }
   }, [initialData, isOpen]);
 
-  // الحسابات الذكية
+  // الحسابات الذكية - نحسب فقط المبالغ "قيد الانتظار" للتحقق من الرصيد المتبقي
   const currentBalance = (formData.totalInvoices || 0) - (formData.totalPayments || 0);
   
-  // نحسب فقط المبالغ "قيد الانتظار" للتحقق من الرصيد المتبقي
   const pendingInstallmentsAmount = formData.installments?.reduce((acc, inst) => {
     return inst.status === 'pending' ? acc + (inst.amount || 0) : acc;
   }, 0) || 0;
@@ -124,6 +123,9 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
   };
 
   const removeInstallment = (index: number) => {
+    // منع الحذف إذا كان القسط مدفوعاً
+    if (formData.installments?.[index]?.status === 'paid') return;
+    
     setFormData(prev => ({
       ...prev,
       installments: prev.installments?.filter((_, i) => i !== index)
@@ -134,6 +136,9 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
     const newInstallments = [...(formData.installments || [])];
     const oldInstallment = newInstallments[index];
     
+    // منع تعديل أي شيء في القسط المسدد ما عدا "الحالة" نفسها لفك القفل
+    if (oldInstallment.status === 'paid' && field !== 'status') return;
+
     // إذا تغيرت الحالة من معلق إلى مدفوع، نقوم بتحديث إجمالي المدفوعات تلقائياً
     if (field === 'status') {
       const amount = oldInstallment.amount || 0;
@@ -184,7 +189,7 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
               {initialData ? 'تعديل بيانات العميل' : 'إضافة عميل جديد'}
             </DialogTitle>
             <DialogDescription className="text-primary-foreground/80 font-bold mt-1">
-              إدارة البيانات الشخصية، نظام الهواتف المزدوج، وجدولة الأقساط المالية
+              إدارة البيانات الشخصية ونظام الأقساط المقفلة للسجلات المسددة
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -306,7 +311,7 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
                     <div key={idx} className={cn(
                       "bg-white p-4 rounded-3xl border shadow-sm flex flex-col sm:flex-row gap-4 items-end sm:items-center transition-all",
                       (isExceeded && inst.status === 'pending') ? 'border-rose-200' : 'border-slate-100',
-                      inst.status === 'paid' ? 'bg-green-50/30' : ''
+                      inst.status === 'paid' ? 'bg-green-50/50 border-green-200 opacity-90' : ''
                     )}>
                       {/* Status Toggle */}
                       <div className="flex-shrink-0">
@@ -332,8 +337,12 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
                           <Input 
                             type="number" 
                             value={inst.amount} 
+                            disabled={inst.status === 'paid'}
                             onChange={(e) => handleInstallmentChange(idx, 'amount', e.target.value)}
-                            className="rounded-xl h-11 pr-8 font-black border-slate-100 bg-white" 
+                            className={cn(
+                              "rounded-xl h-11 pr-8 font-black border-slate-100 bg-white",
+                              inst.status === 'paid' && "bg-slate-50 text-slate-400 border-dashed"
+                            )} 
                             placeholder="0.00"
                           />
                           <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-300" />
@@ -344,15 +353,23 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
                         <Input 
                           type="date" 
                           value={inst.dueDate} 
+                          disabled={inst.status === 'paid'}
                           onChange={(e) => handleInstallmentChange(idx, 'dueDate', e.target.value)}
-                          className="rounded-xl h-11 font-bold border-slate-100 bg-white" 
+                          className={cn(
+                            "rounded-xl h-11 font-bold border-slate-100 bg-white",
+                            inst.status === 'paid' && "bg-slate-50 text-slate-400 border-dashed"
+                          )} 
                         />
                       </div>
                       <Button 
                         variant="ghost" 
                         size="icon" 
+                        disabled={inst.status === 'paid'}
                         onClick={() => removeInstallment(idx)}
-                        className="h-11 w-11 rounded-xl text-rose-300 hover:text-rose-50 transition-colors"
+                        className={cn(
+                          "h-11 w-11 rounded-xl text-rose-300 hover:text-rose-50 transition-colors",
+                          inst.status === 'paid' && "opacity-20 cursor-not-allowed"
+                        )}
                       >
                         <Trash2 className="h-5 w-5" />
                       </Button>
@@ -390,3 +407,4 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
     </Dialog>
   );
 }
+
