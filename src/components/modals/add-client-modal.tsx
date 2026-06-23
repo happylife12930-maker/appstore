@@ -98,9 +98,15 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
     }
   }, [initialData, isOpen]);
 
+  // الحسابات الذكية
   const currentBalance = (formData.totalInvoices || 0) - (formData.totalPayments || 0);
-  const totalInstallmentsAmount = formData.installments?.reduce((acc, inst) => acc + (inst.amount || 0), 0) || 0;
-  const isExceeded = formData.paymentType === 'installments' && totalInstallmentsAmount > currentBalance;
+  
+  // نحسب فقط المبالغ "قيد الانتظار" للتحقق من الرصيد المتبقي
+  const pendingInstallmentsAmount = formData.installments?.reduce((acc, inst) => {
+    return inst.status === 'pending' ? acc + (inst.amount || 0) : acc;
+  }, 0) || 0;
+
+  const isExceeded = formData.paymentType === 'installments' && pendingInstallmentsAmount > currentBalance;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
@@ -155,7 +161,7 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
     if (isExceeded) {
       toast({ 
         title: "خطأ في الحسابات", 
-        description: "لا يمكن أن يكون مجموع الأقساط أكبر من الرصيد المتبقي!", 
+        description: "لا يمكن أن يكون مجموع الأقساط المتبقية أكبر من الرصيد الحالي!", 
         variant: "destructive" 
       });
       return;
@@ -271,7 +277,9 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
                       <Badge variant="outline" className="rounded-lg h-5 px-1.5 font-bold bg-white">{formData.installments?.length || 0}</Badge>
                     </h4>
                     <p className={`text-[9px] font-bold ${isExceeded ? 'text-rose-500 animate-pulse' : 'text-slate-400'}`}>
-                      {isExceeded ? '⚠️ إجمالي الأقساط يتجاوز الرصيد المتبقي!' : `إجمالي الأقساط المجدولة: ${totalInstallmentsAmount.toLocaleString()} ج.م`}
+                      {isExceeded 
+                        ? '⚠️ إجمالي الأقساط المتبقية يتجاوز الرصيد الحالي!' 
+                        : `إجمالي الأقساط المتبقية للجدولة: ${pendingInstallmentsAmount.toLocaleString()} ج.م`}
                     </p>
                   </div>
                   <Button 
@@ -279,7 +287,7 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
                     onClick={addInstallment} 
                     variant="outline" 
                     size="sm" 
-                    disabled={totalInstallmentsAmount >= currentBalance && currentBalance > 0}
+                    disabled={pendingInstallmentsAmount >= currentBalance && currentBalance > 0}
                     className="rounded-xl font-black gap-1.5 border-orange-200 text-orange-600 hover:bg-orange-50 h-9"
                   >
                     <Plus className="h-4 w-4" /> إضافة قسط
@@ -289,7 +297,7 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
                 {isExceeded && (
                   <div className="p-3 bg-rose-50 border border-rose-100 rounded-xl flex items-center gap-3 text-rose-600 animate-in slide-in-from-right-4">
                     <AlertCircle className="h-4 w-4 shrink-0" />
-                    <p className="text-[10px] font-black leading-tight">تنبيه: لقد قمت بجدولة أرقام أكبر من الرصيد المتبقي.</p>
+                    <p className="text-[10px] font-black leading-tight">تنبيه: مبالغ الأقساط "المعلقة" تتخطى الرصيد المتبقي الفعلي.</p>
                   </div>
                 )}
 
@@ -297,7 +305,7 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
                   {formData.installments?.map((inst, idx) => (
                     <div key={idx} className={cn(
                       "bg-white p-4 rounded-3xl border shadow-sm flex flex-col sm:flex-row gap-4 items-end sm:items-center transition-all",
-                      isExceeded ? 'border-rose-200' : 'border-slate-100',
+                      (isExceeded && inst.status === 'pending') ? 'border-rose-200' : 'border-slate-100',
                       inst.status === 'paid' ? 'bg-green-50/30' : ''
                     )}>
                       {/* Status Toggle */}
