@@ -27,6 +27,7 @@ export interface ClientData {
   totalInvoices: number;
   totalPayments: number;
   balance: number;
+  createdAt?: string; // Added for new clients
 }
 
 interface AddClientModalProps {
@@ -85,11 +86,22 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
 
   const handleSaveClick = () => {
     if (!formData.name) return;
-    onSave({ 
+
+    const dataForSave: Partial<ClientData> = {
       ...formData,
-      id: initialData?.id,
-      balance: (formData.totalInvoices || 0) - (formData.totalPayments || 0)
-    });
+      balance: (formData.totalInvoices || 0) - (formData.totalPayments || 0),
+    };
+
+    if (initialData?.id) {
+      dataForSave.id = initialData.id;
+    } else {
+      // For a new client, add a creation date and ensure financial fields default to 0
+      dataForSave.createdAt = new Date().toISOString();
+      dataForSave.totalInvoices = dataForSave.totalInvoices || 0;
+      dataForSave.totalPayments = dataForSave.totalPayments || 0;
+    }
+
+    onSave(dataForSave as ClientData);
   };
 
   return (

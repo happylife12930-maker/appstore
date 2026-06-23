@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useState } from "react";
-import { LogIn, Loader2, ShieldCheck, AlertCircle } from "lucide-react";
+import { LogIn, Loader2, ShieldCheck, AlertCircle, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -30,6 +30,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const { toast } = useToast();
@@ -110,6 +111,8 @@ export default function LoginPage() {
     }
   };
 
+  const togglePasswordVisibility = () => setShowPassword(!showPassword);
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4" dir="rtl">
       <Card className="w-full max-w-md border-none shadow-2xl rounded-[2.5rem] overflow-hidden bg-white">
@@ -139,10 +142,10 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2 relative">
               <label className="text-sm font-black text-slate-700 pr-2">كلمة المرور</label>
               <Input 
-                type="password" 
+                type={showPassword ? "text" : "password"} 
                 placeholder="••••••••" 
                 className="rounded-2xl h-14 font-black border-slate-200" 
                 dir="ltr"
@@ -150,6 +153,9 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
+              <div className="absolute top-1/2 right-3 transform -translate-y-1/2 cursor-pointer" onClick={togglePasswordVisibility}>
+                {showPassword ? <EyeOff className="h-6 w-6 text-slate-400" /> : <Eye className="h-6 w-6 text-slate-400" />}
+              </div>
             </div>
             <Button type="submit" className="w-full h-16 font-black rounded-2xl text-xl mt-6 shadow-xl active:scale-95 transition-all" disabled={loading}>
               {loading ? <Loader2 className="ml-2 h-6 w-6 animate-spin" /> : <LogIn className="ml-2 h-6 w-6" />}
