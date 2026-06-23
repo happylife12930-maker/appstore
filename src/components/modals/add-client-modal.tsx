@@ -27,7 +27,7 @@ export interface ClientData {
   totalInvoices: number;
   totalPayments: number;
   balance: number;
-  createdAt?: string; // Added for new clients
+  createdAt?: string;
 }
 
 interface AddClientModalProps {
@@ -64,14 +64,7 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
       });
     } else if (isOpen) {
       setFormData({
-        name: '',
-        email: '',
-        phone: '',
-        phone2: '',
-        company: '',
-        projectName: '',
-        totalInvoices: 0,
-        totalPayments: 0
+        name: '', email: '', phone: '', phone2: '', company: '', projectName: '', totalInvoices: 0, totalPayments: 0
       });
     }
   }, [initialData, isOpen]);
@@ -86,39 +79,30 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
 
   const handleSaveClick = () => {
     if (!formData.name) return;
-
     const dataForSave: Partial<ClientData> = {
       ...formData,
       balance: (formData.totalInvoices || 0) - (formData.totalPayments || 0),
     };
-
-    if (initialData?.id) {
-      dataForSave.id = initialData.id;
-    } else {
-      // For a new client, add a creation date and ensure financial fields default to 0
-      dataForSave.createdAt = new Date().toISOString();
-      dataForSave.totalInvoices = dataForSave.totalInvoices || 0;
-      dataForSave.totalPayments = dataForSave.totalPayments || 0;
-    }
-
+    if (initialData?.id) dataForSave.id = initialData.id;
+    else dataForSave.createdAt = new Date().toISOString();
     onSave(dataForSave as ClientData);
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[600px] rounded-[2rem] border-none shadow-2xl p-0 overflow-hidden bg-white" dir="rtl">
-        <div className="bg-primary p-6 text-primary-foreground relative">
+      <DialogContent className="sm:max-w-[650px] w-[95vw] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white max-h-[90vh] flex flex-col" dir="rtl">
+        <div className="bg-primary p-6 text-primary-foreground shrink-0">
           <DialogHeader>
             <DialogTitle className="text-2xl font-black flex items-center gap-3">
               {initialData ? 'تعديل بيانات العميل' : 'إضافة عميل جديد'}
             </DialogTitle>
-            <DialogDescription className="text-primary-foreground/80 font-bold text-base mt-1">
+            <DialogDescription className="text-primary-foreground/80 font-bold mt-1">
               أدخل البيانات المالية وأرقام التواصل بدقة
             </DialogDescription>
           </DialogHeader>
         </div>
 
-        <ScrollArea className="max-h-[70vh] p-8">
+        <ScrollArea className="flex-1 p-8">
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
@@ -190,14 +174,11 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
           </div>
         </ScrollArea>
 
-        <DialogFooter className="p-6 bg-slate-50 gap-3 border-t">
-          <Button type="submit" onClick={handleSaveClick} disabled={isLoading || !formData.name} className="rounded-2xl font-black h-12 px-10 text-lg shadow-lg w-full md:w-auto">
-            {isLoading ? <Loader2 className="ml-2 h-5 w-5 animate-spin" /> : <CreditCard className="ml-2 h-5 w-5" />}
-            {initialData ? 'تحديث البيانات' : 'تأكيد وحفظ العميل'}
+        <DialogFooter className="p-6 bg-slate-50 gap-3 border-t shrink-0">
+          <Button type="submit" onClick={handleSaveClick} disabled={isLoading || !formData.name} className="rounded-2xl font-black h-14 px-10 text-lg shadow-lg w-full">
+            {isLoading ? <Loader2 className="ml-2 h-6 w-6 animate-spin" /> : <CreditCard className="ml-2 h-6 w-6" />}
+            {initialData ? 'تحديث بيانات العميل' : 'تأكيد وحفظ العميل الجديد'}
           </Button> 
-          <Button variant="outline" onClick={onClose} disabled={isLoading} className="rounded-2xl font-black h-12 px-8 text-lg w-full md:w-auto">
-            إلغاء
-          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
