@@ -186,32 +186,40 @@ function InstallmentsContent() {
       return;
     }
 
-    // تجميع المشاريع حسب رقم الهاتف لفتح محادثة واحدة لكل شخص
     const aggregatedByPhone: Record<string, { clientName: string, projects: any[] }> = {};
 
     filteredData.forEach((project) => {
-      // نختار الرقم الأساسي، وإذا لم يوجد نختار الإضافي
-      const targetPhone = project.clientPhone || project.clientPhone2;
-      if (!targetPhone) return;
+      // Logic: Prefer primary phone, then secondary
+      const phone1 = project.clientPhone ? String(project.clientPhone).replace(/[^0-9]/g, '') : '';
+      const phone2 = project.clientPhone2 ? String(project.clientPhone2).replace(/[^0-9]/g, '') : '';
+      
+      const targetRaw = phone1 || phone2;
+      if (!targetRaw) return;
 
-      // تنظيف الرقم وإضافة كود مصر
-      let cleanPhone = targetPhone.replace(/[^0-9]/g, '');
-      if (cleanPhone.startsWith('0')) {
-        cleanPhone = '2' + cleanPhone;
-      } else if (!cleanPhone.startsWith('2')) {
-        cleanPhone = '20' + cleanPhone;
+      // Robust normalization with country code
+      let clean = targetRaw;
+      if (clean.startsWith('0') && clean.length === 11) {
+        clean = '2' + clean;
+      } else if (!clean.startsWith('2') && clean.length === 10) {
+        clean = '20' + clean;
       }
 
-      if (!aggregatedByPhone[cleanPhone]) {
-        aggregatedByPhone[cleanPhone] = { clientName: project.clientName, projects: [] };
+      if (!aggregatedByPhone[clean]) {
+        aggregatedByPhone[clean] = { clientName: project.clientName, projects: [] };
       }
-      aggregatedByPhone[cleanPhone].projects.push(project);
+      // Group projects for this phone
+      if (!aggregatedByPhone[clean].projects.some(p => p.projectName === project.projectName)) {
+        aggregatedByPhone[clean].projects.push(project);
+      }
     });
 
-    let windowCount = 0;
-    Object.entries(aggregatedByPhone).forEach(([phone, data]) => {
-      windowCount++;
+    const entries = Object.entries(aggregatedByPhone);
+    if (entries.length === 0) {
+      toast({ title: "تنبيه", description: "لا توجد أرقام هواتف صالحة للمفلترين.", variant: "destructive" });
+      return;
+    }
 
+    entries.forEach(([phone, data], index) => {
       let fullMessage = `*تنبيه متابعة مالية مجمعة - APP STORE* 🚀\n\n`;
       fullMessage += `مرحباً سيد/ة: *${data.clientName}*\n`;
       fullMessage += `نحيطكم علماً بموقف الأقساط المجدولة للمشاريع التالية:\n\n`;
@@ -221,23 +229,24 @@ function InstallmentsContent() {
         p.installments.forEach((inst: any) => {
           const statusIcon = inst.status === 'paid' ? '✅' : inst.isOverdue ? '⚠️' : '⏳';
           const statusText = inst.status === 'paid' ? 'تم السداد' : inst.isOverdue ? 'متأخر' : 'قيد الانتظار';
-          fullMessage += `- مبلغ: ${inst.amount.toLocaleString()} ج.م (تاريخ: ${inst.dueDate || '---'}) [${statusText} ${statusIcon}]\n`;
+          fullMessage += `- مبلغ: ${inst.amount.toLocaleString('ar-EG')} ج.م (تاريخ: ${inst.dueDate || '---'}) [${statusText} ${statusIcon}]\n`;
         });
         fullMessage += `\n`;
       });
 
       fullMessage += `يرجى التفضل بمراجعة الموقف المالي والسداد في المواعيد المقررة.\nشكراً لتعاونكم الدائم.`;
 
-      // نستخدم Timeout بفاصل زمني كافي (1.5 ثانية) لضمان عدم حظر المتصفح للنوافذ
+      const url = `https://wa.me/${phone}?text=${encodeURIComponent(fullMessage)}`;
+
+      // Open with sequential delay and unique window names to prevent browser blocking
       setTimeout(() => {
-        const url = `https://wa.me/${phone}?text=${encodeURIComponent(fullMessage)}`;
-        window.open(url, '_blank');
-      }, windowCount * 1500);
+        window.open(url, `whatsapp_reminder_${phone}`);
+      }, index * 2500); 
     });
 
     toast({ 
       title: "WhatsApp Payment Reminder", 
-      description: `يتم الآن فتح ${windowCount} محادثة (رسالة مجمعة لكل عميل).` 
+      description: `يتم الآن فتح ${entries.length} محادثة مجمعة. تأكد من السماح بالنوافذ المنبثقة (Allow Pop-ups) في المتصفح.` 
     });
   };
 
@@ -261,7 +270,7 @@ function InstallmentsContent() {
         <tr style="${inst.isOverdue ? 'background-color: #fff1f2;' : ''}">
           <td style="padding: 12px; border: 1px solid #e2e8f0; font-weight: bold;">${p.projectName}</td>
           <td style="padding: 12px; border: 1px solid #e2e8f0;">${p.clientName}</td>
-          <td style="padding: 12px; border: 1px solid #e2e8f0; font-weight: bold; text-align: left;">${(inst.amount || 0).toLocaleString()} ج.م</td>
+          <td style="padding: 12px; border: 1px solid #e2e8f0; font-weight: bold; text-align: left;">${(inst.amount || 0).toLocaleString('ar-EG')} ج.م</td>
           <td style="padding: 12px; border: 1px solid #e2e8f0;">${inst.dueDate || '---'}</td>
           <td style="padding: 12px; border: 1px solid #e2e8f0; font-weight: bold; color: ${inst.status === 'paid' ? '#16a34a' : inst.isOverdue ? '#e11d48' : '#f59e0b'};">
             ${inst.status === 'paid' ? 'مدفوع' : inst.isOverdue ? 'متأخر ⚠️' : 'في الانتظار'}
@@ -310,9 +319,9 @@ function InstallmentsContent() {
             </tbody>
           </table>
           <div class="summary">
-            <span><b>إجمالي قيمة الأقساط في التقرير:</b> ${stats.total.toLocaleString()} ج.م</span>
-            <span><b>تم تحصيل:</b> ${stats.paid.toLocaleString()} ج.م</span>
-            <span><b>مبالغ معلقة:</b> ${stats.pending.toLocaleString()} ج.م</span>
+            <span><b>إجمالي قيمة الأقساط في التقرير:</b> ${stats.total.toLocaleString('ar-EG')} ج.م</span>
+            <span><b>تم تحصيل:</b> ${stats.paid.toLocaleString('ar-EG')} ج.م</span>
+            <span><b>مبالغ معلقة:</b> ${stats.pending.toLocaleString('ar-EG')} ج.م</span>
           </div>
           <div class="footer">صادر عن نظام إدارة APP STORE للمقاولات البرمجية</div>
           <script>window.print();</script>
@@ -460,8 +469,9 @@ function InstallmentsContent() {
                 <div className="h-10 w-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-black shadow-lg">{pIdx + 1}</div>
                 <div>
                   <h2 className="text-xl font-black text-slate-800">{project.projectName}</h2>
+                  {/* Fixed Hydration Error: Changed p to div to allow Badge (div) child */}
                   <div className="text-xs font-bold text-slate-400 flex items-center gap-2">
-                    العميل: {project.clientName}
+                    <span>العميل: {project.clientName}</span>
                     {project.hasOverdue && (
                       <Badge className="bg-rose-500 rounded-lg text-[8px] animate-pulse">يوجد تأخير</Badge>
                     )}
@@ -477,7 +487,7 @@ function InstallmentsContent() {
                   <Progress value={project.progress} className="h-2 rounded-full" />
                 </div>
                 <Badge variant="outline" className="rounded-xl h-9 px-4 font-black border-primary/20 text-primary bg-primary/5">
-                  {project.paidAmount.toLocaleString()} / {project.totalAmount.toLocaleString()} ج.م
+                  {project.paidAmount.toLocaleString('ar-EG')} / {project.totalAmount.toLocaleString('ar-EG')} ج.م
                 </Badge>
               </div>
             </div>

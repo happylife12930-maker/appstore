@@ -97,12 +97,15 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
     }
   }, [initialData, isOpen]);
 
+  // منطق الحساب المطور: الرصيد هو إجمالي الفواتير ناقص ما تم سداده فعلياً
   const currentBalance = (formData.totalInvoices || 0) - (formData.totalPayments || 0);
   
+  // نجمع فقط مبالغ الأقساط "المعلقة" للتحقق من عدم تجاوز الرصيد
   const pendingInstallmentsAmount = formData.installments?.reduce((acc, inst) => {
     return inst.status === 'pending' ? acc + (inst.amount || 0) : acc;
   }, 0) || 0;
 
+  // التحقق من تجاوز الرصيد المتبقي
   const isExceeded = formData.paymentType === 'installments' && pendingInstallmentsAmount > currentBalance;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -121,7 +124,11 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
   };
 
   const removeInstallment = (index: number) => {
-    if (formData.installments?.[index]?.status === 'paid') return;
+    // منع حذف قسط تم سداده
+    if (formData.installments?.[index]?.status === 'paid') {
+      toast({ title: "حماية البيانات", description: "لا يمكن حذف قسط تم سداده فعلياً.", variant: "destructive" });
+      return;
+    }
     setFormData(prev => ({
       ...prev,
       installments: prev.installments?.filter((_, i) => i !== index)
@@ -132,6 +139,7 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
     const newInstallments = [...(formData.installments || [])];
     const oldInstallment = newInstallments[index];
     
+    // منع تعديل بيانات قسط مسدد إلا لو كنا بنغير الحالة
     if (oldInstallment.status === 'paid' && field !== 'status') return;
 
     if (field === 'status') {
@@ -160,7 +168,7 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
     if (isExceeded) {
       toast({ 
         title: "خطأ في الحسابات", 
-        description: "لا يمكن أن يكون مجموع الأقساط المتبقية أكبر من الرصيد الحالي!", 
+        description: "إجمالي الأقساط المعلقة أكبر من الرصيد المتبقي!", 
         variant: "destructive" 
       });
       return;
@@ -183,7 +191,7 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
               {initialData ? 'تعديل بيانات العميل' : 'إضافة عميل جديد'}
             </DialogTitle>
             <DialogDescription className="text-primary-foreground/80 font-bold mt-1">
-              إدارة البيانات الشخصية ونظام الأقساط المقفلة للسجلات المسددة
+              إدارة البيانات الشخصية ونظام الأقساط المحمي
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -222,7 +230,7 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Wallet className="h-5 w-5 text-primary" />
-                <h3 className="font-black text-slate-800 text-lg">الموقف المالي للمشروع</h3>
+                <h3 className="font-black text-slate-800 text-lg">الموقف المالي</h3>
               </div>
               <div className="bg-white px-4 py-2 rounded-2xl border shadow-sm flex items-center gap-4">
                 <span className="text-[10px] font-black text-slate-400 uppercase">صافي المتبقي:</span>
@@ -238,13 +246,13 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
                 <Input id="totalInvoices" type="number" value={formData.totalInvoices} onChange={handleChange} className="rounded-2xl h-14 border-slate-200 font-black text-xl text-center shadow-sm bg-white" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="totalPayments" className="font-black text-xs text-green-600">إجمالي ما تم سداده</Label>
+                <Label htmlFor="totalPayments" className="font-black text-xs text-green-600">إجمالي المحصل</Label>
                 <Input id="totalPayments" type="number" value={formData.totalPayments} onChange={handleChange} className="rounded-2xl h-14 border-green-200 font-black text-xl text-center text-green-700 bg-green-50/50 shadow-sm" />
               </div>
             </div>
 
             <div className="space-y-4 pt-4 border-t border-slate-200">
-              <Label className="font-black text-slate-700 text-sm">طريقة سداد المتبقي</Label>
+              <Label className="font-black text-slate-700 text-sm">نظام السداد</Label>
               <RadioGroup 
                 value={formData.paymentType} 
                 onValueChange={(val) => setFormData({...formData, paymentType: val as any})}
@@ -255,7 +263,7 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
                   <div className={`h-8 w-8 rounded-xl flex items-center justify-center ${formData.paymentType === 'cash' ? 'bg-primary text-white' : 'bg-slate-100 text-slate-400'}`}>
                     <Banknote className="h-4 w-4" />
                   </div>
-                  <Label htmlFor="cash" className="font-black text-sm cursor-pointer">سداد كاش (فوري)</Label>
+                  <Label htmlFor="cash" className="font-black text-sm cursor-pointer">سداد كاش</Label>
                 </div>
 
                 <div className={`flex items-center space-x-2 space-x-reverse flex-1 p-4 rounded-2xl border-2 transition-all cursor-pointer ${formData.paymentType === 'installments' ? 'bg-orange-50 border-orange-500 shadow-sm' : 'bg-white border-slate-100'}`} onClick={() => setFormData({...formData, paymentType: 'installments'})}>
@@ -263,7 +271,7 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
                   <div className={`h-8 w-8 rounded-xl flex items-center justify-center ${formData.paymentType === 'installments' ? 'bg-orange-500 text-white' : 'bg-slate-100 text-slate-400'}`}>
                     <Calendar className="h-4 w-4" />
                   </div>
-                  <Label htmlFor="installments" className="font-black text-sm cursor-pointer">سداد على أقساط</Label>
+                  <Label htmlFor="installments" className="font-black text-sm cursor-pointer">سداد أقساط</Label>
                 </div>
               </RadioGroup>
             </div>
@@ -273,13 +281,13 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
                 <div className="flex items-center justify-between">
                   <div className="flex flex-col gap-1">
                     <h4 className="font-black text-slate-700 text-sm flex items-center gap-2">
-                      جدولة الأقساط المستحقة
+                      جدولة الأقساط
                       <Badge variant="outline" className="rounded-lg h-5 px-1.5 font-bold bg-white">{formData.installments?.length || 0}</Badge>
                     </h4>
                     <p className={`text-[9px] font-bold ${isExceeded ? 'text-rose-500 animate-pulse' : 'text-slate-400'}`}>
                       {isExceeded 
-                        ? '⚠️ إجمالي الأقساط المتبقية يتجاوز الرصيد الحالي!' 
-                        : `إجمالي الأقساط المتبقية للجدولة: ${pendingInstallmentsAmount.toLocaleString()} ج.م`}
+                        ? '⚠️ إجمالي الأقساط المعلقة يتجاوز الرصيد المتبقي!' 
+                        : `إجمالي الأقساط المعلقة: ${pendingInstallmentsAmount.toLocaleString('ar-EG')} ج.م`}
                     </p>
                   </div>
                   <Button 
@@ -294,19 +302,12 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
                   </Button>
                 </div>
 
-                {isExceeded && (
-                  <div className="p-3 bg-rose-50 border border-rose-100 rounded-xl flex items-center gap-3 text-rose-600 animate-in slide-in-from-right-4">
-                    <AlertCircle className="h-4 w-4 shrink-0" />
-                    <p className="text-[10px] font-black leading-tight">تنبيه: مبالغ الأقساط "المعلقة" تتخطى الرصيد المتبقي الفعلي.</p>
-                  </div>
-                )}
-
                 <div className="space-y-3">
                   {formData.installments?.map((inst, idx) => (
                     <div key={idx} className={cn(
                       "bg-white p-4 rounded-3xl border shadow-sm flex flex-col sm:flex-row gap-4 items-end sm:items-center transition-all",
                       (isExceeded && inst.status === 'pending') ? 'border-rose-200' : 'border-slate-100',
-                      inst.status === 'paid' ? 'bg-green-50/50 border-green-200 opacity-90' : ''
+                      inst.status === 'paid' ? 'bg-green-50/50 border-green-200' : ''
                     )}>
                       <div className="flex-shrink-0">
                         <Button
@@ -316,8 +317,8 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
                           className={cn(
                             "h-11 px-4 rounded-xl font-black text-[10px] gap-2 transition-all shadow-sm",
                             inst.status === 'paid' 
-                              ? "bg-green-500 text-white border-green-600 hover:bg-green-600" 
-                              : "bg-white text-orange-600 border-orange-200 hover:bg-orange-50"
+                              ? "bg-green-500 text-white border-green-600" 
+                              : "bg-white text-orange-600 border-orange-200"
                           )}
                         >
                           {inst.status === 'paid' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
@@ -326,7 +327,7 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
                       </div>
 
                       <div className="flex-1 space-y-1 w-full">
-                        <Label className="text-[10px] font-black text-slate-400 uppercase pr-1">قيمة القسط</Label>
+                        <Label className="text-[10px] font-black text-slate-400 uppercase pr-1">المبلغ</Label>
                         <div className="relative">
                           <Input 
                             type="number" 
@@ -335,7 +336,7 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
                             onChange={(e) => handleInstallmentChange(idx, 'amount', e.target.value)}
                             className={cn(
                               "rounded-xl h-11 pr-8 font-black border-slate-100 bg-white",
-                              inst.status === 'paid' && "bg-slate-50 text-slate-400 border-dashed"
+                              inst.status === 'paid' && "bg-slate-50 text-slate-400 border-dashed cursor-not-allowed"
                             )} 
                             placeholder="0.00"
                           />
@@ -351,7 +352,7 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
                           onChange={(e) => handleInstallmentChange(idx, 'dueDate', e.target.value)}
                           className={cn(
                             "rounded-xl h-11 font-bold border-slate-100 bg-white",
-                            inst.status === 'paid' && "bg-slate-50 text-slate-400 border-dashed"
+                            inst.status === 'paid' && "bg-slate-50 text-slate-400 border-dashed cursor-not-allowed"
                           )} 
                         />
                       </div>
@@ -369,17 +370,10 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
                       </Button>
                     </div>
                   ))}
-                  
-                  {(!formData.installments || formData.installments.length === 0) && (
-                    <div className="p-10 border-2 border-dashed rounded-[2rem] text-center text-slate-300 bg-white/50">
-                      <p className="font-black text-xs uppercase tracking-widest">لم يتم جدولة أي أقساط بعد</p>
-                    </div>
-                  )}
                 </div>
               </div>
             )}
           </div>
-          
           <div className="h-4" />
         </div>
 
@@ -389,12 +383,12 @@ export function AddClientModal({ isOpen, onClose, onSave, isLoading, initialData
             onClick={handleSaveClick} 
             disabled={isLoading || !formData.name || isExceeded} 
             className={cn(
-              "rounded-[1.5rem] font-black h-16 px-10 text-xl shadow-2xl w-full hover:scale-[1.01] active:scale-95 transition-all gap-3",
+              "rounded-[1.5rem] font-black h-16 px-10 text-xl shadow-2xl w-full transition-all gap-3",
               isExceeded ? 'bg-slate-300' : 'bg-primary'
             )}
           >
             {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : <CreditCard className="h-6 w-6" />}
-            {initialData ? 'تحديث كافة بيانات العميل' : 'تأكيد الحساب وإضافة العميل'}
+            {initialData ? 'تحديث بيانات العميل' : 'إضافة العميل'}
           </Button> 
         </DialogFooter>
       </DialogContent>
