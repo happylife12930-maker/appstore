@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -67,7 +68,7 @@ function InstallmentsContent() {
     return clients
       .filter(c => c.paymentType === 'installments' && c.installments?.length > 0)
       .map(c => {
-        const installments = c.installments.map((inst: any) => {
+        const installments = (c.installments || []).map((inst: any) => {
           const dueDate = inst.dueDate ? new Date(inst.dueDate) : null;
           const isOverdue = inst.status === 'pending' && dueDate && dueDate < today;
           return { ...inst, isOverdue };
@@ -120,7 +121,7 @@ function InstallmentsContent() {
         return { ...project, installments: filteredInstallments };
       })
       .filter(p => {
-        const matchesSearch = p.projectName.toLowerCase().includes(s) || p.clientName.toLowerCase().includes(s) || (p.clientPhone && p.clientPhone.includes(searchQuery)) || (p.clientPhone2 && p.clientPhone2.includes(searchQuery));
+        const matchesSearch = p.projectName.toLowerCase().includes(s) || p.clientName.toLowerCase().includes(s) || (p.clientPhone && String(p.clientPhone).includes(searchQuery)) || (p.clientPhone2 && String(p.clientPhone2).includes(searchQuery));
         const hasMatchingInstallments = p.installments.length > 0;
         return matchesSearch && hasMatchingInstallments;
       });
@@ -139,7 +140,7 @@ function InstallmentsContent() {
           pending += inst.amount;
           if (inst.isOverdue) overdueCount++;
         }
-        total += inst.amount;
+        total += (inst.amount || 0);
       });
     });
     return { total, pending, paid, overdueCount };
@@ -150,10 +151,11 @@ function InstallmentsContent() {
     const client = clients.find(c => c.id === clientId);
     if (!client) return;
 
-    const targetInst = filteredData.find(p => p.clientId === clientId)?.installments[instIndex];
+    const projectData = filteredData.find(p => p.clientId === clientId);
+    const targetInst = projectData?.installments[instIndex];
     if (!targetInst) return;
 
-    const originalIndex = client.installments.findIndex((inst: any) => 
+    const originalIndex = (client.installments || []).findIndex((inst: any) => 
       inst.amount === targetInst.amount && inst.dueDate === targetInst.dueDate
     );
 
@@ -180,38 +182,46 @@ function InstallmentsContent() {
     }
   };
 
+  // وظيفة معالجة الأرقام لتكون دائماً +20
+  const formatPhoneForWhatsApp = (raw: any) => {
+    let clean = String(raw).replace(/[^0-9]/g, '');
+    if (!clean) return '';
+    if (clean.startsWith('0')) {
+      clean = '2' + clean;
+    } else if (!clean.startsWith('2')) {
+      clean = '20' + clean;
+    }
+    return clean;
+  };
+
   const handleSendWhatsAppAll = () => {
     if (filteredData.length === 0) {
       toast({ title: "تنبيه", description: "لا توجد بيانات لإرسال تنبيهات لها حالياً.", variant: "destructive" });
       return;
     }
 
-    // تجميع المشاريع حسب رقم الهاتف
-    const aggregatedByPhone: Record<string, { clientName: string, projects: any[] }> = {};
+    // تجميع المشاريع والأقساط حسب رقم الهاتف (محادثة واحدة لكل عميل)
+    const aggregatedByPhone: Record<string, { clientName: string, messageLines: string[] }> = {};
 
     filteredData.forEach((project) => {
-      const phone1 = project.clientPhone ? String(project.clientPhone).replace(/[^0-9]/g, '') : '';
-      const phone2 = project.clientPhone2 ? String(project.clientPhone2).replace(/[^0-9]/g, '') : '';
-      
-      const targetRaw = phone1 || phone2;
-      if (!targetRaw) return;
+      const phone = formatPhoneForWhatsApp(project.clientPhone || project.clientPhone2);
+      if (!phone) return;
 
-      // تنظيف وإضافة كود مصر 20
-      let clean = targetRaw;
-      if (clean.startsWith('0')) {
-        clean = '2' + clean;
-      } else if (!clean.startsWith('2')) {
-        clean = '20' + clean;
-      }
-
-      if (!aggregatedByPhone[clean]) {
-        aggregatedByPhone[clean] = { clientName: project.clientName, projects: [] };
+      if (!aggregatedByPhone[phone]) {
+        aggregatedByPhone[phone] = { 
+          clientName: project.clientName, 
+          messageLines: [`*تنبيه متابعة مالية مجمعة - APP STORE* 🚀\n\nمرحباً سيد/ة: *${project.clientName}*\nنحيطكم علماً بموقف الأقساط المجدولة للمشاريع التالية:\n`] 
+        };
       }
       
-      // تجنب تكرار المشروع في الرسالة المجمعة
-      if (!aggregatedByPhone[clean].projects.some(p => p.projectName === project.projectName)) {
-        aggregatedByPhone[clean].projects.push(project);
-      }
+      let projectSection = `📌 *مشروع: ${project.projectName}*\n`;
+      project.installments.forEach((inst: any) => {
+        const statusIcon = inst.status === 'paid' ? '✅' : inst.isOverdue ? '⚠️' : '⏳';
+        const statusText = inst.status === 'paid' ? 'تم السداد' : inst.isOverdue ? 'متأخر' : 'قيد الانتظار';
+        projectSection += `- مبلغ: ${inst.amount.toLocaleString('ar-EG')} ج.م (تاريخ: ${inst.dueDate || '---'}) [${statusText} ${statusIcon}]\n`;
+      });
+      
+      aggregatedByPhone[phone].messageLines.push(projectSection + '\n');
     });
 
     const entries = Object.entries(aggregatedByPhone);
@@ -221,27 +231,15 @@ function InstallmentsContent() {
     }
 
     entries.forEach(([phone, data], index) => {
-      let fullMessage = `*تنبيه متابعة مالية مجمعة - APP STORE* 🚀\n\n`;
-      fullMessage += `مرحباً سيد/ة: *${data.clientName}*\n`;
-      fullMessage += `نحيطكم علماً بموقف الأقساط المجدولة للمشاريع التالية:\n\n`;
-
-      data.projects.forEach(p => {
-        fullMessage += `📌 *مشروع: ${p.projectName}*\n`;
-        p.installments.forEach((inst: any) => {
-          const statusIcon = inst.status === 'paid' ? '✅' : inst.isOverdue ? '⚠️' : '⏳';
-          const statusText = inst.status === 'paid' ? 'تم السداد' : inst.isOverdue ? 'متأخر' : 'قيد الانتظار';
-          fullMessage += `- مبلغ: ${inst.amount.toLocaleString('ar-EG')} ج.م (تاريخ: ${inst.dueDate || '---'}) [${statusText} ${statusIcon}]\n`;
-        });
-        fullMessage += `\n`;
-      });
-
+      let fullMessage = data.messageLines.join('');
       fullMessage += `يرجى التفضل بمراجعة الموقف المالي والسداد في المواعيد المقررة.\nشكراً لتعاونكم الدائم.`;
 
-      // استخدام whatsapp:// لفتح التطبيق مباشرة على الموبايل
+      // استخدام whatsapp:// لفتح التطبيق مباشرة (Mobile Context)
       const url = `whatsapp://send?phone=${phone}&text=${encodeURIComponent(fullMessage)}`;
 
+      // فاصل زمني لضمان عدم حظر المتصفح للنوافذ المتتالية
       setTimeout(() => {
-        window.open(url, `whatsapp_bulk_${phone}`);
+        window.open(url, `wa_bulk_${phone}`);
       }, index * 2000); 
     });
 
@@ -470,6 +468,7 @@ function InstallmentsContent() {
                 <div className="h-10 w-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-black shadow-lg">{pIdx + 1}</div>
                 <div className="flex flex-col gap-1">
                   <h2 className="text-xl font-black text-slate-800">{project.projectName}</h2>
+                  {/* تغيير p إلى div لمنع خطأ الهيدريشن */}
                   <div className="text-xs font-bold text-slate-400 flex items-center gap-2">
                     <span>العميل: {project.clientName}</span>
                     {project.hasOverdue && (
