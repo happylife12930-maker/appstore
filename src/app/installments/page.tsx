@@ -15,13 +15,16 @@ import {
   TrendingUp,
   Printer,
   BellRing,
-  FilterX
+  FilterX,
+  Calendar as CalendarIcon,
+  ChevronLeft
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Label } from "@/components/ui/label";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, doc, updateDoc } from "firebase/firestore";
 import { useAuth } from "@/components/auth-provider";
@@ -35,6 +38,8 @@ function InstallmentsContent() {
   const [clients, setClients] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentFilter, setCurrentFilter] = useState<FilterType>('all');
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [loading, setLoading] = useState(true);
   const { profile } = useAuth();
   const router = useRouter();
@@ -55,7 +60,6 @@ function InstallmentsContent() {
     return () => unsub();
   }, [profile, router, loading]);
 
-  // استخراج المشاريع التي لها أقساط مع حساب البيانات الإحصائية
   const projectsWithInstallments = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -86,41 +90,84 @@ function InstallmentsContent() {
       });
   }, [clients]);
 
-  // الفلترة والبحث المتقدم
   const filteredData = useMemo(() => {
     const s = searchQuery.toLowerCase();
+    const start = startDate ? new Date(startDate) : null;
+    const end = endDate ? new Date(endDate) : null;
     
     return projectsWithInstallments
       .map(project => {
-        // فلترة الأقساط داخل كل مشروع بناءً على الفلتر المختار
         const filteredInstallments = project.installments.filter((inst: any) => {
-          if (currentFilter === 'all') return true;
-          if (currentFilter === 'paid') return inst.status === 'paid';
-          if (currentFilter === 'pending') return inst.status === 'pending';
-          if (currentFilter === 'overdue') return inst.isOverdue;
-          return true;
+          // فلتر الحالة
+          let matchesStatus = true;
+          if (currentFilter === 'paid') matchesStatus = inst.status === 'paid';
+          else if (currentFilter === 'pending') matchesStatus = inst.status === 'pending';
+          else if (currentFilter === 'overdue') matchesStatus = inst.isOverdue;
+
+          // فلتر التاريخ
+          let matchesDate = true;
+          if (inst.dueDate) {
+            const instDate = new Date(inst.dueDate);
+            if (start && instDate < start) matchesDate = false;
+            if (end && instDate > end) matchesDate = false;
+          } else if (start || end) {
+            matchesDate = false;
+          }
+
+          return matchesStatus && matchesDate;
         });
 
         return { ...project, installments: filteredInstallments };
       })
       .filter(p => {
-        // إخفاء المشروع إذا لم يطابق البحث أو إذا لم يحتوي على أقساط تطابق الفلتر
         const matchesSearch = p.projectName.toLowerCase().includes(s) || p.clientName.toLowerCase().includes(s);
         const hasMatchingInstallments = p.installments.length > 0;
         return matchesSearch && hasMatchingInstallments;
       });
-  }, [projectsWithInstallments, searchQuery, currentFilter]);
+  }, [projectsWithInstallments, searchQuery, currentFilter, startDate, endDate]);
+
+  const stats = useMemo(() => {
+    let total = 0;
+    let pending = 0;
+    let paid = 0;
+    let overdueCount = 0;
+    
+    // نحسب الإحصائيات بناءً على المشاريع المفلترة حالياً (بما في ذلك التاريخ)
+    filteredData.forEach(p => {
+      p.installments.forEach((inst: any) => {
+        if (inst.status === 'paid') paid += inst.amount;
+        else {
+          pending += inst.amount;
+          if (inst.isOverdue) overdueCount++;
+        }
+        total += inst.amount;
+      });
+    });
+    return { total, pending, paid, overdueCount };
+  }, [filteredData]);
 
   const toggleInstallmentStatus = async (clientId: string, instIndex: number) => {
     if (!db) return;
     const client = clients.find(c => c.id === clientId);
     if (!client) return;
 
-    const newInstallments = [...client.installments];
-    const currentStatus = newInstallments[instIndex].status;
-    newInstallments[instIndex].status = currentStatus === 'paid' ? 'pending' : 'paid';
+    // العثور على القسط الفعلي في مصفوفة العميل الأصلية
+    // لأن instIndex في filteredData قد يختلف عن المصفوفة الأصلية
+    // سنستخدم بيانات القسط للمطابقة
+    const targetInst = filteredData.find(p => p.clientId === clientId)?.installments[instIndex];
+    if (!targetInst) return;
 
-    const amount = newInstallments[instIndex].amount || 0;
+    const originalIndex = client.installments.findIndex((inst: any) => 
+      inst.amount === targetInst.amount && inst.dueDate === targetInst.dueDate
+    );
+
+    if (originalIndex === -1) return;
+
+    const newInstallments = [...client.installments];
+    const currentStatus = newInstallments[originalIndex].status;
+    newInstallments[originalIndex].status = currentStatus === 'paid' ? 'pending' : 'paid';
+
+    const amount = newInstallments[originalIndex].amount || 0;
     const newTotalPayments = currentStatus === 'paid' 
       ? (client.totalPayments || 0) - amount 
       : (client.totalPayments || 0) + amount;
@@ -148,6 +195,10 @@ function InstallmentsContent() {
       overdue: 'المتأخرة ⚠️'
     }[currentFilter];
 
+    const dateRangeText = (startDate || endDate) 
+      ? `للفترة من ${startDate || 'بداية السجلات'} إلى ${endDate || 'اليوم'}`
+      : 'لكافة التواريخ';
+
     const rows = filteredData.flatMap(p => 
       p.installments.map((inst: any) => `
         <tr style="${inst.isOverdue ? 'background-color: #fff1f2;' : ''}">
@@ -165,20 +216,27 @@ function InstallmentsContent() {
     printWindow.document.write(`
       <html dir="rtl">
         <head>
-          <title>تقرير الأقساط ${filterTitle} - APP STORE</title>
+          <title>تقرير الأقساط المفلتر - APP STORE</title>
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap');
             body { font-family: 'Cairo', sans-serif; padding: 40px; color: #1e293b; }
             h1 { text-align: center; font-size: 24px; font-weight: 900; border-bottom: 4px solid #1e293b; padding-bottom: 15px; margin-bottom: 10px; }
-            .filter-badge { text-align: center; color: #64748b; font-weight: bold; margin-bottom: 30px; }
+            .filter-info { text-align: center; margin-bottom: 30px; }
+            .filter-badge { color: #64748b; font-weight: bold; font-size: 14px; }
+            .date-badge { color: #3b82f6; font-weight: bold; font-size: 12px; margin-top: 5px; }
             table { width: 100%; border-collapse: collapse; margin-top: 20px; }
             th { background-color: #f8fafc; color: #64748b; font-size: 12px; text-transform: uppercase; padding: 12px; border: 1px solid #e2e8f0; text-align: right; }
+            td { font-size: 13px; }
+            .summary { margin-top: 30px; padding: 20px; background: #f8fafc; border-radius: 15px; border: 1px solid #e2e8f0; display: flex; justify-content: space-between; }
             .footer { margin-top: 40px; font-size: 10px; text-align: center; color: #94a3b8; }
           </style>
         </head>
         <body>
           <h1>تقرير جدولة الأقساط ومتابعة التحصيل</h1>
-          <div class="filter-badge">نوع التقرير: ${filterTitle}</div>
+          <div class="filter-info">
+            <div class="filter-badge">نوع التقسيم: ${filterTitle}</div>
+            <div class="date-badge">${dateRangeText}</div>
+          </div>
           <p>تاريخ استخراج التقرير: ${new Date().toLocaleDateString('ar-EG')}</p>
           <table>
             <thead>
@@ -194,6 +252,11 @@ function InstallmentsContent() {
               ${rows || '<tr><td colspan="5" style="text-align:center; padding: 50px;">لا توجد بيانات تطابق الفلتر المختار</td></tr>'}
             </tbody>
           </table>
+          <div class="summary">
+            <span><b>إجمالي قيمة الأقساط في التقرير:</b> ${stats.total.toLocaleString()} ج.م</span>
+            <span><b>تم تحصيل:</b> ${stats.paid.toLocaleString()} ج.م</span>
+            <span><b>مبالغ معلقة:</b> ${stats.pending.toLocaleString()} ج.م</span>
+          </div>
           <div class="footer">صادر عن نظام إدارة APP STORE للمقاولات البرمجية</div>
           <script>window.print();</script>
         </body>
@@ -202,30 +265,19 @@ function InstallmentsContent() {
     printWindow.document.close();
   };
 
-  const stats = useMemo(() => {
-    let total = 0;
-    let pending = 0;
-    let paid = 0;
-    let overdueCount = 0;
-    projectsWithInstallments.forEach(p => {
-      p.installments.forEach((inst: any) => {
-        if (inst.status === 'paid') paid += inst.amount;
-        else {
-          pending += inst.amount;
-          if (inst.isOverdue) overdueCount++;
-        }
-        total += inst.amount;
-      });
-    });
-    return { total, pending, paid, overdueCount };
-  }, [projectsWithInstallments]);
-
   if (loading) return (
     <div className="flex flex-col items-center justify-center py-20 gap-4">
       <Loader2 className="h-12 w-12 animate-spin text-primary" />
       <p className="font-black text-slate-500">جاري تحميل جدول الأقساط المطور...</p>
     </div>
   );
+
+  const resetFilters = () => {
+    setCurrentFilter('all');
+    setSearchQuery('');
+    setStartDate("");
+    setEndDate("");
+  };
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 pb-20" dir="rtl">
@@ -236,17 +288,17 @@ function InstallmentsContent() {
           </div>
           <div>
             <h1 className="text-3xl font-black text-slate-800 tracking-tight">جدولة ومتابعة الأقساط</h1>
-            <p className="text-slate-500 font-bold">إدارة مبالغ التعاقد المجدولة والتحصيل لكل مشروع</p>
+            <p className="text-slate-500 font-bold">إدارة مبالغ التعاقد المجدولة والتحصيل بكل مشروع</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
-           {currentFilter !== 'all' && (
+           {(currentFilter !== 'all' || searchQuery || startDate || endDate) && (
              <Button 
                variant="ghost" 
-               onClick={() => setCurrentFilter('all')}
+               onClick={resetFilters}
                className="rounded-xl h-12 font-black text-xs gap-2 text-rose-500 hover:bg-rose-50"
              >
-               <FilterX className="h-4 w-4" /> إلغاء الفلترة
+               <FilterX className="h-4 w-4" /> إلغاء كافة الفلاتر
              </Button>
            )}
            <Button 
@@ -299,14 +351,43 @@ function InstallmentsContent() {
         />
       </div>
 
-      <div className="relative">
-        <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5" />
-        <Input 
-          placeholder="بحث باسم المشروع أو العميل لمراجعة الأقساط المفلترة..." 
-          className="pr-12 h-14 rounded-2xl font-bold text-base border-none shadow-sm bg-white focus-visible:ring-primary/20"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-end bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+        <div className="lg:col-span-6 space-y-2">
+          <Label className="font-black text-xs text-slate-500 pr-1">بحث بالاسم</Label>
+          <div className="relative">
+            <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5" />
+            <Input 
+              placeholder="ابحث باسم المشروع أو العميل..." 
+              className="pr-12 h-14 rounded-2xl font-bold text-base border-slate-100 bg-slate-50/50 focus-visible:ring-primary/20"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="lg:col-span-3 space-y-2">
+          <Label className="font-black text-xs text-slate-500 pr-1 flex items-center gap-2">
+            <CalendarIcon className="h-3 w-3 text-primary" /> من تاريخ
+          </Label>
+          <Input 
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="h-14 rounded-2xl font-bold border-slate-100 bg-slate-50/50"
+          />
+        </div>
+
+        <div className="lg:col-span-3 space-y-2">
+          <Label className="font-black text-xs text-slate-500 pr-1 flex items-center gap-2">
+            <CalendarIcon className="h-3 w-3 text-primary" /> إلى تاريخ
+          </Label>
+          <Input 
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="h-14 rounded-2xl font-bold border-slate-100 bg-slate-50/50"
+          />
+        </div>
       </div>
 
       <div className="space-y-10">
@@ -328,7 +409,7 @@ function InstallmentsContent() {
               <div className="flex items-center gap-4 min-w-[300px]">
                 <div className="flex-1 space-y-1">
                   <div className="flex justify-between text-[10px] font-black uppercase tracking-tighter">
-                    <span>نسبة التحصيل</span>
+                    <span>نسبة التحصيل في المشروع</span>
                     <span className="text-primary">{project.progress}%</span>
                   </div>
                   <Progress value={project.progress} className="h-2 rounded-full" />
@@ -390,7 +471,7 @@ function InstallmentsContent() {
                     </div>
 
                     <div className="pt-3 border-t border-slate-100/50 flex justify-between items-center text-[10px] font-black uppercase text-slate-400">
-                      <span className={cn(inst.isOverdue && "text-rose-400")}>اضغط لتغيير الحالة</span>
+                      <span className={cn(inst.isOverdue && "text-rose-400")}>تغيير الحالة</span>
                       <ArrowRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity translate-x-2 group-hover:translate-x-0" />
                     </div>
                   </CardContent>
@@ -404,9 +485,9 @@ function InstallmentsContent() {
           <div className="py-24 text-center opacity-30 space-y-4 bg-white rounded-[3rem] border border-dashed border-slate-200">
             <FilterX className="h-20 w-20 mx-auto text-slate-300" />
             <p className="text-2xl font-black uppercase tracking-widest text-slate-400">
-              لا توجد أقساط تطابق الفلتر أو البحث المختار
+              لا توجد نتائج تطابق الفلاتر المختارة
             </p>
-            <Button variant="link" onClick={() => { setCurrentFilter('all'); setSearchQuery(''); }} className="font-bold text-primary">إعادة تعيين كافة الفلاتر</Button>
+            <Button variant="link" onClick={resetFilters} className="font-bold text-primary">إعادة تعيين كافة الفلاتر</Button>
           </div>
         )}
       </div>
