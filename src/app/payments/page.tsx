@@ -1,13 +1,10 @@
+
 "use client";
 
 import * as React from "react";
 import { useState, useEffect, useMemo, Suspense } from "react";
 import { 
-  CreditCard, 
-  Search, 
-  Loader2,
-  ArrowUpDown,
-  FileText
+  CreditCard, Search, Loader2, ArrowUpDown, FileText, Lock
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,12 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
 } from "@/components/ui/table";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot } from "firebase/firestore";
@@ -34,15 +26,17 @@ function PaymentsContent() {
   const [showOnlyUnpaid, setShowOnlyUnpaid] = useState(false);
   const [loading, setLoading] = useState(true);
   
-  const { profile } = useAuth();
+  const { profile, loading: authLoading } = useAuth();
   const router = useRouter();
 
+  const isAdmin = profile?.role === 'admin';
+  const hasFinancePermission = isAdmin || (profile?.permissions || []).includes('p_finances');
+
   useEffect(() => {
-    if (profile?.role !== 'admin' && !loading) {
-      router.push("/");
+    if (!db || authLoading || !profile || !hasFinancePermission) {
+      if (!authLoading) setLoading(false);
       return;
     }
-    if (!db) return;
 
     const unsubClients = onSnapshot(collection(db, "clients"), (snap) => {
       setClients(snap.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -54,26 +48,37 @@ function PaymentsContent() {
     });
 
     return () => { unsubClients(); unsubProjects(); };
-  }, [profile, router, loading]);
+  }, [profile, authLoading, hasFinancePermission]);
 
-  const filteredData = useMemo(() => {
-    return clients.map(client => {
-      const remainingBalance = (client.totalInvoices || 0) - (client.totalPayments || 0);
-      return { ...client, remainingBalance };
-    }).filter(item => {
-      const s = searchQuery.toLowerCase();
-      const matchesSearch = item.name?.toLowerCase().includes(s) || item.phone?.includes(s);
-      const matchesUnpaid = showOnlyUnpaid ? item.remainingBalance > 0 : true;
-      return matchesSearch && matchesUnpaid;
-    });
-  }, [clients, searchQuery, showOnlyUnpaid]);
-
-  if (loading) return (
+  if (authLoading || loading) return (
     <div className="flex flex-col items-center justify-center py-20 gap-4">
       <Loader2 className="h-10 w-10 animate-spin text-primary" />
       <p className="text-xs font-bold text-slate-500">جاري تحميل البيانات المالية...</p>
     </div>
   );
+
+  if (!hasFinancePermission) {
+    return (
+      <div className="max-w-7xl mx-auto py-20 text-center">
+        <div className="bg-white p-12 rounded-[2.5rem] shadow-sm border border-dashed border-slate-200">
+          <Lock className="h-16 w-16 mx-auto mb-6 text-slate-200" />
+          <h2 className="text-2xl font-black text-slate-800 mb-2">صلاحية مالية محدودة</h2>
+          <p className="text-slate-500 font-bold text-sm">ليس لديك صلاحية الوصول للبيانات المالية حالياً. يرجى مراجعة الإدارة.</p>
+          <Button onClick={() => router.push("/")} className="mt-8 rounded-xl h-10 px-8 font-black">العودة للرئيسية</Button>
+        </div>
+      </div>
+    );
+  }
+
+  const filteredData = clients.map(client => {
+    const remainingBalance = (client.totalInvoices || 0) - (client.totalPayments || 0);
+    return { ...client, remainingBalance };
+  }).filter(item => {
+    const s = searchQuery.toLowerCase();
+    const matchesSearch = item.name?.toLowerCase().includes(s) || item.phone?.includes(s);
+    const matchesUnpaid = showOnlyUnpaid ? item.remainingBalance > 0 : true;
+    return matchesSearch && matchesUnpaid;
+  });
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 pb-20" dir="rtl">
