@@ -152,6 +152,9 @@ const translations = {
     linked_projects: "Linked Projects",
     no_projects_recorded: "No projects recorded",
     projects_permission_disabled: "Projects viewing permission is currently disabled",
+    about_us: "About Us",
+    edit_about_us: "Edit Agency Description",
+    about_us_placeholder: "Describe your agency to clients here...",
 
     // Errors
     access_restricted: "Access Restricted",
@@ -298,6 +301,9 @@ const translations = {
     linked_projects: "المشاريع المرتبطة",
     no_projects_recorded: "لا توجد مشاريع مسجلة",
     projects_permission_disabled: "صلاحية عرض المشاريع معطلة حالياً",
+    about_us: "نبذة عنا",
+    edit_about_us: "تعديل النبذة التعريفية",
+    about_us_placeholder: "اكتب نبذة تعريفية عن الوكالة تظهر للمستفيدين هنا...",
 
     // الأخطاء
     access_restricted: "عذراً، الصلاحية مقيدة",
