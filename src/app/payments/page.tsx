@@ -58,7 +58,7 @@ function PaymentsContent() {
   }, [profile, authLoading, hasFinancePermission]);
 
   const handlePrintStatement = (client: any) => {
-    const printWindow = window.open('', '_blank');
+    const printWindow = window.open('', '_blank', 'width=900,height=800');
     if (!printWindow) return;
 
     const clientProjects = projects.filter(p => p.clientId === client.id || p.clientPhone === client.phone);
@@ -66,9 +66,9 @@ function PaymentsContent() {
 
     const projectsRows = clientProjects.map((p: any) => `
       <tr>
-        <td style="padding: 12px; border-bottom: 1px solid #eee; font-weight: 700; font-size: 13px;">${p.name}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #eee; color: #666; font-size: 12px; text-align: center;">${p.status}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: ${dir === 'rtl' ? 'left' : 'right'}; font-weight: 900; font-size: 14px;">${(p.cost || 0).toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US')} ${language === 'ar' ? 'ج.م' : 'EGP'}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #f1f5f9; font-weight: 700; font-size: 12px; text-align: ${dir === 'rtl' ? 'right' : 'left'};">${p.name}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #f1f5f9; color: #64748b; font-size: 11px; text-align: center;">${p.status}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #f1f5f9; text-align: ${dir === 'rtl' ? 'left' : 'right'}; font-weight: 900; font-size: 13px;">${(p.cost || 0).toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US')} ${language === 'ar' ? 'ج.م' : 'EGP'}</td>
       </tr>
     `).join('');
 
@@ -81,42 +81,43 @@ function PaymentsContent() {
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap');
             * { box-sizing: border-box; margin: 0; padding: 0; }
-            body { font-family: 'Cairo', sans-serif; padding: 0; background: #fff; color: #1e293b; }
-            .page-container { width: 210mm; min-height: 297mm; padding: 15mm; margin: auto; }
+            body { font-family: 'Cairo', sans-serif; padding: 0; background: #fff; color: #0f172a; line-height: 1.4; }
+            .page-container { width: 210mm; min-height: 297mm; padding: 12mm; margin: auto; }
             
             /* Header */
-            .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #1e293b; padding-bottom: 15px; margin-bottom: 25px; }
-            .logo-wrap { display: flex; align-items: center; gap: 12px; }
-            .logo { height: 60px; width: auto; }
-            .brand { font-size: 20px; font-weight: 900; color: #1e293b; }
-            .date-ref { text-align: ${dir === 'rtl' ? 'left' : 'right'}; font-size: 11px; color: #64748b; font-weight: 700; }
+            .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0f172a; padding-bottom: 15px; margin-bottom: 20px; }
+            .logo-wrap { display: flex; align-items: center; gap: 10px; }
+            .logo { height: 50px; width: auto; object-contain: contain; }
+            .brand { font-size: 18px; font-weight: 900; color: #0f172a; letter-spacing: -0.5px; }
+            .date-ref { text-align: ${dir === 'rtl' ? 'left' : 'right'}; font-size: 10px; color: #64748b; font-weight: 700; }
 
             /* Title */
-            .doc-title { text-align: center; margin-bottom: 25px; }
-            .doc-title h1 { font-size: 24px; font-weight: 900; text-decoration: underline; text-underline-offset: 8px; }
+            .doc-title { text-align: center; margin-bottom: 20px; }
+            .doc-title h1 { font-size: 20px; font-weight: 900; color: #0f172a; text-decoration: underline; text-underline-offset: 6px; }
 
             /* Info Grid */
-            .grid { display: grid; grid-template-cols: 1fr 1fr; gap: 15px; margin-bottom: 25px; }
-            .card { background: #f9fafb; border: 1px solid #e5e7eb; padding: 15px; border-radius: 12px; }
-            .card-label { font-size: 10px; font-weight: 900; color: #9ca3af; text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; }
-            .row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px; }
-            .row b { font-weight: 800; color: #111827; }
+            .grid { display: grid; grid-template-cols: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+            .card { background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 12px; }
+            .card-label { font-size: 9px; font-weight: 900; color: #94a3b8; text-transform: uppercase; margin-bottom: 6px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
+            .row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 3px; }
+            .row b { font-weight: 800; color: #1e293b; }
 
             /* Table */
-            table { width: 100%; border-collapse: collapse; margin-bottom: 25px; }
-            th { background: #1e293b; color: #fff; padding: 10px; text-align: ${dir === 'rtl' ? 'right' : 'left'}; font-size: 11px; font-weight: 700; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+            th { background: #0f172a; color: #fff; padding: 8px 10px; text-align: ${dir === 'rtl' ? 'right' : 'left'}; font-size: 10px; font-weight: 700; }
             
             /* Footer Summary */
-            .summary { background: #1e293b; color: white; padding: 20px; border-radius: 15px; }
-            .sum-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px; font-weight: 600; }
-            .sum-total { font-size: 22px; font-weight: 900; color: #fbbf24; border-top: 1px dashed rgba(255,255,255,0.2); padding-top: 12px; margin-top: 12px; }
+            .summary { background: #0f172a; color: white; padding: 15px; border-radius: 12px; margin-top: auto; }
+            .sum-row { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px; font-weight: 600; }
+            .sum-total { font-size: 20px; font-weight: 900; color: #facc15; border-top: 1px dashed rgba(255,255,255,0.2); padding-top: 10px; margin-top: 10px; }
 
-            .legal { margin-top: 40px; text-align: center; font-size: 10px; color: #94a3b8; font-weight: 700; }
+            .legal { margin-top: 30px; text-align: center; font-size: 9px; color: #94a3b8; font-weight: 700; }
 
             @media print {
               body { background: none; }
               .page-container { margin: 0; padding: 10mm; width: 100%; }
               @page { size: A4; margin: 0; }
+              .no-print { display: none; }
             }
           </style>
         </head>
@@ -161,7 +162,7 @@ function PaymentsContent() {
                 </tr>
               </thead>
               <tbody>
-                ${projectsRows || `<tr><td colspan="3" style="text-align:center; padding: 30px; color: #999;">${language === 'ar' ? 'لا توجد مشاريع' : 'No projects'}</td></tr>`}
+                ${projectsRows || `<tr><td colspan="3" style="text-align:center; padding: 30px; color: #94a3b8;">${language === 'ar' ? 'لا توجد مشاريع مسجلة' : 'No projects found'}</td></tr>`}
               </tbody>
             </table>
 
@@ -181,13 +182,14 @@ function PaymentsContent() {
             </div>
 
             <div class="legal">
-              <p>${language === 'ar' ? 'هذا المستند معتمد آلياً ويعد مطالبة مالية رسمية.' : 'This is an auto-generated official financial claim.'}</p>
+              <p>${language === 'ar' ? 'هذا المستند معتمد آلياً ويعد مطالبة مالية رسمية صادرة عن النظام المحاسبي للوكالة.' : 'This is an auto-generated official financial claim from the agency accounting system.'}</p>
               <p>© ${new Date().getFullYear()} APP STORE Agency. All Rights Reserved.</p>
             </div>
           </div>
           <script>
             window.onload = function() {
-              setTimeout(() => {
+              setTimeout(function() {
+                window.focus();
                 window.print();
                 window.onafterprint = function() { window.close(); };
               }, 500);
