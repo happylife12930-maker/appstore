@@ -30,6 +30,10 @@ import { auth, db } from "@/lib/firebase";
 import { collection, onSnapshot, doc } from "firebase/firestore";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import Image from "next/image";
+import imagesData from "@/app/lib/placeholder-images.json";
+
+const defaultLogo = imagesData.placeholderImages.find(img => img.id === 'agency-logo');
 
 const navItems = [
   { title: "overview", url: "/", icon: LayoutDashboard, permission: "p_dashboard", roles: ['admin', 'tester'] },
@@ -49,20 +53,33 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const { profile, loading } = useAuth();
   const [unreadCount, setUnreadCount] = React.useState(0);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const [agencyLogo, setAgencyLogo] = React.useState(defaultLogo?.imageUrl || "");
 
   React.useEffect(() => {
-    if (!db || !profile) return;
+    if (!db) return;
+
+    // مراقبة الشعار ديناميكياً
+    const unsubLogo = onSnapshot(doc(db, "settings", "agency"), (docSnap) => {
+      if (docSnap.exists() && docSnap.data().logoUrl) {
+        setAgencyLogo(docSnap.data().logoUrl);
+      }
+    });
+
+    if (!profile) return () => unsubLogo();
+
     if (profile.role === 'admin') {
       const unsub = onSnapshot(collection(db, "support_threads"), (snap) => {
         setUnreadCount(snap.docs.reduce((acc, d) => acc + (d.data().unreadAdmin || 0), 0));
       }, () => {});
-      return () => unsub();
+      return () => { unsubLogo(); unsub(); };
     } else if (profile.clientId) {
       const unsub = onSnapshot(doc(db, "support_threads", profile.clientId), (docSnap) => {
         if (docSnap.exists()) setUnreadCount(docSnap.data().unreadClient || 0);
       }, () => {});
-      return () => unsub();
+      return () => { unsubLogo(); unsub(); };
     }
+
+    return () => unsubLogo();
   }, [profile]);
 
   if (pathname === '/login') return <>{children}</>;
@@ -125,12 +142,20 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div dir={dir} className="min-h-screen flex flex-col bg-[#f8fafc]">
-      <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur-md shadow-sm h-14">
+      <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur-md shadow-sm h-16">
         <div className="max-w-7xl mx-auto px-4 h-full flex items-center justify-between gap-4">
           <div className="flex items-center gap-6">
-            <Link href="/" className="flex items-center gap-2 shrink-0 group">
-              <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center text-white font-black text-xs shadow-lg group-hover:rotate-12 transition-transform">AS</div>
-              <span className="font-black text-xs tracking-tighter uppercase hidden md:block text-slate-800">APP STORE</span>
+            <Link href="/" className="flex items-center gap-3 shrink-0 group">
+              <div className="relative h-10 w-10 transition-transform group-hover:scale-110">
+                <Image 
+                  src={agencyLogo} 
+                  alt="APP STORE Logo" 
+                  fill 
+                  unoptimized
+                  className="object-contain"
+                />
+              </div>
+              <span className="font-black text-sm tracking-tighter uppercase hidden md:block text-slate-800">APP STORE</span>
             </Link>
             
             <nav className="hidden lg:flex items-center">
