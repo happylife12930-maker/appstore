@@ -4,7 +4,7 @@
 import * as React from "react";
 import { useState, useEffect, useRef, Suspense } from "react";
 import { 
-  Send, Search, Loader2, MessageSquare, ArrowRight, Trash2, Clock, CheckCircle2, Lock, Bell, User
+  Send, Search, Loader2, MessageSquare, ArrowRight, Trash2, Clock, CheckCircle2, Lock, Bell, User, Archive, RotateCcw
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -47,7 +47,6 @@ function SupportContent() {
   const isAdmin = profile?.role === 'admin';
   const hasSupportPermission = isAdmin || (profile?.permissions || []).includes('p_support');
 
-  // جلب بيانات المحادثة النشطة (دمج بيانات الخيوط مع بيانات العميل)
   const activeThread = React.useMemo(() => {
     if (!activeThreadId) return null;
     const thread = threads.find(t => t.id === activeThreadId);
@@ -74,7 +73,6 @@ function SupportContent() {
   useEffect(() => {
     if (!db || authLoading || !profile || !hasSupportPermission) return;
     
-    // جلب كافة المحادثات
     const unsubThreads = onSnapshot(query(collection(db, "support_threads")), (snap) => {
       const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       setThreads(data);
@@ -89,7 +87,6 @@ function SupportContent() {
       setLoading(false);
     });
 
-    // جلب كافة العملاء لربط الأسماء في البحث
     const unsubClients = onSnapshot(collection(db, "clients"), (snap) => {
       setAllClients(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
@@ -110,7 +107,6 @@ function SupportContent() {
     const q = query(collection(db, "support_threads", activeThreadId, "messages"), orderBy("timestamp", "asc"), limit(100));
     const unsub = onSnapshot(q, (snap) => {
       setMessages(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-      // تصفير الإشعارات عند القراءة
       updateDoc(doc(db, "support_threads", activeThreadId), isAdmin ? { unreadAdmin: 0 } : { unreadClient: 0 }).catch(() => {});
     }, (e) => console.warn("Messages Access Denied:", e));
     return () => unsub();
@@ -124,7 +120,6 @@ function SupportContent() {
     setInputText("");
 
     try {
-      // إرسال الرسالة
       await addDoc(collection(db, "support_threads", activeThreadId, "messages"), { 
         text, 
         senderId: profile.uid, 
@@ -132,7 +127,6 @@ function SupportContent() {
         timestamp: serverTimestamp() 
       });
 
-      // البحث عن بيانات العميل لضمان تحديثها في مستند المحادثة
       const client = allClients.find(c => c.id === activeThreadId);
 
       const updateData: any = { 
@@ -156,37 +150,60 @@ function SupportContent() {
     }
   };
 
-  // محرك البحث المطور: يجمع بين الخيوط القائمة والعملاء المسجلين
+  const handleArchiveThread = async (threadId: string, currentStatus: string) => {
+    if (!db) return;
+    const newStatus = currentStatus === 'archived' ? 'active' : 'archived';
+    try {
+      await updateDoc(doc(db, "support_threads", threadId), { status: newStatus });
+      toast({ 
+        title: newStatus === 'archived' ? "تم النقل للأرشيف" : "تمت الاستعادة",
+        description: newStatus === 'archived' ? "المحادثة الآن في قائمة الأرشيف." : "المحادثة عادت للقائمة النشطة."
+      });
+    } catch (err) {
+      toast({ title: "خطأ", variant: "destructive" });
+    }
+  };
+
   const searchResults = React.useMemo(() => {
     const s = searchQuery.toLowerCase().trim();
     
+    let baseList = [];
     if (!s) {
-      return threads
+      baseList = threads
         .filter(t => (t.status || "active") === activeTab)
         .map(t => {
           const client = allClients.find(c => c.id === t.id);
-          return { ...t, clientName: client?.name || t.clientName || 'بدون اسم' };
+          return { 
+            ...t, 
+            clientName: client?.name || t.clientName || 'بدون اسم',
+            clientPhone: client?.phone || t.clientPhone || ''
+          };
         });
+    } else {
+      const matchedClients = allClients.filter(c => 
+        c.name?.toLowerCase().includes(s) || 
+        c.phone?.includes(s) || 
+        c.phone2?.includes(s)
+      );
+
+      baseList = matchedClients.map(client => {
+        const existingThread = threads.find(t => t.id === client.id);
+        return {
+          id: client.id,
+          clientName: client.name,
+          clientPhone: client.phone,
+          lastMessage: existingThread?.lastMessage || 'ابدأ محادثة جديدة...',
+          lastMessageTime: existingThread?.lastMessageTime,
+          unreadAdmin: existingThread?.unreadAdmin || 0,
+          status: existingThread?.status || 'new'
+        };
+      });
     }
 
-    // البحث في العملاء أولاً لفتح محادثات جديدة
-    const matchedClients = allClients.filter(c => 
-      c.name?.toLowerCase().includes(s) || 
-      c.phone?.includes(s) || 
-      c.phone2?.includes(s)
-    );
-
-    return matchedClients.map(client => {
-      const existingThread = threads.find(t => t.id === client.id);
-      return {
-        id: client.id,
-        clientName: client.name,
-        clientPhone: client.phone,
-        lastMessage: existingThread?.lastMessage || 'ابدأ محادثة جديدة...',
-        lastMessageTime: existingThread?.lastMessageTime,
-        unreadAdmin: existingThread?.unreadAdmin || 0,
-        status: existingThread?.status || 'new'
-      };
+    return baseList.sort((a, b) => {
+      const timeA = a.lastMessageTime?.toDate ? a.lastMessageTime.toDate().getTime() : 0;
+      const timeB = b.lastMessageTime?.toDate ? b.lastMessageTime.toDate().getTime() : 0;
+      return timeB - timeA;
     });
   }, [threads, allClients, searchQuery, activeTab]);
 
@@ -263,11 +280,41 @@ function SupportContent() {
                         <p className="text-[10px] text-slate-400 font-bold" dir="ltr">{item.clientPhone}</p>
                       </div>
                     </div>
-                    {item.unreadAdmin > 0 && (
-                      <Badge className="bg-rose-500 text-white rounded-lg px-2 h-6 text-[9px] font-black">
-                        {item.unreadAdmin} رسائل جديدة
-                      </Badge>
-                    )}
+                    <div className="flex items-center gap-1">
+                      {item.unreadAdmin > 0 && (
+                        <Badge className="bg-rose-500 text-white rounded-lg px-2 h-6 text-[9px] font-black ml-1">
+                          {item.unreadAdmin} رسايل
+                        </Badge>
+                      )}
+                      {isAdmin && item.status !== 'new' && (
+                        <div className="flex gap-0.5">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleArchiveThread(item.id, item.status || 'active');
+                            }}
+                            className="h-8 w-8 text-slate-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-colors"
+                            title={activeTab === 'active' ? 'أرشفة' : 'استعادة'}
+                          >
+                            {activeTab === 'active' ? <Archive className="h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setThreadToDelete(item.id);
+                            }}
+                            className="h-8 w-8 text-rose-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                            title="حذف"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   
                   <div className="bg-slate-50/50 p-3 rounded-xl border border-slate-100 min-h-[50px] flex flex-col justify-center">
@@ -310,9 +357,26 @@ function SupportContent() {
               </div>
             </div>
             {isAdmin && (
-              <Button variant="ghost" size="icon" onClick={() => setThreadToDelete(activeThreadId)} className="h-9 w-9 text-rose-300 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg">
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              <div className="flex gap-1">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => handleArchiveThread(activeThreadId!, activeThread?.status || 'active')}
+                  className="h-9 w-9 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg"
+                  title="أرشفة المحادثة"
+                >
+                  <Archive className="h-4 w-4" />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => setThreadToDelete(activeThreadId)} 
+                  className="h-9 w-9 text-rose-300 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg"
+                  title="حذف المحادثة"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             )}
           </CardHeader>
 
