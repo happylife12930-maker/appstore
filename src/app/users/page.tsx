@@ -59,7 +59,6 @@ function UsersPermissionsContent() {
   const { profile } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   const availablePermissions = [
     { id: "p_projects", label: "عرض المشاريع" },
@@ -115,6 +114,27 @@ function UsersPermissionsContent() {
       setTempPassword("");
     } catch (err) {
       toast({ title: "خطأ", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleUpdateUser = async () => {
+    if (!db || !editingUser) return;
+    setIsSubmitting(true);
+    try {
+      const userRef = doc(db, "users", editingUser.id);
+      await updateDoc(userRef, {
+        name: editingUser.name,
+        status: editingUser.status,
+        permissions: editingUser.permissions,
+        tempPassword: editingUser.tempPassword || "",
+        clientId: editingUser.clientId || ""
+      });
+      toast({ title: "تم التحديث بنجاح" });
+      setIsEditModalOpen(false);
+    } catch (err: any) {
+      toast({ title: "فشل التحديث", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
@@ -202,13 +222,12 @@ function UsersPermissionsContent() {
 
         {/* الحسابات النشطة وقيد التفعيل */}
         <div className="lg:col-span-8 space-y-6">
-          {/* حسابات قيد التفعيل - هنا تظهر بعد الضغط على تفعيل وقبل الدخول */}
+          {/* حسابات قيد التفعيل */}
           <Card className="rounded-[2rem] border-none shadow-sm bg-white overflow-hidden border border-orange-100">
             <CardHeader className="bg-orange-500 p-5 text-white">
               <CardTitle className="text-lg font-black flex items-center gap-2">
                 <Clock className="h-5 w-5" /> حسابات قيد التفعيل (لم يدخلوا بعد)
               </CardTitle>
-              <p className="text-[10px] font-bold opacity-90">هؤلاء المستخدمين حصلوا على باسورد مؤقت ولكنهم لم يستخدموه للدخول بعد</p>
             </CardHeader>
             <CardContent className="p-0">
               <div className="divide-y divide-slate-50">
@@ -259,7 +278,6 @@ function UsersPermissionsContent() {
               <CardTitle className="text-lg font-black flex items-center gap-2">
                 <CheckCircle2 className="h-5 w-5" /> الحسابات المسجلة والنشطة
               </CardTitle>
-              <p className="text-[10px] font-bold opacity-80">المستخدمون الذين قاموا بتسجيل دخولهم وإتمام عملية الربط</p>
             </CardHeader>
             <CardContent className="p-0">
               <div className="divide-y divide-slate-50">
@@ -277,14 +295,35 @@ function UsersPermissionsContent() {
                         <p className="text-[9px] font-bold text-slate-400">{user.email}</p>
                       </div>
                     </div>
-                    <Button 
-                      variant="outline" 
-                      size="icon" 
-                      onClick={() => { setEditingUser(user); setIsEditModalOpen(true); }}
-                      className="h-9 w-9 rounded-xl border-slate-200 text-primary hover:bg-primary/5 shadow-sm"
-                    >
-                      <Settings2 className="h-4 w-4" />
-                    </Button>
+                    
+                    <div className="flex items-center gap-3">
+                      {/* عرض الباسورد للحسابات المسجلة أيضاً */}
+                      <div className="bg-slate-50 p-2 px-4 rounded-xl border flex items-center gap-4">
+                        <div className="text-center">
+                          <p className="text-[8px] font-black text-slate-400 uppercase">كلمة المرور الحالية</p>
+                          <p className="font-black text-slate-800 tracking-widest text-xs">
+                            {showPasswords[user.email] ? user.tempPassword || 'غير مسجلة' : '••••••••'}
+                          </p>
+                        </div>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => setShowPasswords(p => ({...p, [user.email]: !p[user.email]}))} 
+                          className="h-8 w-8 rounded-lg text-slate-400"
+                        >
+                          {showPasswords[user.email] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                      </div>
+
+                      <Button 
+                        variant="outline" 
+                        size="icon" 
+                        onClick={() => { setEditingUser(user); setIsEditModalOpen(true); }}
+                        className="h-10 w-10 rounded-xl border-slate-200 text-primary hover:bg-primary/5 shadow-sm"
+                      >
+                        <Settings2 className="h-5 w-5" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
                 {activeUsers.filter(u => u.role !== 'admin').length === 0 && (
@@ -316,7 +355,6 @@ function UsersPermissionsContent() {
               placeholder="مثلاً: 123456"
               className="rounded-xl h-14 text-center text-2xl font-black tracking-widest border-2 border-primary/20" 
             />
-            <p className="text-[10px] text-slate-400 font-bold text-center italic">سيقوم النظام بإنشاء الحساب فور أول محاولة دخول للعميل.</p>
           </div>
           <DialogFooter className="p-6 bg-slate-50 border-t">
             <Button onClick={handleConfirmGrantAccess} className="w-full h-12 rounded-xl font-black gap-2 shadow-lg" disabled={isSubmitting || !tempPassword}>
@@ -327,7 +365,7 @@ function UsersPermissionsContent() {
         </DialogContent>
       </Dialog>
 
-      {/* مودال تعديل الصلاحيات والحالة */}
+      {/* مودال تعديل الصلاحيات والحالة وكلمة المرور */}
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
         <DialogContent className="rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white max-w-lg" dir="rtl">
           <div className="bg-slate-900 p-8 text-white">
@@ -347,6 +385,41 @@ function UsersPermissionsContent() {
                   onChange={(e) => setEditingUser({...editingUser, name: e.target.value})}
                   className="rounded-2xl h-12 font-bold"
                 />
+              </div>
+
+              {/* قسم تعديل كلمة المرور */}
+              <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 space-y-4">
+                <div className="flex items-center gap-2 text-slate-700">
+                  <Key className="h-5 w-5 text-primary" />
+                  <h3 className="font-black text-sm uppercase">كلمة المرور</h3>
+                </div>
+                <div className="space-y-2">
+                  <Label className="font-black text-slate-600 text-xs">تغيير الباسورد</Label>
+                  <Input 
+                    value={editingUser?.tempPassword || ""} 
+                    onChange={(e) => setEditingUser({...editingUser, tempPassword: e.target.value})}
+                    placeholder="أدخل كلمة مرور جديدة..."
+                    className="rounded-xl h-10 font-black text-center tracking-widest border-slate-200"
+                  />
+                  <p className="text-[9px] font-bold text-slate-400 pr-2">ملاحظة: سيتمكن المستخدم من الدخول بهذا الرمز فوراً.</p>
+                </div>
+              </div>
+
+              {/* قسم تعديل الربط التقني */}
+              <div className="p-6 bg-primary/5 rounded-3xl border border-primary/10 space-y-4">
+                <div className="flex items-center gap-2 text-primary">
+                  <Link2 className="h-5 w-5" />
+                  <h3 className="font-black text-sm uppercase">بيانات الربط التقني</h3>
+                </div>
+                <div className="space-y-2">
+                  <Label className="font-black text-slate-600 text-xs">معرف العميل (clientId)</Label>
+                  <Input 
+                    value={editingUser?.clientId || ""} 
+                    onChange={(e) => setEditingUser({...editingUser, clientId: e.target.value})}
+                    placeholder="أدخل معرف العميل للربط..."
+                    className="rounded-xl h-10 font-mono text-xs border-primary/20 bg-white"
+                  />
+                </div>
               </div>
 
               <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 flex items-center justify-between">
@@ -398,19 +471,7 @@ function UsersPermissionsContent() {
 
           <DialogFooter className="p-8 bg-slate-50 border-t">
             <Button 
-              onClick={async () => {
-                setIsSubmitting(true);
-                try {
-                  await updateDoc(doc(db!, "users", editingUser.id), {
-                    name: editingUser.name,
-                    status: editingUser.status,
-                    permissions: editingUser.permissions
-                  });
-                  toast({ title: "تم التحديث بنجاح" });
-                  setIsEditModalOpen(false);
-                } catch(e) { toast({ title: "فشل التحديث", variant: "destructive" }); }
-                finally { setIsSubmitting(false); }
-              }} 
+              onClick={handleUpdateUser} 
               disabled={isSubmitting}
               className="w-full h-14 rounded-2xl font-black text-lg shadow-xl"
             >
