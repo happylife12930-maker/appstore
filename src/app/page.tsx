@@ -1,4 +1,3 @@
-
 'use client';
 import * as React from "react";
 import { useState, useEffect, useRef } from "react";
@@ -18,7 +17,8 @@ import {
   Camera,
   Upload,
   Info,
-  CheckCircle2
+  CheckCircle2,
+  Facebook
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
@@ -54,6 +54,7 @@ export default function DashboardPage() {
   const [agencyLogo, setAgencyLogo] = useState(defaultLogo?.imageUrl || "");
   const [isUploading, setIsUploading] = useState(false);
   const [aboutUs, setAboutUs] = useState("");
+  const [facebookUrl, setFacebookUrl] = useState("");
   const [isAboutDialogOpen, setIsAboutDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -67,6 +68,7 @@ export default function DashboardPage() {
         const data = docSnap.data();
         if (data.logoUrl) setAgencyLogo(data.logoUrl);
         if (data.aboutUs) setAboutUs(data.aboutUs);
+        if (data.facebookUrl) setFacebookUrl(data.facebookUrl);
       }
     });
 
@@ -193,13 +195,27 @@ export default function DashboardPage() {
         </div>
         <div className="flex items-center gap-3">
           {!isAdmin && (
-            <Button 
-              variant="outline"
-              onClick={() => setIsAboutDialogOpen(true)}
-              className="rounded-xl h-11 px-6 font-black text-sm gap-2 border-primary/20 text-primary hover:bg-primary/5 shadow-sm active:scale-95 transition-all"
-            >
-              <Info className="h-4 w-4" /> {t('about_us')}
-            </Button>
+            <>
+              <Button 
+                variant="outline"
+                onClick={() => setIsAboutDialogOpen(true)}
+                className="rounded-xl h-11 px-6 font-black text-sm gap-2 border-primary/20 text-primary hover:bg-primary/5 shadow-sm active:scale-95 transition-all"
+              >
+                <Info className="h-4 w-4" /> {t('about_us')}
+              </Button>
+              {facebookUrl && (
+                <a href={facebookUrl} target="_blank" rel="noopener noreferrer">
+                  <Button 
+                    variant="outline"
+                    size="icon"
+                    className="rounded-xl h-11 w-11 border-blue-100 text-blue-600 hover:bg-blue-50 shadow-sm active:scale-95 transition-all"
+                    title={t('facebook')}
+                  >
+                    <Facebook className="h-5 w-5" />
+                  </Button>
+                </a>
+              )}
+            </>
           )}
           {isAdmin && (
             <Button onClick={() => setIsScheduleModalOpen(true)} className="rounded-xl h-11 px-6 font-black text-sm gap-2 shadow-md hover:scale-105 transition-all">
