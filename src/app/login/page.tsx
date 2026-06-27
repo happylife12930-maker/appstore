@@ -22,6 +22,9 @@ const getFriendlyErrorMessage = (errorCode: string) => {
     case "auth/wrong-password": return "كلمة المرور غير صحيحة.";
     case "auth/email-already-in-use": return "البريد مسجل مسبقاً، يرجى الدخول بكلمة مرورك.";
     case "auth/weak-password": return "كلمة المرور يجب أن تكون 6 أحرف على الأقل.";
+    case "auth/user-disabled":
+    case "custom/account-disabled": 
+      return "عذراً، هذا الحساب معطل حالياً. يرجى مراجعة إدارة الوكالة لإعادة التنشيط.";
     default: return "حدث خطأ في الدخول. تأكد من بياناتك وحاول مرة أخرى.";
   }
 };
@@ -78,9 +81,7 @@ export default function LoginPage() {
       
       if (userSnap.exists() && userSnap.data().status === 'inactive') {
         await auth.signOut();
-        setError("عذراً، هذا الحساب معطل حالياً. يرجى مراجعة إدارة الوكالة لإعادة التنشيط.");
-        setLoading(false);
-        return;
+        throw { code: "custom/account-disabled" };
       }
       // -------------------------------------
 
@@ -137,7 +138,7 @@ export default function LoginPage() {
             {error && (
               <Alert variant="destructive" className="rounded-2xl border-rose-100 bg-rose-50 text-rose-600">
                 <AlertDescription className="font-bold flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4" /> {error}
+                  <AlertCircle className="h-4 w-4 shrink-0" /> {error}
                 </AlertDescription>
               </Alert>
             )}
