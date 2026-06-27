@@ -11,12 +11,13 @@ import {
   CalendarDays,
   ArrowLeft,
   LifeBuoy,
-  ShieldAlert
+  ShieldAlert,
+  MessageSquare
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, where, Unsubscribe } from "firebase/firestore";
+import { collection, onSnapshot, query, where, Unsubscribe, doc } from "firebase/firestore";
 import { useAuth } from "@/components/auth-provider";
 import { Button } from "@/components/ui/button";
 import { TestingScheduleModal } from "@/components/modals/testing-schedule-modal";
@@ -24,7 +25,7 @@ import { TestingScheduleModal } from "@/components/modals/testing-schedule-modal
 export default function DashboardPage() {
   const router = useRouter();
   const { profile, loading: authLoading } = useAuth();
-  const [stats, setStats] = useState({ clients: 0, projects: 0, finished: 0 });
+  const [stats, setStats] = useState({ clients: 0, projects: 0, finished: 0, unreadSupport: 0 });
   const [loading, setLoading] = useState(true);
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
 
@@ -46,7 +47,11 @@ export default function DashboardPage() {
           finished: docs.filter(d => d.status === 'مكتمل').length
         }));
       });
-      unsubscribers.push(unsubC, unsubP);
+      const unsubS = onSnapshot(collection(db, "support_threads"), (s) => {
+        const totalUnread = s.docs.reduce((acc, d) => acc + (d.data().unreadAdmin || 0), 0);
+        setStats(p => ({ ...p, unreadSupport: totalUnread }));
+      });
+      unsubscribers.push(unsubC, unsubP, unsubS);
       setLoading(false);
     } 
     else if (profile.role === 'client' && profile.clientId) {
@@ -58,9 +63,14 @@ export default function DashboardPage() {
           projects: myProjects.filter(p => p.status !== 'مكتمل').length, 
           finished: myProjects.filter(p => p.status === 'مكتمل').length 
         }));
-        setLoading(false);
       });
-      unsubscribers.push(unsubP);
+      const unsubS = onSnapshot(doc(db, "support_threads", profile.clientId), (docSnap) => {
+        if (docSnap.exists()) {
+          setStats(p => ({ ...p, unreadSupport: docSnap.data().unreadClient || 0 }));
+        }
+      });
+      unsubscribers.push(unsubP, unsubS);
+      setLoading(false);
     } else {
       setLoading(false);
     }
@@ -95,11 +105,12 @@ export default function DashboardPage() {
         )}
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         {isAdmin ? (
           <>
             <StatCard title="إجمالي العملاء" icon={<Users className="text-primary h-5 w-5" />} value={stats.clients} onClick={() => router.push('/clients')} />
             <StatCard title="مشاريع نشطة" icon={<Briefcase className="text-orange-500 h-5 w-5" />} value={stats.projects} onClick={() => router.push('/projects?status=active')} />
+            <StatCard title="رسايل الدعم" icon={<MessageSquare className={(stats.unreadSupport > 0 ? "text-rose-500 animate-pulse" : "text-indigo-500") + " h-5 w-5"} />} value={stats.unreadSupport > 0 ? `${stats.unreadSupport} غير مقروءة` : "لا توجد"} onClick={() => router.push('/support')} />
             <StatCard title="مشاريع منتهية" icon={<CheckCircle className="text-green-500 h-5 w-5" />} value={stats.finished} onClick={() => router.push('/projects?status=finished')} />
             <StatCard title="بوابة المستخدمين" icon={<ShieldAlert className="text-rose-500 h-5 w-5" />} value="إدارة" onClick={() => router.push('/users')} />
           </>
@@ -107,8 +118,8 @@ export default function DashboardPage() {
           <>
             <StatCard title="مشاريع جارية" icon={<Briefcase className="text-orange-500 h-5 w-5" />} value={stats.projects} onClick={() => router.push('/projects?status=active')} />
             <StatCard title="مشاريع منتهية" icon={<CheckCircle className="text-green-500 h-5 w-5" />} value={stats.finished} onClick={() => router.push('/projects?status=finished')} />
+            <StatCard title="الدعم الفني" icon={<LifeBuoy className={(stats.unreadSupport > 0 ? "text-rose-500 animate-pulse" : "text-indigo-500") + " h-5 w-5"} />} value={stats.unreadSupport > 0 ? `${stats.unreadSupport} رسالة` : "مراسلة"} onClick={() => router.push('/support')} />
             <StatCard title="حالة الحساب" icon={<ShieldCheck className={(isLinked ? "text-green-500" : "text-rose-500") + " h-5 w-5"} />} value={isLinked ? "نشط" : "معلق"} onClick={() => router.push('/profile')} />
-            <StatCard title="الدعم الفني" icon={<LifeBuoy className="text-indigo-500 h-5 w-5" />} value="مراسلة" onClick={() => router.push('/support')} />
           </>
         )}
       </div>
@@ -141,7 +152,7 @@ function StatCard({ title, icon, value, onClick }: any) {
         <CardTitle className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{title}</CardTitle>
         <div className="h-9 w-9 rounded-xl bg-slate-50 flex items-center justify-center group-hover:bg-primary/5 transition-colors">{icon}</div>
       </CardHeader>
-      <CardContent><div className="text-2xl font-black text-slate-800">{value}</div></CardContent>
+      <CardContent><div className="text-sm font-black text-slate-800">{value}</div></CardContent>
     </Card>
   );
 }
