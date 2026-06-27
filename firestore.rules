@@ -31,6 +31,13 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // --- Security Rules for 'settings' collection ---
+    match /settings/{settingId} {
+      // السماح للجميع بقراءة الإعدادات (مثل الشعار في صفحة الدخول)
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // --- Security Rules for 'clients' collection ---
     match /clients/{clientId} {
       allow read: if isAuthenticated();
