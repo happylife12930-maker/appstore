@@ -11,6 +11,7 @@ import {
   Loader2, 
   CalendarDays,
   ArrowLeft,
+  ArrowRight,
   LifeBuoy,
   ShieldAlert,
   MessageSquare,
@@ -25,12 +26,14 @@ import { useAuth } from "@/components/auth-provider";
 import { Button } from "@/components/ui/button";
 import { TestingScheduleModal } from "@/components/modals/testing-schedule-modal";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "@/components/language-provider";
 import Image from "next/image";
 import imagesData from "@/app/lib/placeholder-images.json";
 
 const defaultLogo = imagesData.placeholderImages.find(img => img.id === 'agency-logo');
 
 export default function DashboardPage() {
+  const { t, dir, language } = useTranslation();
   const router = useRouter();
   const { profile, loading: authLoading } = useAuth();
   const { toast } = useToast();
@@ -46,7 +49,6 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!db) return;
     
-    // مراقبة الشعار من قاعدة البيانات
     const unsubLogo = onSnapshot(doc(db, "settings", "agency"), (docSnap) => {
       if (docSnap.exists() && docSnap.data().logoUrl) {
         setAgencyLogo(docSnap.data().logoUrl);
@@ -66,8 +68,8 @@ export default function DashboardPage() {
         const docs = s.docs.map(d => d.data());
         setStats(p => ({ 
           ...p, 
-          projects: docs.filter(d => d.status !== 'مكتمل').length,
-          finished: docs.filter(d => d.status === 'مكتمل').length
+          projects: docs.filter(d => d.status !== 'مكتمل' && d.status !== 'Completed').length,
+          finished: docs.filter(d => d.status === 'مكتمل' || d.status === 'Completed').length
         }));
       });
       const unsubS = onSnapshot(collection(db, "support_threads"), (s) => {
@@ -83,8 +85,8 @@ export default function DashboardPage() {
         const myProjects = s.docs.map(d => d.data());
         setStats(p => ({ 
           ...p, 
-          projects: myProjects.filter(p => p.status !== 'مكتمل').length, 
-          finished: myProjects.filter(p => p.status === 'مكتمل').length 
+          projects: myProjects.filter(p => p.status !== 'مكتمل' && p.status !== 'Completed').length, 
+          finished: myProjects.filter(p => p.status === 'مكتمل' || p.status === 'Completed').length 
         }));
       });
       const unsubS = onSnapshot(doc(db, "support_threads", profile.clientId), (docSnap) => {
@@ -125,10 +127,10 @@ export default function DashboardPage() {
         const newUrl = result.data.url;
         await setDoc(doc(db!, "settings", "agency"), { logoUrl: newUrl }, { merge: true });
         setAgencyLogo(newUrl);
-        toast({ title: "تم تحديث الشعار", description: "تم تغيير هوية الوكالة بنجاح في كافة أقسام النظام." });
+        toast({ title: language === 'ar' ? "تم تحديث الشعار" : "Logo Updated", description: language === 'ar' ? "تم تغيير هوية الوكالة بنجاح." : "Agency identity updated successfully." });
       }
     } catch (error) {
-      toast({ title: "خطأ في الرفع", variant: "destructive" });
+      toast({ title: "Error", variant: "destructive" });
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -138,14 +140,14 @@ export default function DashboardPage() {
   if (loading || authLoading) return (
     <div className="flex flex-col items-center justify-center py-20 gap-4">
       <Loader2 className="h-10 w-10 animate-spin text-primary" />
-      <p className="text-xs font-bold text-slate-500">جاري التحميل...</p>
+      <p className="text-xs font-bold text-slate-500">{t('loading')}</p>
     </div>
   );
 
   const isLinked = !!profile?.clientId;
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6" dir="rtl">
+    <div className="max-w-7xl mx-auto space-y-6" dir={dir}>
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-[1.5rem] shadow-sm border">
         <div className="flex items-center gap-4">
           <div className="relative group">
@@ -162,7 +164,7 @@ export default function DashboardPage() {
               <button 
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading}
-                className="absolute -bottom-1 -left-1 h-6 w-6 bg-primary text-white rounded-full flex items-center justify-center shadow-lg border-2 border-white hover:bg-slate-800 transition-colors"
+                className={`absolute -bottom-1 ${dir === 'rtl' ? '-left-1' : '-right-1'} h-6 w-6 bg-primary text-white rounded-full flex items-center justify-center shadow-lg border-2 border-white hover:bg-slate-800 transition-colors`}
               >
                 {isUploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Camera className="h-3 w-3" />}
               </button>
@@ -170,13 +172,13 @@ export default function DashboardPage() {
             <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleLogoUpload} />
           </div>
           <div>
-            <h1 className="text-xl font-black text-slate-800">لوحة التحكم</h1>
-            <p className="text-[10px] text-slate-500 font-bold">مرحباً {profile?.name}، تابع آخر التطورات</p>
+            <h1 className="text-xl font-black text-slate-800">{t('dashboard_title')}</h1>
+            <p className="text-[10px] text-slate-500 font-bold">{t('welcome_back')} {profile?.name}، {t('follow_updates')}</p>
           </div>
         </div>
         {isAdmin && (
           <Button onClick={() => setIsScheduleModalOpen(true)} className="rounded-xl h-11 px-6 font-black text-sm gap-2 shadow-md hover:scale-105 transition-all">
-            <CalendarDays className="h-5 w-5" /> جدول الاختبارات الأسبوعي
+            <CalendarDays className="h-5 w-5" /> {language === 'ar' ? 'جدول الاختبارات الأسبوعي' : 'Weekly Test Schedule'}
           </Button>
         )}
       </header>
@@ -184,36 +186,35 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         {isAdmin ? (
           <>
-            <StatCard title="إجمالي العملاء" icon={<Users className="text-primary h-5 w-5" />} value={stats.clients} onClick={() => router.push('/clients')} />
-            <StatCard title="مشاريع نشطة" icon={<Briefcase className="text-orange-500 h-5 w-5" />} value={stats.projects} onClick={() => router.push('/projects?status=active')} />
-            <StatCard title="رسايل الدعم" icon={<MessageSquare className={(stats.unreadSupport > 0 ? "text-rose-500 animate-pulse" : "text-indigo-500") + " h-5 w-5"} />} value={stats.unreadSupport > 0 ? `${stats.unreadSupport} غير مقروءة` : "لا توجد"} onClick={() => router.push('/support')} />
-            <StatCard title="مشاريع منتهية" icon={<CheckCircle className="text-green-500 h-5 w-5" />} value={stats.finished} onClick={() => router.push('/projects?status=finished')} />
-            <StatCard title="بوابة المستخدمين" icon={<ShieldAlert className="text-rose-500 h-5 w-5" />} value="إدارة" onClick={() => router.push('/users')} />
+            <StatCard title={t('total_clients')} icon={<Users className="text-primary h-5 w-5" />} value={stats.clients} onClick={() => router.push('/clients')} />
+            <StatCard title={t('active_projects')} icon={<Briefcase className="text-orange-500 h-5 w-5" />} value={stats.projects} onClick={() => router.push('/projects?status=active')} />
+            <StatCard title={t('support_inbox')} icon={<MessageSquare className={(stats.unreadSupport > 0 ? "text-rose-500 animate-pulse" : "text-indigo-500") + " h-5 w-5"} />} value={stats.unreadSupport > 0 ? `${stats.unreadSupport} ${t('unread_messages')}` : t('none')} onClick={() => router.push('/support')} />
+            <StatCard title={t('finished_projects')} icon={<CheckCircle className="text-green-500 h-5 w-5" />} value={stats.finished} onClick={() => router.push('/projects?status=finished')} />
+            <StatCard title={t('users')} icon={<ShieldAlert className="text-rose-500 h-5 w-5" />} value={t('manage')} onClick={() => router.push('/users')} />
           </>
         ) : (
           <>
-            <StatCard title="مشاريع جارية" icon={<Briefcase className="text-orange-500 h-5 w-5" />} value={stats.projects} onClick={() => router.push('/projects?status=active')} />
-            <StatCard title="مشاريع منتهية" icon={<CheckCircle className="text-green-500 h-5 w-5" />} value={stats.finished} onClick={() => router.push('/projects?status=finished')} />
-            <StatCard title="الدعم الفني" icon={<LifeBuoy className={(stats.unreadSupport > 0 ? "text-rose-500 animate-pulse" : "text-indigo-500") + " h-5 w-5"} />} value={stats.unreadSupport > 0 ? `${stats.unreadSupport} رسالة` : "مراسلة"} onClick={() => router.push('/support')} />
-            <StatCard title="حالة الحساب" icon={<ShieldCheck className={(isLinked ? "text-green-500" : "text-rose-500") + " h-5 w-5"} />} value={isLinked ? "نشط" : "معلق"} onClick={() => router.push('/profile')} />
+            <StatCard title={t('active_projects')} icon={<Briefcase className="text-orange-500 h-5 w-5" />} value={stats.projects} onClick={() => router.push('/projects?status=active')} />
+            <StatCard title={t('finished_projects')} icon={<CheckCircle className="text-green-500 h-5 w-5" />} value={stats.finished} onClick={() => router.push('/projects?status=finished')} />
+            <StatCard title={t('support')} icon={<LifeBuoy className={(stats.unreadSupport > 0 ? "text-rose-500 animate-pulse" : "text-indigo-500") + " h-5 w-5"} />} value={stats.unreadSupport > 0 ? `${stats.unreadSupport} ${t('unread_messages')}` : t('request_support')} onClick={() => router.push('/support')} />
+            <StatCard title={language === 'ar' ? 'حالة الحساب' : 'Account Status'} icon={<ShieldCheck className={(isLinked ? "text-green-500" : "text-rose-500") + " h-5 w-5"} />} value={isLinked ? t('status_active') : t('status_pending')} onClick={() => router.push('/profile')} />
           </>
         )}
       </div>
 
       <Card className="rounded-[2.5rem] border-none shadow-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-primary p-12 text-primary-foreground text-center relative overflow-hidden">
-        <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+        <div className={`absolute top-0 ${dir === 'rtl' ? 'right-0' : 'left-0'} p-8 opacity-10 pointer-events-none`}>
           <Image src={agencyLogo} alt="Watermark" width={300} height={300} unoptimized className="object-contain" />
         </div>
         <div className="relative z-10 space-y-6">
-          <h2 className="text-4xl font-black">{isAdmin ? 'مركز الإدارة المتكامل' : 'رؤية شفافة لمشروعك'}</h2>
+          <h2 className="text-4xl font-black">{isAdmin ? t('admin_center') : t('client_center')}</h2>
           <p className="opacity-80 font-bold max-w-2xl mx-auto text-sm leading-relaxed">
-            {isAdmin 
-              ? 'أهلاً بك في المحرك الرئيسي لوكالة APP STORE؛ حيث تلتقي الحلول الرقمية مع النمو الذي لا حدود له. تحكم في كافة جوانب الوكالة من مكان واحد.'
-              : 'شريكنا العزيز، نحن هنا لنحول أفكارك إلى واقع رقمي ملموس. تابع مراحل تنفيذ طلباتك لحظة بلحظة لضمان الحصول على أفضل النتائج.'}
+            {isAdmin ? t('admin_desc') : t('client_desc')}
           </p>
           <div className="flex justify-center gap-4">
              <Button onClick={() => router.push(isAdmin ? '/projects' : '/support')} size="lg" className="rounded-2xl bg-white text-primary font-black shadow-2xl gap-3 h-14 px-10 hover:bg-slate-50 text-base">
-               {isAdmin ? 'ابدأ العمل اليوم' : 'اطلب دعم فني'} <ArrowLeft className="h-5 w-5" />
+               {isAdmin ? t('start_work') : t('request_support')} 
+               {dir === 'rtl' ? <ArrowLeft className="h-5 w-5" /> : <ArrowRight className="h-5 w-5" />}
              </Button>
           </div>
         </div>
@@ -225,13 +226,14 @@ export default function DashboardPage() {
 }
 
 function StatCard({ title, icon, value, onClick }: any) {
+  const { dir } = useTranslation();
   return (
     <Card className="rounded-[1.2rem] border-none shadow-sm hover:shadow-md transition-all cursor-pointer bg-white p-2 group" onClick={onClick}>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{title}</CardTitle>
         <div className="h-9 w-9 rounded-xl bg-slate-50 flex items-center justify-center group-hover:bg-primary/5 transition-colors">{icon}</div>
       </CardHeader>
-      <CardContent><div className="text-sm font-black text-slate-800">{value}</div></CardContent>
+      <CardContent><div className={`text-sm font-black text-slate-800 ${dir === 'rtl' ? 'text-right' : 'text-left'}`}>{value}</div></CardContent>
     </Card>
   );
 }
