@@ -72,6 +72,18 @@ export default function LoginPage() {
 
       const user = userCredential.user;
 
+      // --- فحص حالة الحساب (تعطيل الدخول) ---
+      const userDocRef = doc(db, "users", user.uid);
+      const userSnap = await getDoc(userDocRef);
+      
+      if (userSnap.exists() && userSnap.data().status === 'inactive') {
+        await auth.signOut();
+        setError("عذراً، هذا الحساب معطل حالياً. يرجى مراجعة إدارة الوكالة لإعادة التنشيط.");
+        setLoading(false);
+        return;
+      }
+      // -------------------------------------
+
       // 3. التحقق من وجود بيانات تفعيل لربط الـ clientId وتجهيز الملف الشخصي
       const provisionDocRef = doc(db, "users_provision", emailLower);
       const provisionSnap = await getDoc(provisionDocRef);
@@ -87,7 +99,7 @@ export default function LoginPage() {
           role: "client",
           status: "active",
           permissions: pData.permissions || ["p_projects", "p_support"],
-          tempPassword: pData.tempPassword || password, // حفظها لسهولة استرجاعها من قبل الأدمن
+          tempPassword: pData.tempPassword || password,
           lastLogin: new Date().toISOString()
         }, { merge: true });
         
@@ -103,8 +115,7 @@ export default function LoginPage() {
       toast({ title: "تم الدخول بنجاح", description: "مرحباً بك في بوابة المستفيد" });
       router.push("/");
     } catch (error: any) {
-      // نستخدم console.warn بدلاً من console.error لتجنب ظهور overlay في بيئة التطوير
-      console.warn("Login Auth Logic Catch:", error.code);
+      console.warn("Login Logic Catch:", error.code || error.message);
       setError(getFriendlyErrorMessage(error.code));
     } finally {
       setLoading(false);
@@ -153,8 +164,8 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
-              <div className="absolute top-1/2 right-3 transform -translate-y-1/2 cursor-pointer" onClick={togglePasswordVisibility}>
-                {showPassword ? <EyeOff className="h-6 w-6 text-slate-400" /> : <Eye className="h-6 w-6 text-slate-400" />}
+              <div className="absolute top-1/2 left-3 transform translate-y-1/2 cursor-pointer" onClick={togglePasswordVisibility}>
+                {showPassword ? <EyeOff className="h-5 w-5 text-slate-400" /> : <Eye className="h-5 w-5 text-slate-400" />}
               </div>
             </div>
             <Button type="submit" className="w-full h-16 font-black rounded-2xl text-xl mt-6 shadow-xl active:scale-95 transition-all" disabled={loading}>
