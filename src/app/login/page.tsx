@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useState, useEffect } from "react";
-import { LogIn, Loader2, AlertCircle, Eye, EyeOff } from "lucide-react";
+import { LogIn, Loader2, AlertCircle, Eye, EyeOff, Languages } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -15,25 +15,12 @@ import { doc, setDoc, getDoc, deleteDoc, onSnapshot } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import Image from "next/image";
 import imagesData from "@/app/lib/placeholder-images.json";
+import { useTranslation } from "@/components/language-provider";
 
 const defaultLogo = imagesData.placeholderImages.find(img => img.id === 'agency-logo');
 
-const getFriendlyErrorMessage = (errorCode: string) => {
-  switch (errorCode) {
-    case "auth/invalid-email": return "البريد الإلكتروني غير صالح.";
-    case "auth/user-not-found": 
-    case "auth/invalid-credential": return "بيانات الدخول غير صحيحة. تأكد من البريد وكلمة المرور.";
-    case "auth/wrong-password": return "كلمة المرور غير صحيحة.";
-    case "auth/email-already-in-use": return "البريد مسجل مسبقاً، يرجى الدخول بكلمة مرورك.";
-    case "auth/weak-password": return "كلمة المرور يجب أن تكون 6 أحرف على الأقل.";
-    case "auth/user-disabled":
-    case "custom/account-disabled": 
-      return "عذراً، هذا الحساب معطل حالياً. يرجى مراجعة الاداره  لإعادة التنشيط.";
-    default: return "حدث خطأ في الدخول. تأكد من بياناتك وحاول مرة أخرى.";
-  }
-};
-
 export default function LoginPage() {
+  const { t, language, setLanguage, dir } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -45,7 +32,6 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!db) return;
-    // مراقبة الشعار من قاعدة البيانات
     const unsub = onSnapshot(doc(db, "settings", "agency"), (docSnap) => {
       if (docSnap.exists() && docSnap.data().logoUrl) {
         setAgencyLogo(docSnap.data().logoUrl);
@@ -83,10 +69,9 @@ export default function LoginPage() {
         }
       }
 
-      if (!userCredential) throw new Error("فشل الحصول على بيانات المستخدم");
+      if (!userCredential) throw new Error("Authentication failed");
 
       const user = userCredential.user;
-
       const userDocRef = doc(db, "users", user.uid);
       const userSnap = await getDoc(userDocRef);
       
@@ -102,7 +87,7 @@ export default function LoginPage() {
         const pData = provisionSnap.data();
         await setDoc(doc(db, "users", user.uid), {
           uid: user.uid,
-          name: pData.name || "مستفيد",
+          name: pData.name || "User",
           email: emailLower,
           clientId: pData.clientId || "", 
           role: "client",
@@ -119,32 +104,41 @@ export default function LoginPage() {
         }, { merge: true });
       }
 
-      toast({ title: "تم الدخول بنجاح", description: "مرحباً بك في بوابة المستفيد" });
+      toast({ title: t('login_success'), description: t('login_success_desc') });
       router.push("/");
     } catch (error: any) {
-      setError(getFriendlyErrorMessage(error.code || error.message));
+      const msg = error.code === "custom/account-disabled" 
+        ? (language === 'ar' ? "عذراً، هذا الحساب معطل حالياً. يرجى مراجعة إدارة الوكالة لإعادة التنشيط." : "Sorry, this account is currently disabled. Please contact management.")
+        : (language === 'ar' ? "بيانات الدخول غير صحيحة. تأكد من البريد وكلمة المرور." : "Invalid login credentials. Please check your email and password.");
+      setError(msg);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a] p-4" dir="rtl">
+    <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a] p-4 font-sans" dir={dir}>
       <Card className="w-full max-w-md border-none shadow-2xl rounded-[2.5rem] overflow-hidden bg-white">
+        <div className="absolute top-6 left-6 right-6 flex justify-end">
+          <Button variant="ghost" size="sm" onClick={() => setLanguage(language === 'en' ? 'ar' : 'en')} className="rounded-full text-slate-400 hover:bg-slate-100 h-10 w-10 p-0">
+            <Languages className="h-5 w-5" />
+          </Button>
+        </div>
+        
         <CardHeader className="text-center bg-white p-10 flex flex-col items-center">
-          <div className="relative h-32 w-32 mb-6">
+          <div className="relative h-28 w-28 mb-6">
             <Image 
               src={agencyLogo} 
-              alt="APP STORE Logo" 
+              alt="Logo" 
               fill 
               unoptimized
               className="object-contain"
-              data-ai-hint="agency logo"
             />
           </div>
-          <CardTitle className="text-2xl font-black tracking-tight text-slate-800">مرحباً بك في APP STORE</CardTitle>
-          <CardDescription className="text-slate-400 font-bold">بوابة المستفيد والعملاء</CardDescription>
+          <CardTitle className="text-2xl font-black tracking-tight text-slate-800">{t('login_welcome')}</CardTitle>
+          <CardDescription className="text-slate-400 font-bold">{t('login_subtitle')}</CardDescription>
         </CardHeader>
+
         <CardContent className="p-10 pt-0 space-y-6">
           <form onSubmit={handleLogin} className="space-y-4">
             {error && (
@@ -155,7 +149,7 @@ export default function LoginPage() {
               </Alert>
             )}
             <div className="space-y-2">
-              <label className="text-sm font-black text-slate-700 pr-2">البريد الإلكتروني</label>
+              <label className={`text-sm font-black text-slate-700 ${dir === 'rtl' ? 'pr-2' : 'pl-2'}`}>{t('email_label')}</label>
               <Input 
                 type="email" 
                 placeholder="example@mail.com" 
@@ -167,7 +161,7 @@ export default function LoginPage() {
               />
             </div>
             <div className="space-y-2 relative">
-              <label className="text-sm font-black text-slate-700 pr-2">كلمة المرور</label>
+              <label className={`text-sm font-black text-slate-700 ${dir === 'rtl' ? 'pr-2' : 'pl-2'}`}>{t('password_label')}</label>
               <Input 
                 type={showPassword ? "text" : "password"} 
                 placeholder="••••••••" 
@@ -177,16 +171,16 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
-              <div className="absolute top-[44px] left-3 cursor-pointer" onClick={() => setShowPassword(!showPassword)}>
+              <div className={`absolute top-[44px] ${dir === 'rtl' ? 'left-4' : 'right-4'} cursor-pointer`} onClick={() => setShowPassword(!showPassword)}>
                 {showPassword ? <EyeOff className="h-5 w-5 text-slate-400" /> : <Eye className="h-5 w-5 text-slate-400" />}
               </div>
             </div>
             <Button type="submit" className="w-full h-16 font-black rounded-2xl text-xl mt-6 shadow-xl bg-primary active:scale-95 transition-all" disabled={loading}>
               {loading ? <Loader2 className="ml-2 h-6 w-6 animate-spin" /> : <LogIn className="ml-2 h-6 w-6" />}
-              دخول البوابة
+              {t('login_button')}
             </Button>
-            <p className="text-center text-[10px] font-bold text-slate-400 mt-4 leading-relaxed">
-              حلول رقمية ... لنمو لا حدود له
+            <p className="text-center text-[10px] font-bold text-slate-400 mt-4 leading-relaxed uppercase tracking-widest">
+              {t('login_footer')}
             </p>
           </form>
         </CardContent>
