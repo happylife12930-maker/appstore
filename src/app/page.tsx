@@ -16,7 +16,9 @@ import {
   ShieldAlert,
   MessageSquare,
   Camera,
-  Upload
+  Upload,
+  Info,
+  CheckCircle2
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
@@ -29,6 +31,15 @@ import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/components/language-provider";
 import Image from "next/image";
 import imagesData from "@/app/lib/placeholder-images.json";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const defaultLogo = imagesData.placeholderImages.find(img => img.id === 'agency-logo');
 
@@ -42,6 +53,8 @@ export default function DashboardPage() {
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [agencyLogo, setAgencyLogo] = useState(defaultLogo?.imageUrl || "");
   const [isUploading, setIsUploading] = useState(false);
+  const [aboutUs, setAboutUs] = useState("");
+  const [isAboutDialogOpen, setIsAboutDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isAdmin = profile?.role === 'admin';
@@ -49,15 +62,17 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!db) return;
     
-    const unsubLogo = onSnapshot(doc(db, "settings", "agency"), (docSnap) => {
-      if (docSnap.exists() && docSnap.data().logoUrl) {
-        setAgencyLogo(docSnap.data().logoUrl);
+    const unsubAgency = onSnapshot(doc(db, "settings", "agency"), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.logoUrl) setAgencyLogo(data.logoUrl);
+        if (data.aboutUs) setAboutUs(data.aboutUs);
       }
     });
 
     if (authLoading || !profile) {
       if (!authLoading) setLoading(false);
-      return () => unsubLogo();
+      return () => unsubAgency();
     }
 
     let unsubscribers: Unsubscribe[] = [];
@@ -101,7 +116,7 @@ export default function DashboardPage() {
     }
 
     return () => {
-      unsubLogo();
+      unsubAgency();
       unsubscribers.forEach(unsub => unsub());
     };
   }, [profile, authLoading]);
@@ -176,11 +191,22 @@ export default function DashboardPage() {
             <p className="text-[10px] text-slate-500 font-bold">{t('welcome_back')} {profile?.name}، {t('follow_updates')}</p>
           </div>
         </div>
-        {isAdmin && (
-          <Button onClick={() => setIsScheduleModalOpen(true)} className="rounded-xl h-11 px-6 font-black text-sm gap-2 shadow-md hover:scale-105 transition-all">
-            <CalendarDays className="h-5 w-5" /> {language === 'ar' ? 'جدول الاختبارات الأسبوعي' : 'Weekly Test Schedule'}
-          </Button>
-        )}
+        <div className="flex items-center gap-3">
+          {!isAdmin && (
+            <Button 
+              variant="outline"
+              onClick={() => setIsAboutDialogOpen(true)}
+              className="rounded-xl h-11 px-6 font-black text-sm gap-2 border-primary/20 text-primary hover:bg-primary/5 shadow-sm active:scale-95 transition-all"
+            >
+              <Info className="h-4 w-4" /> {t('about_us')}
+            </Button>
+          )}
+          {isAdmin && (
+            <Button onClick={() => setIsScheduleModalOpen(true)} className="rounded-xl h-11 px-6 font-black text-sm gap-2 shadow-md hover:scale-105 transition-all">
+              <CalendarDays className="h-5 w-5" /> {language === 'ar' ? 'جدول الاختبارات الأسبوعي' : 'Weekly Test Schedule'}
+            </Button>
+          )}
+        </div>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -221,6 +247,53 @@ export default function DashboardPage() {
       </Card>
 
       <TestingScheduleModal isOpen={isScheduleModalOpen} onClose={() => setIsScheduleModalOpen(false)} />
+
+      {/* About Us Dialog for Clients on Dashboard */}
+      <Dialog open={isAboutDialogOpen} onOpenChange={setIsAboutDialogOpen}>
+        <DialogContent className="rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white max-w-2xl" dir={dir}>
+          <div className="bg-primary p-8 text-primary-foreground relative">
+            <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+              <Info className="h-32 w-32" />
+            </div>
+            <DialogHeader>
+              <DialogTitle className="text-3xl font-black flex items-center gap-3">
+                <Info className="h-8 w-8" /> {t('about_us')}
+              </DialogTitle>
+              <DialogDescription className="text-primary-foreground/70 font-bold mt-2">
+                {t('login_footer')}
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+          
+          <ScrollArea className="max-h-[60vh] p-8">
+            <div className="space-y-6">
+              <div className="p-8 bg-slate-50 rounded-[2rem] border border-slate-100 shadow-inner">
+                <p className="text-slate-700 font-bold leading-loose whitespace-pre-line text-lg">
+                  {aboutUs || (language === 'ar' ? "لا يوجد محتوى متاح حالياً." : "No content available at the moment.")}
+                </p>
+              </div>
+              <div className="flex items-center gap-4 p-6 bg-primary/5 rounded-[1.5rem] border border-primary/10">
+                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                  <CheckCircle2 className="h-6 w-6" />
+                </div>
+                <div>
+                  <p className="font-black text-slate-800 text-sm">شريككم في النجاح الرقمي</p>
+                  <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-0.5">APP STORE Agency</p>
+                </div>
+              </div>
+            </div>
+          </ScrollArea>
+
+          <DialogFooter className="p-8 bg-slate-50 border-t">
+            <Button 
+              onClick={() => setIsAboutDialogOpen(false)}
+              className="w-full h-14 rounded-2xl font-black text-lg shadow-xl"
+            >
+              {t('close')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
