@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
@@ -32,6 +31,14 @@ const translations = {
     save: "Save",
     cancel: "Cancel",
     delete: "Delete",
+    edit: "Edit",
+    add: "Add",
+    close: "Close",
+    confirm: "Confirm",
+    back: "Back",
+    none: "None",
+    manage: "Manage",
+    actions: "Actions",
 
     // Login Page
     login_welcome: "Welcome to APP STORE",
@@ -60,15 +67,82 @@ const translations = {
     finished_projects: "Finished Projects",
     support_inbox: "Support Inbox",
     unread_messages: "unread",
-    none: "None",
-    manage: "Manage",
     status_active: "Active",
     status_pending: "Pending",
     status_completed: "Completed",
+    status_in_progress: "In Progress",
+
+    // Projects Page
+    projects_title: "Projects Management",
+    projects_subtitle: "Follow implementation stages and requirements",
+    my_projects: "My Projects",
+    add_project: "Add New Project",
+    project_name: "Project Name",
+    client_name: "Client",
+    progress: "Total Progress",
+    view_details: "View Implementation Details",
+    no_projects: "No projects in this section currently",
+    search_projects: "Search by project or client name...",
+    all_projects: "All",
+
+    // Clients Page
+    clients_title: "Clients Management",
+    clients_subtitle: "View and edit client data",
+    add_client: "Add New Client",
+    search_clients: "Search by name, company, or phone...",
+    phone_numbers: "Contact Numbers",
+    primary_phone: "Primary",
+    extra_phone: "Extra",
+    company: "Company",
+    remaining_balance: "Remaining Balance",
+
+    // Installments Page
+    installments_title: "Installments Scheduling",
+    installments_subtitle: "Manage scheduled contract amounts and collection",
+    total_installments: "Total Installments",
+    collected: "Collected",
+    pending_amounts: "Pending Amounts",
+    overdue_installments: "Overdue",
+    whatsapp_reminders: "WhatsApp Payment Reminder",
+    print_report: "Print Report",
+    search_installments: "Search by project or client...",
+    from_date: "From Date",
+    to_date: "To Date",
+    collection_ratio: "Collection Rate",
+    due_date: "Due Date",
+    paid: "Paid",
+
+    // Support Page
+    support_center: "Support Center",
+    support_subtitle: "Direct communication with clients",
+    active_threads: "Active",
+    archived_threads: "Archived",
+    search_support: "Search by name or phone...",
+    no_messages: "No messages yet. Start a conversation!",
+    type_message: "Write your message...",
+    delete_chat: "Delete Conversation?",
+    delete_chat_desc: "This will permanently remove the chat history.",
+    online_now: "Online Now",
+
+    // Portal / Users
+    portal_title: "Portal & Permissions",
+    portal_subtitle: "Manage logins, passwords, and account status",
+    activate_clients: "Activate New Clients",
+    active_accounts: "Active Accounts",
+    pending_activation: "Awaiting First Login",
+    temp_password: "Temporary Password",
+    current_password: "Current Password",
+    user_settings: "User Settings",
+    account_status: "Account Status",
+    available_permissions: "Available Permissions",
+    view_projects_perm: "View Projects",
+    support_perm: "Technical Support",
+    finances_perm: "Financial Data",
 
     // Errors
     access_restricted: "Access Restricted",
-    access_restricted_desc: "You don't have permission to view this section currently. Please check with management."
+    access_restricted_desc: "You don't have permission to view this section currently. Please check with management.",
+    account_disabled_msg: "Sorry, this account is currently disabled. Please contact management."
   },
   ar: {
     // القائمة والعام
@@ -89,6 +163,14 @@ const translations = {
     save: "حفظ",
     cancel: "إلغاء",
     delete: "حذف",
+    edit: "تعديل",
+    add: "إضافة",
+    close: "إغلاق",
+    confirm: "تأكيد",
+    back: "عودة",
+    none: "لا توجد",
+    manage: "إدارة",
+    actions: "الإجراءات",
 
     // صفحة الدخول
     login_welcome: "مرحباً بك في APP STORE",
@@ -117,15 +199,82 @@ const translations = {
     finished_projects: "مشاريع منتهية",
     support_inbox: "رسائل الدعم",
     unread_messages: "غير مقروءة",
-    none: "لا توجد",
-    manage: "إدارة",
     status_active: "نشط",
     status_pending: "معلق",
     status_completed: "مكتمل",
+    status_in_progress: "قيد التنفيذ",
+
+    // صفحة المشاريع
+    projects_title: "إدارة المشاريع",
+    projects_subtitle: "متابعة مراحل التنفيذ والمتطلبات",
+    my_projects: "مشاريعي",
+    add_project: "إضافة مشروع جديد",
+    project_name: "اسم المشروع",
+    client_name: "العميل",
+    progress: "إجمالي الإنجاز",
+    view_details: "عرض تفاصيل التنفيذ",
+    no_projects: "لا توجد مشاريع في هذا القسم حالياً",
+    search_projects: "بحث باسم المشروع أو العميل...",
+    all_projects: "الكل",
+
+    // صفحة العملاء
+    clients_title: "إدارة العملاء",
+    clients_subtitle: "عرض وتعديل بيانات العملاء",
+    add_client: "إضافة عميل جديد",
+    search_clients: "ابحث بالاسم، الشركة، أو الهاتف...",
+    phone_numbers: "أرقام التواصل",
+    primary_phone: "أساسي",
+    extra_phone: "إضافي",
+    company: "الشركة",
+    remaining_balance: "الرصيد المتبقي",
+
+    // صفحة الأقساط
+    installments_title: "جدولة ومتابعة الأقساط",
+    installments_subtitle: "إدارة مبالغ التعاقد المجدولة والتحصيل بكل مشروع",
+    total_installments: "إجمالي الأقساط",
+    collected: "تم تحصيله",
+    pending_amounts: "مبالغ معلقة",
+    overdue_installments: "أقساط متأخرة",
+    whatsapp_reminders: "تذكيرات واتساب للسداد",
+    print_report: "طباعة التقرير",
+    search_installments: "ابحث باسم المشروع أو العميل...",
+    from_date: "من تاريخ",
+    to_date: "إلى تاريخ",
+    collection_ratio: "نسبة التحصيل",
+    due_date: "تاريخ الاستحقاق",
+    paid: "مدفوع",
+
+    // صفحة الدعم
+    support_center: "مركز المراسلات",
+    support_subtitle: "تواصل مباشر مع العملاء",
+    active_threads: "نشطة",
+    archived_threads: "الأرشيف",
+    search_support: "ابحث بالاسم أو الهاتف...",
+    no_messages: "لا توجد رسائل سابقة. ابدأ المحادثة الآن!",
+    type_message: "اكتب رسالتك...",
+    delete_chat: "حذف المحادثة؟",
+    delete_chat_desc: "سيتم مسح سجل المحادثة تماماً من النظام.",
+    online_now: "متصل الآن",
+
+    // بوابة المستخدمين
+    portal_title: "بوابة المستفيدين والصلاحيات",
+    portal_subtitle: "إدارة الدخول، كلمات المرور، وحالة الحسابات",
+    activate_clients: "تفعيل عملاء جدد",
+    active_accounts: "الحسابات المسجلة والنشطة",
+    pending_activation: "حسابات قيد التفعيل",
+    temp_password: "كلمة المرور المؤقتة",
+    current_password: "كلمة المرور الحالية",
+    user_settings: "إعدادات حساب المستخدم",
+    account_status: "حالة الحساب",
+    available_permissions: "صلاحيات المستفيد",
+    view_projects_perm: "عرض المشاريع",
+    support_perm: "الدعم الفني",
+    finances_perm: "البيانات المالية",
 
     // الأخطاء
     access_restricted: "عذراً، الصلاحية مقيدة",
-    access_restricted_desc: "لم يتم منحك صلاحية الوصول لهذا القسم حالياً. يرجى مراجعة الإدارة."
+    access_restricted_desc: "لم يتم منحك صلاحية الوصول لهذا القسم حالياً. يرجى مراجعة الإدارة.",
+    account_disabled_msg: "عذراً، هذا الحساب معطل حالياً. يرجى مراجعة إدارة الوكالة لإعادة التنشيط."
   }
 };
 
