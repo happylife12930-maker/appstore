@@ -2,7 +2,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, User } from 'firebase/auth';
+import { onAuthStateChanged, User, signOut } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { auth, db } from '@/lib/firebase';
@@ -15,6 +15,7 @@ interface UserProfile {
   email: string;
   phone?: string;
   clientId?: string;
+  status: 'active' | 'inactive';
 }
 
 interface AuthContextType {
@@ -40,6 +41,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const unsubProfile = onSnapshot(docRef, (docSnap) => {
           if (docSnap.exists()) {
             const data = docSnap.data();
+            
+            // تحقق لحظي من حالة الحساب - إذا تم تعطيله اخرج فوراً
+            if (data.status === 'inactive') {
+              signOut(auth);
+              setProfile(null);
+              setLoading(false);
+              return;
+            }
+
             setProfile({
               uid: firebaseUser.uid,
               role: data.role || 'client',
@@ -47,14 +57,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               name: data.name || "مستفيد",
               email: data.email || firebaseUser.email || "",
               phone: data.phone || "",
-              clientId: data.clientId || "", // التأكد من قراءة المعرف هنا
+              clientId: data.clientId || "",
+              status: data.status || 'active'
             });
           } else {
             setProfile(null);
           }
           setLoading(false);
         }, (err) => {
-          console.error("Auth Profile Listener Error:", err);
+          console.warn("Auth Profile Listener Error:", err);
           setLoading(false);
         });
 
