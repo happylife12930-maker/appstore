@@ -2,8 +2,8 @@
 "use client";
 
 import * as React from "react";
-import { useState } from "react";
-import { LogIn, Loader2, ShieldCheck, AlertCircle, Eye, EyeOff } from "lucide-react";
+import { useState, useEffect } from "react";
+import { LogIn, Loader2, AlertCircle, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -11,8 +11,12 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
-import { doc, setDoc, getDoc, deleteDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc, deleteDoc, onSnapshot } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
+import Image from "next/image";
+import imagesData from "@/app/lib/placeholder-images.json";
+
+const defaultLogo = imagesData.placeholderImages.find(img => img.id === 'agency-logo');
 
 const getFriendlyErrorMessage = (errorCode: string) => {
   switch (errorCode) {
@@ -35,8 +39,20 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [agencyLogo, setAgencyLogo] = useState(defaultLogo?.imageUrl || "");
   const router = useRouter();
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (!db) return;
+    // مراقبة الشعار من قاعدة البيانات
+    const unsub = onSnapshot(doc(db, "settings", "agency"), (docSnap) => {
+      if (docSnap.exists() && docSnap.data().logoUrl) {
+        setAgencyLogo(docSnap.data().logoUrl);
+      }
+    });
+    return () => unsub();
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,20 +66,16 @@ export default function LoginPage() {
     try {
       let userCredential;
 
-      // 1. محاولة تسجيل الدخول
       try {
         userCredential = await signInWithEmailAndPassword(auth, emailLower, password);
       } catch (loginError: any) {
-        // 2. إذا فشل الدخول، نتحقق مما إذا كان حساباً جديداً قيد التفعيل (Provisioning)
         if (loginError.code === "auth/user-not-found" || loginError.code === "auth/invalid-credential") {
           const provisionDocRef = doc(db, "users_provision", emailLower);
           const provisionSnap = await getDoc(provisionDocRef);
           
           if (provisionSnap.exists() && password === provisionSnap.data().tempPassword) {
-            // إنشاء الحساب فعلياً في نظام Auth للمستفيد الجديد
             userCredential = await createUserWithEmailAndPassword(auth, emailLower, password);
           } else {
-            // إذا لم يكن قيد التفعيل أو كلمة المرور خطأ، نطرح الخطأ الأصلي ليظهر في الواجهة
             throw loginError;
           }
         } else {
@@ -75,7 +87,6 @@ export default function LoginPage() {
 
       const user = userCredential.user;
 
-      // --- فحص حالة الحساب (تعطيل الدخول) ---
       const userDocRef = doc(db, "users", user.uid);
       const userSnap = await getDoc(userDocRef);
       
@@ -83,15 +94,12 @@ export default function LoginPage() {
         await auth.signOut();
         throw { code: "custom/account-disabled" };
       }
-      // -------------------------------------
 
-      // 3. التحقق من وجود بيانات تفعيل لربط الـ clientId وتجهيز الملف الشخصي
       const provisionDocRef = doc(db, "users_provision", emailLower);
       const provisionSnap = await getDoc(provisionDocRef);
 
       if (provisionSnap.exists()) {
         const pData = provisionSnap.data();
-        // إنشاء مستند المستخدم الدائم بالصلاحيات والبيانات المربوطة
         await setDoc(doc(db, "users", user.uid), {
           uid: user.uid,
           name: pData.name || "مستفيد",
@@ -104,10 +112,8 @@ export default function LoginPage() {
           lastLogin: new Date().toISOString()
         }, { merge: true });
         
-        // حذف مستند التفعيل بعد النجاح لضمان عدم تكرار العملية
         await deleteDoc(provisionDocRef).catch(err => console.warn("Provision Cleanup:", err));
       } else {
-        // تحديث وقت الدخول للمستخدمين المسجلين مسبقاً
         await setDoc(doc(db, "users", user.uid), {
           lastLogin: new Date().toISOString()
         }, { merge: true });
@@ -116,24 +122,30 @@ export default function LoginPage() {
       toast({ title: "تم الدخول بنجاح", description: "مرحباً بك في بوابة المستفيد" });
       router.push("/");
     } catch (error: any) {
-      console.warn("Login Logic Catch:", error.code || error.message);
-      setError(getFriendlyErrorMessage(error.code));
+      setError(getFriendlyErrorMessage(error.code || error.message));
     } finally {
       setLoading(false);
     }
   };
 
-  const togglePasswordVisibility = () => setShowPassword(!showPassword);
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4" dir="rtl">
+    <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a] p-4" dir="rtl">
       <Card className="w-full max-w-md border-none shadow-2xl rounded-[2.5rem] overflow-hidden bg-white">
-        <CardHeader className="text-center bg-primary p-10 text-primary-foreground">
-          <ShieldCheck className="h-16 w-16 mx-auto mb-4" />
-          <CardTitle className="text-3xl font-black tracking-tight">APP STORE</CardTitle>
-          <CardDescription className="text-primary-foreground/80 font-bold">بوابة المستفيد والعملاء</CardDescription>
+        <CardHeader className="text-center bg-white p-10 flex flex-col items-center">
+          <div className="relative h-32 w-32 mb-6">
+            <Image 
+              src={agencyLogo} 
+              alt="APP STORE Logo" 
+              fill 
+              unoptimized
+              className="object-contain"
+              data-ai-hint="agency logo"
+            />
+          </div>
+          <CardTitle className="text-2xl font-black tracking-tight text-slate-800">مرحباً بك في APP STORE</CardTitle>
+          <CardDescription className="text-slate-400 font-bold">بوابة المستفيد والعملاء</CardDescription>
         </CardHeader>
-        <CardContent className="p-10 space-y-6">
+        <CardContent className="p-10 pt-0 space-y-6">
           <form onSubmit={handleLogin} className="space-y-4">
             {error && (
               <Alert variant="destructive" className="rounded-2xl border-rose-100 bg-rose-50 text-rose-600">
@@ -165,16 +177,16 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
-              <div className="absolute top-1/2 left-3 transform translate-y-1/2 cursor-pointer" onClick={togglePasswordVisibility}>
+              <div className="absolute top-[44px] left-3 cursor-pointer" onClick={() => setShowPassword(!showPassword)}>
                 {showPassword ? <EyeOff className="h-5 w-5 text-slate-400" /> : <Eye className="h-5 w-5 text-slate-400" />}
               </div>
             </div>
-            <Button type="submit" className="w-full h-16 font-black rounded-2xl text-xl mt-6 shadow-xl active:scale-95 transition-all" disabled={loading}>
+            <Button type="submit" className="w-full h-16 font-black rounded-2xl text-xl mt-6 shadow-xl bg-primary active:scale-95 transition-all" disabled={loading}>
               {loading ? <Loader2 className="ml-2 h-6 w-6 animate-spin" /> : <LogIn className="ml-2 h-6 w-6" />}
               دخول البوابة
             </Button>
             <p className="text-center text-[10px] font-bold text-slate-400 mt-4 leading-relaxed">
-              تأكد من استخدام البريد وكلمة المرور المزودة لك من قبل الإدارة.
+              حلول رقمية ... لنمو لا حدود له
             </p>
           </form>
         </CardContent>
