@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -16,7 +15,9 @@ import {
   Lock,
   Info,
   Save,
-  CheckCircle2
+  CheckCircle2,
+  Facebook,
+  Globe
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/components/auth-provider";
@@ -26,6 +27,8 @@ import { Badge } from "@/components/ui/badge";
 import { useTranslation } from "@/components/language-provider";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
@@ -48,6 +51,7 @@ export default function ProfilePage() {
   
   // About Us feature states
   const [aboutUs, setAboutUs] = useState("");
+  const [facebookUrl, setFacebookUrl] = useState("");
   const [isSavingAbout, setIsSavingAbout] = useState(false);
 
   const isAdmin = profile?.role === 'admin';
@@ -60,10 +64,12 @@ export default function ProfilePage() {
       return;
     }
 
-    // Monitor agency settings (including About Us)
+    // Monitor agency settings (including About Us and Social Links)
     const unsubAgency = onSnapshot(doc(db, "settings", "agency"), (docSnap) => {
       if (docSnap.exists()) {
-        setAboutUs(docSnap.data().aboutUs || "");
+        const data = docSnap.data();
+        setAboutUs(data.aboutUs || "");
+        setFacebookUrl(data.facebookUrl || "");
       }
     });
 
@@ -97,14 +103,18 @@ export default function ProfilePage() {
     };
   }, [profile, authLoading]);
 
-  const handleSaveAboutUs = async () => {
+  const handleSaveAgencyInfo = async () => {
     if (!db || !isAdmin) return;
     setIsSavingAbout(true);
     try {
-      await setDoc(doc(db, "settings", "agency"), { aboutUs }, { merge: true });
+      await setDoc(doc(db, "settings", "agency"), { 
+        aboutUs, 
+        facebookUrl 
+      }, { merge: true });
+      
       toast({ 
         title: language === 'ar' ? "تم الحفظ" : "Saved", 
-        description: language === 'ar' ? "تم تحديث نبذة الوكالة بنجاح." : "Agency description updated successfully." 
+        description: language === 'ar' ? "تم تحديث بيانات الوكالة بنجاح." : "Agency information updated successfully." 
       });
     } catch (err) {
       toast({ title: "Error", variant: "destructive" });
@@ -171,17 +181,34 @@ export default function ProfilePage() {
                   <Info className="h-5 w-5 text-primary" /> {t('edit_about_us')}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-6 space-y-4">
-                <Textarea 
-                  value={aboutUs} 
-                  onChange={(e) => setAboutUs(e.target.value)}
-                  placeholder={t('about_us_placeholder')}
-                  className="min-h-[200px] rounded-2xl font-bold text-sm border-slate-200 focus-visible:ring-primary/20 bg-slate-50/50"
-                />
+              <CardContent className="p-6 space-y-6">
+                <div className="space-y-2">
+                  <Label className="font-black text-slate-700 pr-2">{t('about_us')}</Label>
+                  <Textarea 
+                    value={aboutUs} 
+                    onChange={(e) => setAboutUs(e.target.value)}
+                    placeholder={t('about_us_placeholder')}
+                    className="min-h-[150px] rounded-2xl font-bold text-sm border-slate-200 focus-visible:ring-primary/20 bg-slate-50/50"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="font-black text-slate-700 pr-2 flex items-center gap-2">
+                    <Facebook className="h-4 w-4 text-blue-600" /> {t('facebook_link')}
+                  </Label>
+                  <Input 
+                    value={facebookUrl}
+                    onChange={(e) => setFacebookUrl(e.target.value)}
+                    placeholder="https://facebook.com/your-page"
+                    className="rounded-xl h-11 font-bold text-xs bg-slate-50/50 border-slate-200"
+                    dir="ltr"
+                  />
+                </div>
+
                 <Button 
-                  onClick={handleSaveAboutUs} 
+                  onClick={handleSaveAgencyInfo} 
                   disabled={isSavingAbout}
-                  className="w-full h-12 rounded-xl font-black gap-2 shadow-lg"
+                  className="w-full h-14 rounded-2xl font-black gap-2 shadow-lg active:scale-95 transition-all"
                 >
                   {isSavingAbout ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                   {t('save')}
