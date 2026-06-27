@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -45,25 +46,9 @@ function ProjectsContent() {
     if (qParam) setSearchQuery(qParam);
   }, [searchParams]);
 
-  const stats = useMemo(() => {
-    const total = projects.length;
-    const completed = projects.filter(p => p.status === 'مكتمل').length;
-    const active = total - completed;
-    return { total, completed, active };
-  }, [projects]);
-
-  const filteredProjects = useMemo(() => {
-    const s = searchQuery.toLowerCase().trim();
-    return projects.filter(p => {
-      const matchesSearch = !s || p.name?.toLowerCase().includes(s) || p.clientName?.toLowerCase().includes(s);
-      const matchesStatus = statusFilter === 'all' ? true : statusFilter === 'completed' ? p.status === 'مكتمل' : p.status !== 'مكتمل';
-      return matchesSearch && matchesStatus;
-    });
-  }, [projects, searchQuery, statusFilter]);
-
   useEffect(() => {
     if (!db || authLoading || !profile || !hasProjectPermission) {
-      if (!authLoading && !hasProjectPermission) setLoading(false);
+      if (!authLoading) setLoading(false);
       return;
     }
     let q = profile.role === 'admin' ? query(collection(db, "projects")) : query(collection(db, "projects"), where("clientId", "==", profile.clientId || "null"));
@@ -73,6 +58,34 @@ function ProjectsContent() {
     }, () => setLoading(false));
     return () => unsub();
   }, [profile, authLoading, hasProjectPermission]);
+
+  if (authLoading || loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin text-primary" /></div>;
+
+  if (!hasProjectPermission) {
+    return (
+      <div className="max-w-7xl mx-auto py-20 text-center">
+        <div className="bg-white p-20 rounded-[3rem] shadow-sm border border-dashed border-slate-200">
+          <Lock className="h-20 w-20 mx-auto mb-6 text-slate-200" />
+          <h2 className="text-3xl font-black text-slate-800 mb-2">عذراً، الصلاحية مقيدة</h2>
+          <p className="text-slate-500 font-bold">لم يتم منحك صلاحية الوصول للمشاريع حالياً. يرجى مراجعة الإدارة.</p>
+          <Button onClick={() => router.push("/")} className="mt-8 rounded-2xl h-12 px-8 font-black">العودة للرئيسية</Button>
+        </div>
+      </div>
+    );
+  }
+
+  const stats = {
+    total: projects.length,
+    completed: projects.filter(p => p.status === 'مكتمل').length,
+    active: projects.length - projects.filter(p => p.status === 'مكتمل').length
+  };
+
+  const filteredProjects = projects.filter(p => {
+    const s = searchQuery.toLowerCase().trim();
+    const matchesSearch = !s || p.name?.toLowerCase().includes(s) || p.clientName?.toLowerCase().includes(s);
+    const matchesStatus = statusFilter === 'all' ? true : statusFilter === 'completed' ? p.status === 'مكتمل' : p.status !== 'مكتمل';
+    return matchesSearch && matchesStatus;
+  });
 
   const handleSaveProject = async (data: ProjectData) => {
     if (!db) return;
@@ -90,8 +103,6 @@ function ProjectsContent() {
     if (!db || !confirm("حذف المشروع؟")) return;
     try { await deleteDoc(doc(db, "projects", id)); toast({ title: "تم الحذف" }); } catch (err) {}
   };
-
-  if (loading || authLoading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin text-primary" /></div>;
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 pb-20" dir="rtl">
