@@ -19,8 +19,10 @@ import { useAuth } from "@/components/auth-provider";
 import { db } from "@/lib/firebase";
 import { doc, onSnapshot, collection, query, where } from "firebase/firestore";
 import { Badge } from "@/components/ui/badge";
+import { useTranslation } from "@/components/language-provider";
 
 export default function ProfilePage() {
+  const { t, dir, language } = useTranslation();
   const { profile, loading: authLoading } = useAuth();
   const [clientData, setClientData] = useState<any>(null);
   const [projects, setProjects] = useState<any[]>([]);
@@ -66,7 +68,7 @@ export default function ProfilePage() {
   if (loading || authLoading) return (
     <div className="flex flex-col items-center justify-center py-20 gap-4">
       <Loader2 className="h-12 w-12 animate-spin text-primary" />
-      <p className="font-bold text-slate-500">جاري تحميل ملفك الشخصي...</p>
+      <p className="font-bold text-slate-500">{t('loading')}</p>
     </div>
   );
 
@@ -74,15 +76,15 @@ export default function ProfilePage() {
   const canViewProjects = profile?.role === 'admin' || profile?.permissions.includes('p_projects');
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8 pb-20" dir="rtl">
+    <div className="max-w-5xl mx-auto space-y-8 pb-20" dir={dir}>
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-8 rounded-[2.5rem] shadow-sm border">
         <div className="flex items-center gap-4">
           <div className="p-4 bg-primary/10 rounded-2xl text-primary">
             <User className="h-8 w-8" />
           </div>
           <div>
-            <h1 className="text-3xl font-black text-slate-800 tracking-tight">حسابي الشخصي</h1>
-            <p className="text-slate-500 font-bold">إدارة بياناتك ومتابعة حالتك في النظام</p>
+            <h1 className="text-3xl font-black text-slate-800 tracking-tight">{t('profile_title')}</h1>
+            <p className="text-slate-500 font-bold">{t('profile_subtitle')}</p>
           </div>
         </div>
       </header>
@@ -96,7 +98,7 @@ export default function ProfilePage() {
               </div>
               <CardTitle className="text-xl font-black">{profile?.name}</CardTitle>
               <Badge variant="outline" className="mt-2 rounded-lg font-black bg-primary/5 text-primary">
-                {profile?.role === 'client' ? 'مستفيد معتمد' : 'مدير النظام'}
+                {profile?.role === 'client' ? t('role_client') : t('role_admin')}
               </Badge>
             </CardHeader>
             <CardContent className="p-8 space-y-4">
@@ -106,7 +108,7 @@ export default function ProfilePage() {
               </div>
               <div className="flex items-center gap-3 text-slate-600">
                 <ShieldCheck className="h-4 w-4 text-green-500" />
-                <span className="font-bold text-sm">الحالة: {clientData ? 'مفعل' : 'قيد الربط'}</span>
+                <span className="font-bold text-sm">{t('account_status')}: {clientData ? t('status_active') : t('status_pending')}</span>
               </div>
             </CardContent>
           </Card>
@@ -115,16 +117,16 @@ export default function ProfilePage() {
             <Card className="rounded-[2.5rem] border-none shadow-sm bg-primary p-8 text-primary-foreground text-center relative overflow-hidden">
               <Wallet className="absolute -bottom-4 -left-4 h-32 w-32 opacity-10 rotate-12" />
               <div className="relative z-10 space-y-2">
-                <p className="font-black text-primary-foreground/70 uppercase text-xs tracking-widest">صافي الرصيد المستحق</p>
+                <p className="font-black text-primary-foreground/70 uppercase text-xs tracking-widest">{t('net_balance')}</p>
                 <h2 className="text-4xl font-black">
-                  {(clientData?.balance || 0).toLocaleString('ar-EG')} <span className="text-lg">ج.م</span>
+                  {(clientData?.balance || 0).toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US')} <span className="text-lg">{language === 'ar' ? 'ج.م' : 'EGP'}</span>
                 </h2>
               </div>
             </Card>
           ) : (
             <Card className="rounded-[2.5rem] border-none shadow-sm bg-slate-100 p-8 text-slate-400 text-center border-dashed border-2">
               <Lock className="h-10 w-10 mx-auto mb-2 opacity-20" />
-              <p className="font-black text-xs">البيانات المالية محجوبة</p>
+              <p className="font-black text-xs">{t('finances_hidden')}</p>
             </Card>
           )}
         </div>
@@ -134,21 +136,21 @@ export default function ProfilePage() {
             <Card className="rounded-[2.5rem] border-none shadow-sm bg-white overflow-hidden border">
               <CardHeader className="bg-slate-50 border-b p-8">
                 <CardTitle className="text-xl font-black flex items-center gap-2">
-                  <FileText className="h-6 w-6 text-primary" /> كشف الحساب المالي
+                  <FileText className="h-6 w-6 text-primary" /> {t('financial_statement')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
-                    <p className="text-[10px] font-black text-slate-400 uppercase mb-1">إجمالي التعاقدات</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase mb-1">{t('total_invoices')}</p>
                     <p className="text-2xl font-black text-slate-800">
-                      {(clientData?.totalInvoices || 0).toLocaleString('ar-EG')} ج.م
+                      {(clientData?.totalInvoices || 0).toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US')} {language === 'ar' ? 'ج.م' : 'EGP'}
                     </p>
                   </div>
                   <div className="p-6 bg-green-50 rounded-3xl border border-green-100">
-                    <p className="text-[10px] font-black text-green-600 uppercase mb-1">إجمالي المدفوعات</p>
+                    <p className="text-[10px] font-black text-green-600 uppercase mb-1">{t('total_payments')}</p>
                     <p className="text-2xl font-black text-green-700">
-                      {(clientData?.totalPayments || 0).toLocaleString('ar-EG')} ج.م
+                      {(clientData?.totalPayments || 0).toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US')} {language === 'ar' ? 'ج.م' : 'EGP'}
                     </p>
                   </div>
                 </div>
@@ -160,7 +162,7 @@ export default function ProfilePage() {
             <Card className="rounded-[2.5rem] border-none shadow-sm bg-white overflow-hidden border">
               <CardHeader className="bg-slate-50 border-b p-8">
                 <CardTitle className="text-xl font-black flex items-center gap-2">
-                  <Briefcase className="h-6 w-6 text-primary" /> المشاريع المرتبطة
+                  <Briefcase className="h-6 w-6 text-primary" /> {t('linked_projects')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-8 space-y-4">
@@ -176,17 +178,17 @@ export default function ProfilePage() {
                       </div>
                     </div>
                     <div className="font-black text-slate-700 text-sm">
-                      {canViewFinances ? `${(project.cost || 0).toLocaleString('ar-EG')} ج.م` : '---'}
+                      {canViewFinances ? `${(project.cost || 0).toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US')} ${language === 'ar' ? 'ج.م' : 'EGP'}` : '---'}
                     </div>
                   </div>
                 ))}
-                {projects.length === 0 && <p className="text-center py-10 opacity-30 font-bold">لا توجد مشاريع مسجلة</p>}
+                {projects.length === 0 && <p className="text-center py-10 opacity-30 font-bold">{t('no_projects_recorded')}</p>}
               </CardContent>
             </Card>
           ) : (
             <Card className="rounded-[2.5rem] border-none shadow-sm bg-slate-50 p-20 text-center border-dashed border-2">
                <Lock className="h-16 w-16 mx-auto mb-4 opacity-10" />
-               <p className="font-black text-slate-400">صلاحية عرض المشاريع معطلة حالياً</p>
+               <p className="font-black text-slate-400">{t('projects_permission_disabled')}</p>
             </Card>
           )}
         </div>
