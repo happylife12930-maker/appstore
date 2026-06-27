@@ -13,7 +13,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/components/auth-provider";
 import { db } from "@/lib/firebase";
 import { 
-  collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, setDoc, updateDoc, increment, limit, deleteDoc 
+  collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, setDoc, updateDoc, increment, limit, deleteDoc, Unsubscribe 
 } from "firebase/firestore";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -73,33 +73,54 @@ function SupportContent() {
   useEffect(() => {
     if (!db || authLoading || !profile || !hasSupportPermission) return;
     
-    const unsubThreads = onSnapshot(query(collection(db, "support_threads")), (snap) => {
-      const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      setThreads(data);
-      
-      if (isAdmin) {
+    let unsubThreads: Unsubscribe;
+
+    // الأدمن فقط هو من يراقب كافة الخيوط
+    if (isAdmin) {
+      unsubThreads = onSnapshot(query(collection(db, "support_threads")), (snap) => {
+        const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setThreads(data);
+        
         const totalUnread = data.reduce((acc, curr: any) => acc + (curr.unreadAdmin || 0), 0);
         if (totalUnread > prevUnreadCountRef.current) {
           playNotificationSound();
         }
         prevUnreadCountRef.current = totalUnread;
+        setLoading(false);
+      }, (err) => {
+        console.error("Threads Access Error:", err);
+        setLoading(false);
+      });
+    } else {
+      // العميل يراقب فقط محادثته الخاصة لضمان عدم حدوث خطأ Permission Denied
+      if (profile.clientId) {
+        unsubThreads = onSnapshot(doc(db, "support_threads", profile.clientId), (docSnap) => {
+          if (docSnap.exists()) {
+            setThreads([{ id: docSnap.id, ...docSnap.data() }]);
+          }
+          setLoading(false);
+        }, (err) => {
+          console.error("Personal Thread Access Error:", err);
+          setLoading(false);
+        });
+        setActiveThreadId(profile.clientId);
+      } else {
+        setLoading(false);
       }
-      setLoading(false);
-    });
+    }
 
     const unsubClients = onSnapshot(collection(db, "clients"), (snap) => {
       setAllClients(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
 
-    if (!isAdmin && profile.clientId) {
-      setActiveThreadId(profile.clientId);
-    }
-
     if (directClientId) {
       setActiveThreadId(directClientId);
     }
 
-    return () => { unsubThreads(); unsubClients(); };
+    return () => { 
+      if (unsubThreads) unsubThreads(); 
+      unsubClients(); 
+    };
   }, [isAdmin, profile, authLoading, hasSupportPermission, directClientId]);
 
   useEffect(() => {
@@ -307,7 +328,7 @@ function SupportContent() {
                               e.stopPropagation();
                               setThreadToDelete(item.id);
                             }}
-                            className="h-8 w-8 text-rose-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                            className="h-8 w-8 text-rose-300 hover:text-rose-50 rounded-lg transition-colors"
                             title="حذف"
                           >
                             <Trash2 className="h-4 w-4" />
