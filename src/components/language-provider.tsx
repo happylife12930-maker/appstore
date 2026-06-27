@@ -139,6 +139,20 @@ const translations = {
     support_perm: "Technical Support",
     finances_perm: "Financial Data",
 
+    // Profile Page
+    profile_title: "My Profile",
+    profile_subtitle: "Manage your data and follow your status in the system",
+    role_client: "Certified Beneficiary",
+    role_admin: "System Administrator",
+    net_balance: "Net Outstanding Balance",
+    finances_hidden: "Financial Data Hidden",
+    financial_statement: "Financial Account Statement",
+    total_invoices: "Total Contracts",
+    total_payments: "Total Payments",
+    linked_projects: "Linked Projects",
+    no_projects_recorded: "No projects recorded",
+    projects_permission_disabled: "Projects viewing permission is currently disabled",
+
     // Errors
     access_restricted: "Access Restricted",
     access_restricted_desc: "You don't have permission to view this section currently. Please check with management.",
@@ -270,6 +284,20 @@ const translations = {
     view_projects_perm: "عرض المشاريع",
     support_perm: "الدعم الفني",
     finances_perm: "البيانات المالية",
+
+    // صفحة الملف الشخصي
+    profile_title: "حسابي الشخصي",
+    profile_subtitle: "إدارة بياناتك ومتابعة حالتك في النظام",
+    role_client: "مستفيد معتمد",
+    role_admin: "مدير النظام",
+    net_balance: "صافي الرصيد المستحق",
+    finances_hidden: "البيانات المالية محجوبة",
+    financial_statement: "كشف الحساب المالي",
+    total_invoices: "إجمالي التعاقدات",
+    total_payments: "إجمالي المدفوعات",
+    linked_projects: "المشاريع المرتبطة",
+    no_projects_recorded: "لا توجد مشاريع مسجلة",
+    projects_permission_disabled: "صلاحية عرض المشاريع معطلة حالياً",
 
     // الأخطاء
     access_restricted: "عذراً، الصلاحية مقيدة",
