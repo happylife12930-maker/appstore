@@ -39,6 +39,7 @@ const translations = {
     none: "None",
     manage: "Manage",
     actions: "Actions",
+    facebook: "Facebook",
 
     // Login Page
     login_welcome: "Welcome to APP STORE",
@@ -155,6 +156,7 @@ const translations = {
     about_us: "About Us",
     edit_about_us: "Edit Agency Description",
     about_us_placeholder: "Describe your agency to clients here...",
+    facebook_link: "Facebook Page Link",
 
     // Errors
     access_restricted: "Access Restricted",
@@ -188,6 +190,7 @@ const translations = {
     none: "لا توجد",
     manage: "إدارة",
     actions: "الإجراءات",
+    facebook: "فيسبوك",
 
     // صفحة الدخول
     login_welcome: "مرحباً بك في APP STORE",
@@ -302,8 +305,9 @@ const translations = {
     no_projects_recorded: "لا توجد مشاريع مسجلة",
     projects_permission_disabled: "صلاحية عرض المشاريع معطلة حالياً",
     about_us: "نبذة عنا",
-    edit_about_us: "تعديل النبذة التعريفية",
+    edit_about_us: "تعديل النبذة التعريفية والروابط",
     about_us_placeholder: "اكتب نبذة تعريفية عن الوكالة تظهر للمستفيدين هنا...",
+    facebook_link: "رابط صفحة الفيسبوك",
 
     // الأخطاء
     access_restricted: "عذراً، الصلاحية مقيدة",
