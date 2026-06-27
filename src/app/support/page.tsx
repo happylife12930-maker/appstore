@@ -1,9 +1,10 @@
+
 "use client";
 
 import * as React from "react";
 import { useState, useEffect, useRef, Suspense } from "react";
 import { 
-  Send, Search, Loader2, MessageSquare, ArrowRight, Trash2, UserPlus, Phone
+  Send, Search, Loader2, MessageSquare, ArrowRight, Trash2, UserPlus, Phone, Lock
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,15 +35,18 @@ function SupportContent() {
   
   const { toast } = useToast();
   const router = useRouter();
-  const searchParams = useSearchParams();
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isAdmin = profile?.role === 'admin';
+  const hasSupportPermission = isAdmin || (profile?.permissions || []).includes('p_support');
 
   useEffect(() => { if (messagesEndRef.current) messagesEndRef.current.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
   useEffect(() => {
-    if (!db || authLoading || !profile) return;
+    if (!db || authLoading || !profile || !hasSupportPermission) {
+      if (!authLoading) setLoading(false);
+      return;
+    }
     
     if (isAdmin) {
       const unsubThreads = onSnapshot(query(collection(db, "support_threads"), orderBy("lastMessageTime", "desc")), (snap) => {
@@ -59,17 +63,32 @@ function SupportContent() {
       if (profile.clientId) setActiveThreadId(profile.clientId);
       setLoading(false);
     }
-  }, [isAdmin, profile, authLoading]);
+  }, [isAdmin, profile, authLoading, hasSupportPermission]);
 
   useEffect(() => {
-    if (!db || !activeThreadId || !profile) return;
+    if (!db || !activeThreadId || !profile || !hasSupportPermission) return;
     const q = query(collection(db, "support_threads", activeThreadId, "messages"), orderBy("timestamp", "asc"), limit(100));
     const unsub = onSnapshot(q, (snap) => {
       setMessages(snap.docs.map(d => ({ id: d.id, ...d.data() })));
       updateDoc(doc(db, "support_threads", activeThreadId), isAdmin ? { unreadAdmin: 0 } : { unreadClient: 0 }).catch(() => {});
     }, (e) => console.warn("Messages Denied:", e));
     return () => unsub();
-  }, [activeThreadId, isAdmin, profile]);
+  }, [activeThreadId, isAdmin, profile, hasSupportPermission]);
+
+  if (authLoading || loading) return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="animate-spin text-primary" /></div>;
+
+  if (!hasSupportPermission) {
+    return (
+      <div className="max-w-4xl mx-auto py-20 text-center">
+        <div className="bg-white p-12 rounded-[2.5rem] shadow-sm border border-dashed border-slate-200">
+          <Lock className="h-16 w-16 mx-auto mb-6 text-slate-200" />
+          <h2 className="text-2xl font-black text-slate-800 mb-2">الدعم الفني مقيد</h2>
+          <p className="text-slate-500 font-bold text-sm">ليس لديك صلاحية الوصول للمراسلات حالياً. يرجى مراجعة مدير الوكالة.</p>
+          <Button onClick={() => router.push("/")} className="mt-8 rounded-xl h-10 px-8 font-black">العودة للرئيسية</Button>
+        </div>
+      </div>
+    );
+  }
 
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -84,16 +103,7 @@ function SupportContent() {
     } catch (err) {}
   };
 
-  const filteredResults = React.useMemo(() => {
-    const q = searchQuery.trim();
-    if (!q) return threads.filter(t => (t.status || "active") === activeTab).map(t => ({ ...t, isExisting: true }));
-    return allClients.filter(c => (c.phone?.includes(q) || c.phone2?.includes(q))).map(client => {
-      const existing = threads.find(t => t.id === client.id);
-      return { id: client.id, clientName: client.name, clientPhone: client.phone, lastMessage: existing?.lastMessage, isExisting: !!existing, status: existing?.status || "new" };
-    });
-  }, [threads, allClients, searchQuery, activeTab]);
-
-  if (authLoading || loading) return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="animate-spin text-primary" /></div>;
+  const filteredResults = threads.filter(t => (t.status || "active") === activeTab);
 
   return (
     <div className="max-w-4xl mx-auto space-y-4" dir="rtl">
@@ -114,7 +124,6 @@ function SupportContent() {
               <Card key={item.id} onClick={() => setActiveThreadId(item.id)} className="rounded-xl border-none shadow-sm cursor-pointer hover:shadow-md bg-white border">
                 <CardHeader className="p-3 pb-1 flex flex-row items-center justify-between">
                   <div className="flex items-center gap-2"><div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-black text-xs">{item.clientName?.[0]}</div><div><p className="font-black text-xs">{item.clientName}</p><p className="text-[9px] text-slate-400 font-bold" dir="ltr">{item.clientPhone}</p></div></div>
-                  {item.status === 'new' && <Badge className="bg-green-500 text-[8px] h-4">جديد</Badge>}
                 </CardHeader>
                 <CardContent className="p-3 pt-0"><p className="text-[10px] text-slate-500 line-clamp-1 italic">{item.lastMessage || 'لا توجد رسائل'}</p></CardContent>
               </Card>
