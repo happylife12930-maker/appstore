@@ -66,9 +66,9 @@ function PaymentsContent() {
 
     const projectsRows = clientProjects.map((p: any) => `
       <tr>
-        <td>${p.name}</td>
-        <td>${p.status}</td>
-        <td style="text-align: left;">${(p.cost || 0).toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US')} ${language === 'ar' ? 'ج.م' : 'EGP'}</td>
+        <td style="padding: 15px; border-bottom: 1px solid #f1f5f9; font-weight: 700;">${p.name}</td>
+        <td style="padding: 15px; border-bottom: 1px solid #f1f5f9; color: #64748b;">${p.status}</td>
+        <td style="padding: 15px; border-bottom: 1px solid #f1f5f9; text-align: ${dir === 'rtl' ? 'left' : 'right'}; font-weight: 900;">${(p.cost || 0).toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US')} ${language === 'ar' ? 'ج.م' : 'EGP'}</td>
       </tr>
     `).join('');
 
@@ -77,90 +77,108 @@ function PaymentsContent() {
     printWindow.document.write(`
       <html dir="${dir}">
         <head>
-          <title>${language === 'ar' ? 'كشف حساب' : 'Account Statement'} - ${client.name}</title>
+          <title>${language === 'ar' ? 'كشف حساب مالي معتمد' : 'Certified Financial Statement'} - ${client.name}</title>
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap');
-            body { font-family: 'Cairo', sans-serif; padding: 40px; color: #1e293b; line-height: 1.6; background: #fff; }
-            .invoice-box { max-width: 800px; margin: auto; border: 1px solid #e2e8f0; padding: 40px; border-radius: 20px; box-shadow: 0 0 20px rgba(0,0,0,0.05); }
-            .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 4px solid #22c55e; padding-bottom: 20px; margin-bottom: 30px; }
-            .logo { height: 80px; object-fit: contain; }
-            .agency-info { text-align: ${dir === 'rtl' ? 'left' : 'right'}; font-size: 12px; color: #64748b; }
-            .info-grid { display: grid; grid-template-cols: 1fr 1fr; gap: 30px; margin-bottom: 40px; }
-            .section-title { font-weight: 900; color: #1e293b; border-${dir === 'rtl' ? 'right' : 'left'}: 4px solid #1e293b; padding-${dir === 'rtl' ? 'right' : 'left'}: 10px; margin-bottom: 15px; font-size: 16px; text-transform: uppercase; }
-            table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-            th { background: #f8fafc; color: #64748b; padding: 12px; text-align: ${dir === 'rtl' ? 'right' : 'left'}; font-size: 12px; border-bottom: 2px solid #e2e8f0; }
-            td { padding: 12px; border-bottom: 1px solid #f1f5f9; font-size: 14px; font-weight: 700; }
-            .totals { margin-top: 30px; background: #f8fafc; padding: 25px; border-radius: 15px; }
-            .total-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px; }
-            .total-row.grand { font-size: 20px; font-weight: 900; color: #e11d48; margin-top: 15px; border-top: 2px dashed #cbd5e1; padding-top: 15px; }
-            .footer { margin-top: 50px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 20px; }
-            @media print { .no-print { display: none; } body { padding: 0; } .invoice-box { border: none; box-shadow: none; } }
+            body { font-family: 'Cairo', sans-serif; padding: 0; margin: 0; color: #1e293b; background: #f8fafc; }
+            .page-container { max-width: 900px; margin: 30px auto; background: white; padding: 50px; border-radius: 30px; box-shadow: 0 10px 50px rgba(0,0,0,0.05); position: relative; }
+            .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 50px; padding-bottom: 30px; border-bottom: 5px solid #1e293b; }
+            .logo-section { display: flex; flex-direction: column; gap: 10px; }
+            .logo { height: 100px; object-fit: contain; }
+            .agency-name { font-size: 24px; font-weight: 900; color: #1e293b; letter-spacing: -1px; }
+            .document-title { text-align: center; margin-bottom: 40px; }
+            .document-title h1 { font-size: 28px; font-weight: 900; color: #1e293b; text-transform: uppercase; margin: 0; }
+            .document-title p { color: #64748b; font-weight: 700; margin-top: 5px; }
+            .info-grid { display: grid; grid-template-cols: 1fr 1fr; gap: 40px; margin-bottom: 50px; }
+            .info-box { background: #f8fafc; padding: 25px; border-radius: 20px; border: 1px solid #e2e8f0; }
+            .info-box h3 { font-size: 14px; font-weight: 900; color: #64748b; text-transform: uppercase; margin-bottom: 15px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; }
+            .info-item { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 15px; }
+            .info-item b { color: #1e293b; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 40px; }
+            th { background: #1e293b; color: white; padding: 18px 15px; text-align: ${dir === 'rtl' ? 'right' : 'left'}; font-size: 13px; font-weight: 900; }
+            .totals-section { background: #1e293b; color: white; padding: 35px; border-radius: 25px; margin-top: 20px; box-shadow: 0 15px 30px rgba(0,0,0,0.1); }
+            .total-row { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 16px; font-weight: 700; opacity: 0.8; }
+            .total-row.grand { font-size: 26px; font-weight: 900; opacity: 1; margin-top: 20px; padding-top: 20px; border-top: 1px dashed rgba(255,255,255,0.2); color: #fbbf24; }
+            .footer { margin-top: 60px; text-align: center; border-top: 2px solid #f1f5f9; padding-top: 30px; font-size: 12px; color: #94a3b8; font-weight: 700; }
+            @media print { 
+              body { background: white; padding: 0; margin: 0; }
+              .page-container { box-shadow: none; border: none; margin: 0; padding: 40px; width: 100%; max-width: 100%; }
+              .no-print { display: none; }
+            }
           </style>
         </head>
         <body>
-          <div class="invoice-box">
+          <div class="page-container">
             <div class="header">
-              <img src="${logoUrl}" class="logo" alt="Logo" />
-              <div class="agency-info">
-                <p style="margin: 0; font-size: 18px; font-weight: 900; color: #1e293b;">APP STORE AGENCY</p>
-                <p style="margin: 0;">${language === 'ar' ? 'كشف مالي معتمد' : 'Certified Financial Statement'}</p>
-                <p style="margin: 0;">${new Date().toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US')}</p>
+              <div class="logo-section">
+                <img src="${logoUrl}" class="logo" alt="Logo" />
+                <span class="agency-name">APP STORE AGENCY</span>
               </div>
+              <div style="text-align: ${dir === 'rtl' ? 'left' : 'right'}; color: #64748b; font-weight: 700;">
+                <p style="margin:0;">Ref: #ST-${client.id?.slice(-6).toUpperCase()}</p>
+                <p style="margin:5px 0 0 0;">${new Date().toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US')}</p>
+              </div>
+            </div>
+
+            <div class="document-title">
+              <h1>${language === 'ar' ? 'كشف الموقف المالي للمشاريع' : 'Financial Project Statement'}</h1>
+              <p>${language === 'ar' ? 'تقرير معتمد ومفصل لحسابات العميل' : 'Detailed & Certified Account Report'}</p>
             </div>
 
             <div class="info-grid">
-              <div>
-                <div class="section-title">${language === 'ar' ? 'بيانات العميل' : 'Client Details'}</div>
-                <p><b>${language === 'ar' ? 'الاسم' : 'Name'}:</b> ${client.name}</p>
-                <p><b>${language === 'ar' ? 'الهاتف' : 'Phone'}:</b> ${client.phone}</p>
-                <p><b>${language === 'ar' ? 'الشركة' : 'Company'}:</b> ${client.company || '---'}</p>
+              <div class="info-box">
+                <h3>${language === 'ar' ? 'بيانات المستفيد' : 'Beneficiary Details'}</h3>
+                <div class="info-item"><span>${language === 'ar' ? 'الاسم:' : 'Name:'}</span> <b>${client.name}</b></div>
+                <div class="info-item"><span>${language === 'ar' ? 'الهاتف:' : 'Phone:'}</span> <b>${client.phone}</b></div>
+                <div class="info-item"><span>${language === 'ar' ? 'الشركة:' : 'Company:'}</span> <b>${client.company || '---'}</b></div>
               </div>
-              <div style="text-align: ${dir === 'rtl' ? 'left' : 'right'};">
-                <div class="section-title" style="border: none; border-${dir === 'rtl' ? 'left' : 'right'}: 4px solid #1e293b;">${language === 'ar' ? 'بيانات المصدر' : 'Issuer Details'}</div>
-                <p>وكالة APP STORE الرقمية</p>
-                <p>القاهرة، جمهورية مصر العربية</p>
-                <p>support@appstore.com</p>
+              <div class="info-box">
+                <h3>${language === 'ar' ? 'بيانات الوكالة' : 'Agency Details'}</h3>
+                <p style="margin: 0; font-size: 14px; font-weight: 700;">وكالة APP STORE للحلول الرقمية</p>
+                <p style="margin: 5px 0; font-size: 13px; color: #64748b;">قسم المحاسبة والمالية</p>
+                <p style="margin: 0; font-size: 13px; color: #64748b;">support@appstore.com</p>
               </div>
             </div>
 
-            <div class="section-title">${language === 'ar' ? 'تفاصيل التعاقدات والمشاريع' : 'Contracts & Projects Details'}</div>
             <table>
               <thead>
                 <tr>
-                  <th>${language === 'ar' ? 'المشروع' : 'Project'}</th>
-                  <th>${language === 'ar' ? 'الحالة' : 'Status'}</th>
-                  <th style="text-align: ${dir === 'rtl' ? 'left' : 'right'};">${language === 'ar' ? 'التكلفة' : 'Cost'}</th>
+                  <th style="border-radius: ${dir === 'rtl' ? '0 15px 15px 0' : '15px 0 0 15px'};">${language === 'ar' ? 'وصف المشروع / الخدمة' : 'Project / Service Description'}</th>
+                  <th>${language === 'ar' ? 'الحالة الحالية' : 'Current Status'}</th>
+                  <th style="text-align: ${dir === 'rtl' ? 'left' : 'right'}; border-radius: ${dir === 'rtl' ? '15px 0 0 15px' : '0 15px 15px 0'};">${language === 'ar' ? 'القيمة' : 'Amount'}</th>
                 </tr>
               </thead>
               <tbody>
-                ${projectsRows || `<tr><td colspan="3" style="text-align:center;">${language === 'ar' ? 'لا توجد مشاريع مسجلة' : 'No recorded projects'}</td></tr>`}
+                ${projectsRows || `<tr><td colspan="3" style="text-align:center; padding: 40px; color: #94a3b8;">${language === 'ar' ? 'لا توجد مشاريع مسجلة لهذا العميل' : 'No projects found for this client'}</td></tr>`}
               </tbody>
             </table>
 
-            <div class="totals">
+            <div class="totals-section">
               <div class="total-row">
                 <span>${language === 'ar' ? 'إجمالي قيمة التعاقدات:' : 'Total Contract Value:'}</span>
                 <span>${(client.totalInvoices || 0).toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US')} ${language === 'ar' ? 'ج.م' : 'EGP'}</span>
               </div>
-              <div class="total-row" style="color: #16a34a;">
-                <span>${language === 'ar' ? 'إجمالي المبالغ المحصلة:' : 'Total Payments Received:'}</span>
+              <div class="total-row" style="color: #4ade80;">
+                <span>${language === 'ar' ? 'إجمالي المبالغ المسددة:' : 'Total Paid Amounts:'}</span>
                 <span>${(client.totalPayments || 0).toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US')} ${language === 'ar' ? 'ج.م' : 'EGP'}</span>
               </div>
               <div class="total-row grand">
-                <span>${language === 'ar' ? 'صافي المتبقي للمطالبة:' : 'Net Remaining Balance:'}</span>
+                <span>${language === 'ar' ? 'صافي المبلغ المتبقي للمطالبة:' : 'Net Remaining Balance:'}</span>
                 <span>${remainingBalance.toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US')} ${language === 'ar' ? 'جنيه مصري' : 'EGP'}</span>
               </div>
             </div>
 
             <div class="footer">
-              <p>${language === 'ar' ? 'هذا المستند صادر آلياً ولا يحتاج لختم رسمي إلا عند الطلب.' : 'This is an electronically generated document.'}</p>
-              <p>APP STORE Agency © ${new Date().getFullYear()}</p>
+              <p>${language === 'ar' ? 'هذا الكشف مخرج آلياً من نظام الإدارة المالية لوكالة APP STORE ويعد مستنداً رسمياً للمطالبة المالية.' : 'This statement is automatically generated from APP STORE financial system and serves as an official claim.'}</p>
+              <p>© ${new Date().getFullYear()} APP STORE Agency. All Rights Reserved.</p>
             </div>
           </div>
           <script>
-            window.onload = () => {
-              window.print();
-              setTimeout(() => window.close(), 500);
+            window.onload = function() {
+              setTimeout(function() {
+                window.focus();
+                window.print();
+              }, 500);
             };
           </script>
         </body>
@@ -286,3 +304,4 @@ function PaymentsContent() {
 export default function PaymentsPage() {
   return <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>}><PaymentsContent /></Suspense>;
 }
+
