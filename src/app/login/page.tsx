@@ -28,7 +28,7 @@ const getFriendlyErrorMessage = (errorCode: string) => {
     case "auth/weak-password": return "كلمة المرور يجب أن تكون 6 أحرف على الأقل.";
     case "auth/user-disabled":
     case "custom/account-disabled": 
-      return "عذراً، هذا الحساب معطل حالياً. يرجى مراجعة إدارة الوكالة لإعادة التنشيط.";
+      return "عذراً، هذا الحساب معطل حالياً. يرجى مراجعة الاداره  لإعادة التنشيط.";
     default: return "حدث خطأ في الدخول. تأكد من بياناتك وحاول مرة أخرى.";
   }
 };
