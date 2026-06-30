@@ -24,6 +24,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, deleteDoc, doc, addDoc, setDoc } from "firebase/firestore";
@@ -238,22 +239,22 @@ ${group.notes ? `*تعليمات إضافية:*
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredGroups.map((group) => (
-          <Card key={group.id} className="rounded-[2.5rem] border-none shadow-sm hover:shadow-xl transition-all bg-white overflow-hidden border border-slate-50 group flex flex-col">
-            <CardHeader className="p-6 bg-slate-50/50 border-b border-slate-100">
+          <Card key={group.id} className="rounded-[2.5rem] border-none shadow-sm hover:shadow-xl transition-all bg-white overflow-hidden border border-slate-50 group flex flex-col h-full">
+            <CardHeader className="p-6 bg-slate-50/50 border-b border-slate-100 shrink-0">
               <div className="flex justify-between items-start">
-                <div>
+                <div className="min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <Clock className="h-4 w-4 text-primary" />
                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">المشروع المستهدف</span>
                   </div>
-                  <CardTitle className="text-xl font-black text-slate-800">{group.projectName}</CardTitle>
+                  <CardTitle className="text-xl font-black text-slate-800 truncate">{group.projectName}</CardTitle>
                 </div>
                 {getStatusBadge(group.status)}
               </div>
             </CardHeader>
-            <CardContent className="p-6 space-y-6 flex-1">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
+            <CardContent className="p-6 space-y-6 flex-1 flex flex-col min-h-0">
+              <div className="space-y-4 flex flex-col flex-1 min-h-0">
+                <div className="flex items-center justify-between shrink-0">
                   <div className="flex items-center gap-2 text-slate-400">
                     <UserCheck className="h-4 w-4" />
                     <span className="text-xs font-black uppercase">المختبرون ({group.testers.length})</span>
@@ -267,41 +268,44 @@ ${group.notes ? `*تعليمات إضافية:*
                     <FileSpreadsheet className="h-3 w-3" /> تصدير إيميلات المشروع
                   </Button>
                 </div>
-                <div className="space-y-3">
-                  {group.testers.map((tester, idx) => (
-                    <div key={idx} className="p-3 rounded-2xl bg-white border border-slate-100 flex flex-col gap-2">
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2">
-                          <Mail className="h-3 w-3 text-primary" />
-                          <span className="text-xs font-bold text-slate-700">{tester.email}</span>
-                        </div>
-                        {tester.phone && (
+                
+                <ScrollArea className="flex-1 max-h-[250px] pr-2 custom-scrollbar">
+                  <div className="space-y-3">
+                    {group.testers.map((tester, idx) => (
+                      <div key={idx} className="p-3 rounded-2xl bg-white border border-slate-100 flex flex-col gap-2 shadow-sm">
+                        <div className="flex flex-col gap-1">
                           <div className="flex items-center gap-2">
-                            <Phone className="h-3 w-3 text-slate-400" />
-                            <span className="text-[10px] font-bold text-slate-400" dir="ltr">{tester.phone}</span>
+                            <Mail className="h-3 w-3 text-primary" />
+                            <span className="text-xs font-bold text-slate-700 truncate">{tester.email}</span>
                           </div>
-                        )}
+                          {tester.phone && (
+                            <div className="flex items-center gap-2">
+                              <Phone className="h-3 w-3 text-slate-400" />
+                              <span className="text-[10px] font-bold text-slate-400" dir="ltr">{tester.phone}</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {tester.assignedDays.map(day => (
+                            <Badge key={day} variant="outline" className="text-[8px] font-black rounded-md px-2 py-0.5 bg-slate-50">
+                              {day}
+                            </Badge>
+                          ))}
+                        </div>
                       </div>
-                      <div className="flex flex-wrap gap-1">
-                        {tester.assignedDays.map(day => (
-                          <Badge key={day} variant="outline" className="text-[8px] font-black rounded-md px-2 py-0.5 bg-slate-50">
-                            {day}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                </ScrollArea>
               </div>
 
               {(group.resourceLink || group.notes) && (
-                <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10 space-y-3">
+                <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10 space-y-3 shrink-0">
                   {group.notes && (
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 text-[10px] font-black text-primary uppercase">
                         <FileText className="h-3 w-3" /> تعليمات المختبرين
                       </div>
-                      <p className="text-[10px] font-bold text-slate-600 leading-relaxed bg-white/50 p-2 rounded-lg border border-slate-100">
+                      <p className="text-[10px] font-bold text-slate-600 leading-relaxed bg-white/50 p-2 rounded-lg border border-slate-100 line-clamp-3">
                         {group.notes}
                       </p>
                     </div>
@@ -327,13 +331,13 @@ ${group.notes ? `*تعليمات إضافية:*
               {group.status !== 'completed' && (
                 <Button 
                   onClick={() => handleSendWhatsAppNotifications(group)}
-                  className="w-full h-12 rounded-2xl font-black text-xs gap-2 bg-green-500 hover:bg-green-600 text-white shadow-lg active:scale-95 transition-all mt-4"
+                  className="w-full h-12 rounded-2xl font-black text-xs gap-2 bg-green-500 hover:bg-green-600 text-white shadow-lg active:scale-95 transition-all mt-auto shrink-0"
                 >
                   <MessageCircle className="h-4 w-4" /> إرسال تنبيهات واتساب لجميع المختبرين
                 </Button>
               )}
             </CardContent>
-            <div className="p-4 bg-slate-50 border-t flex gap-2">
+            <div className="p-4 bg-slate-50 border-t flex gap-2 shrink-0">
               <Button 
                 variant="ghost" 
                 onClick={() => { setEditingGroup(group); setIsModalOpen(true); }}
