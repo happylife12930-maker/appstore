@@ -48,22 +48,22 @@ body[style*="pointer-events: none"] {
   pointer-events: auto !important;
 }
 
-/* تحسين السكرول بار */
+/* تحسين وتكبير السكرول بار */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-transparent;
+  @apply bg-slate-100;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-slate-300 rounded-full hover:bg-slate-400 transition-colors;
+  @apply bg-slate-300 rounded-full border-2 border-transparent bg-clip-content hover:bg-slate-400 transition-colors;
 }
 
 .custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
+  width: 10px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
@@ -71,7 +71,7 @@ body[style*="pointer-events: none"] {
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  @apply bg-primary/20 rounded-full hover:bg-primary/40;
+  @apply bg-primary/30 rounded-full border-2 border-transparent bg-clip-content hover:bg-primary/50;
 }
 
 /* طباعة كشف الحساب */
