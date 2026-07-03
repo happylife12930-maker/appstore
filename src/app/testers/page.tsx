@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -18,7 +19,8 @@ import {
   FileText,
   Phone,
   MessageCircle,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Lock
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,8 +33,10 @@ import { collection, onSnapshot, deleteDoc, doc, addDoc, setDoc } from "firebase
 import { AddTestingModal, type TestingGroupData } from "@/components/modals/add-testing-modal";
 import { useAuth } from "@/components/auth-provider";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "@/components/language-provider";
 
 export default function TestersManagementPage() {
+  const { t, dir } = useTranslation();
   const [testingGroups, setTestingGroups] = useState<TestingGroupData[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -40,13 +44,17 @@ export default function TestersManagementPage() {
   const [editingGroup, setEditingGroup] = useState<TestingGroupData | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   
-  const { profile } = useAuth();
+  const { profile, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
 
+  const isAdmin = profile?.role === 'admin';
+  const hasTesterPermission = isAdmin && (profile?.permissions || []).includes('p_testers');
+
   useEffect(() => {
-    if (profile?.role !== 'admin') {
-      router.push("/");
+    if (authLoading) return;
+    if (!hasTesterPermission) {
+      setLoading(false);
       return;
     }
     if (!db) return;
@@ -57,7 +65,7 @@ export default function TestersManagementPage() {
     }, () => setLoading(false));
 
     return () => unsub();
-  }, [profile, router]);
+  }, [hasTesterPermission, authLoading]);
 
   const filteredGroups = useMemo(() => {
     const s = searchQuery.toLowerCase().trim();
@@ -118,21 +126,7 @@ export default function TestersManagementPage() {
         cleanPhone = '20' + cleanPhone;
       }
 
-      const message = `*تنبيه مهمة اختبار - APP STORE* 🚀
-
-مرحباً، يسرنا إبلاغكم بأنه قد تم تكليفكم بمهمة اختبار لمشروع: *${group.projectName}*
-
-*تفاصيل المواعيد المحددة لكم:*
-📅 ${tester.assignedDays.join('، ')}
-
-*رابط نسخة الاختبار والمرفقات:*
-🔗 ${group.resourceLink || 'سيتم تزويدكم به لاحقاً'}
-
-${group.notes ? `*تعليمات إضافية:*
-📝 ${group.notes}` : ''}
-
-يرجى البدء في الاختبار وموافاتنا بالتقارير في المواعيد المحددة.
-بالتوفيق، فريق إدارة الجودة.`;
+      const message = `*تنبيه مهمة اختبار - APP STORE* 🚀\n\nمرحباً، يسرنا إبلاغكم بأنه قد تم تكليفكم بمهمة اختبار لمشروع: *${group.projectName}*\n\n*تفاصيل المواعيد المحددة لكم:*\n📅 ${tester.assignedDays.join('، ')}\n\n*رابط نسخة الاختبار والمرفقات:*\n🔗 ${group.resourceLink || 'سيتم تزويدكم به لاحقاً'}\n\n${group.notes ? `*تعليمات إضافية:*\n📝 ${group.notes}` : ''}\n\nيرجى البدء في الاختبار وموافاتنا بالتقارير في المواعيد المحددة.\nبالتوفيق، فريق إدارة الجودة.`;
 
       const encodedMessage = encodeURIComponent(message);
       
@@ -191,12 +185,25 @@ ${group.notes ? `*تعليمات إضافية:*
     }
   };
 
-  if (loading) return (
+  if (authLoading || loading) return (
     <div className="flex flex-col items-center justify-center py-20 gap-4">
       <Loader2 className="h-12 w-12 animate-spin text-primary" />
-      <p className="font-bold text-slate-500">جاري تحميل بيانات المختبرين...</p>
+      <p className="font-bold text-slate-500">{t('loading')}</p>
     </div>
   );
+
+  if (!hasTesterPermission) {
+    return (
+      <div className="max-w-7xl mx-auto py-20 text-center">
+        <div className="bg-white p-20 rounded-[3rem] shadow-sm border border-dashed border-slate-200">
+          <Lock className="h-20 w-20 mx-auto mb-6 text-slate-200" />
+          <h2 className="text-3xl font-black text-slate-800 mb-2">{t('access_restricted')}</h2>
+          <p className="text-slate-500 font-bold">{t('access_restricted_desc')}</p>
+          <Button onClick={() => router.push("/")} className="mt-8 rounded-2xl h-12 px-8 font-black">{t('back')}</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 pb-20" dir="rtl">
