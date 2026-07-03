@@ -139,6 +139,8 @@ const translations = {
     view_projects_perm: "View Projects",
     support_perm: "Technical Support",
     finances_perm: "Financial Data",
+    add_admin: "Add New Admin",
+    admin_name: "Admin Name",
 
     // Profile Page
     profile_title: "My Profile",
@@ -290,6 +292,8 @@ const translations = {
     view_projects_perm: "عرض المشاريع",
     support_perm: "الدعم الفني",
     finances_perm: "البيانات المالية",
+    add_admin: "إضافة مسؤول جديد",
+    admin_name: "اسم المسؤول",
 
     // صفحة الملف الشخصي
     profile_title: "حسابي الشخصي",
