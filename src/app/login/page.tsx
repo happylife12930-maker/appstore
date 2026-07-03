@@ -89,9 +89,9 @@ export default function LoginPage() {
           name: pData.name || "User",
           email: emailLower,
           clientId: pData.clientId || "", 
-          role: "client",
+          role: pData.role || "client",
           status: "active",
-          permissions: pData.permissions || ["p_projects", "p_support"],
+          permissions: pData.permissions || (pData.role === 'admin' ? ["p_projects", "p_support", "p_finances", "p_clients", "p_testers"] : ["p_projects", "p_support"]),
           tempPassword: pData.tempPassword || password,
           lastLogin: new Date().toISOString()
         }, { merge: true });
@@ -120,7 +120,6 @@ export default function LoginPage() {
       <Card className="w-full max-w-md border-none shadow-[0_0_50px_rgba(0,0,0,0.3)] rounded-[3rem] overflow-hidden bg-white">
         <CardHeader className="text-center bg-white p-8 pb-4 flex flex-col items-center border-b border-slate-50 relative">
           <div className="flex flex-col items-center justify-center gap-4 w-full">
-            {/* Language Switcher on Top */}
             <div className="flex items-center gap-4 w-full justify-center">
               <div className="h-[1px] flex-1 bg-slate-100 max-w-[40px]" />
               <Button 
@@ -135,7 +134,6 @@ export default function LoginPage() {
               <div className="h-[1px] flex-1 bg-slate-100 max-w-[40px]" />
             </div>
 
-            {/* Larger Centered Logo */}
             <div className="relative h-44 w-44 transition-transform hover:scale-105 duration-500 drop-shadow-sm">
               <Image 
                 src={agencyLogo} 
