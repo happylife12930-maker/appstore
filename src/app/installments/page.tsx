@@ -1,9 +1,10 @@
+
 "use client";
 
 import * as React from "react";
 import { useState, useEffect, useMemo, Suspense } from "react";
 import { 
-  CalendarDays, Search, CheckCircle2, Clock, AlertCircle, Loader2, Wallet, TrendingUp, Printer, BellRing, FilterX, Calendar as CalendarIcon, MessageCircle, Send
+  CalendarDays, Search, CheckCircle2, Clock, AlertCircle, Loader2, Wallet, TrendingUp, Printer, BellRing, FilterX, Calendar as CalendarIcon, MessageCircle, Send, Lock
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ interface WhatsAppQueueItem {
 
 function InstallmentsContent() {
   const { t, dir, language } = useTranslation();
+  const { profile, loading: authLoading } = useAuth();
   const [clients, setClients] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentFilter, setCurrentFilter] = useState<FilterType>('all');
@@ -40,13 +42,16 @@ function InstallmentsContent() {
   const [isWhatsappModalOpen, setIsWhatsappModalOpen] = useState(false);
   const [whatsappQueue, setWhatsappQueue] = useState<WhatsAppQueueItem[]>([]);
 
-  const { profile } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
 
+  const isAdmin = profile?.role === 'admin';
+  const hasFinancePermission = isAdmin && (profile?.permissions || []).includes('p_finances');
+
   useEffect(() => {
-    if (profile?.role !== 'admin' && !loading) {
-      router.push("/");
+    if (authLoading) return;
+    if (!hasFinancePermission) {
+      setLoading(false);
       return;
     }
     if (!db) return;
@@ -54,10 +59,13 @@ function InstallmentsContent() {
     const unsub = onSnapshot(collection(db, "clients"), (snap) => {
       setClients(snap.docs.map(d => ({ id: d.id, ...d.data() })));
       setLoading(false);
+    }, (err) => {
+      console.error(err);
+      setLoading(false);
     });
 
     return () => unsub();
-  }, [profile, router, loading]);
+  }, [hasFinancePermission, authLoading]);
 
   const projectsWithInstallments = useMemo(() => {
     const today = new Date();
@@ -151,7 +159,17 @@ function InstallmentsContent() {
     printWindow.document.close();
   };
 
-  if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin text-primary" /></div>;
+  if (authLoading || loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin text-primary" /></div>;
+
+  if (!hasFinancePermission) {
+    return (
+      <div className="max-w-4xl mx-auto py-20 text-center">
+        <Lock className="h-12 w-12 mx-auto mb-4 text-slate-200" />
+        <h2 className="text-xl font-black text-slate-800">{t('access_restricted')}</h2>
+        <Button onClick={() => router.push("/")} className="mt-4 rounded-xl h-10 px-6 font-black">{t('back')}</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 pb-20" dir={dir}>
