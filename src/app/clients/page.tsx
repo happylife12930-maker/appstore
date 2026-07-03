@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -37,10 +38,11 @@ function ClientsContent() {
   const router = useRouter();
 
   const isAdmin = profile?.role === 'admin';
+  const hasClientPermission = isAdmin && (profile?.permissions || []).includes('p_clients');
 
   useEffect(() => {
     if (authLoading) return;
-    if (!isAdmin) {
+    if (!hasClientPermission) {
       setLoading(false);
       return;
     }
@@ -51,10 +53,11 @@ function ClientsContent() {
       setLoading(false);
     }, (err) => {
       console.error("Clients Listener Error:", err);
+      setLoading(false);
     });
 
     return () => unsubClients();
-  }, [isAdmin, authLoading]);
+  }, [hasClientPermission, authLoading]);
 
   const filteredClients = useMemo(() => {
     const s = normalizeText(searchQuery);
@@ -74,7 +77,7 @@ function ClientsContent() {
     </div>
   );
 
-  if (!isAdmin) {
+  if (!hasClientPermission) {
     return (
       <div className="max-w-4xl mx-auto py-20 text-center">
         <Lock className="h-12 w-12 mx-auto mb-4 text-slate-200" />
@@ -152,7 +155,7 @@ function ClientsContent() {
               </div>
               <div className="flex gap-1">
                 <Button variant="ghost" size="icon" onClick={() => { setEditingClient(client); setIsModalOpen(true); }} className="h-8 w-8 rounded-lg text-slate-400 hover:bg-primary/5 hover:text-primary"><Edit3 className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" onClick={() => handleDeleteClient(client.id!)} className="h-8 w-8 rounded-lg text-rose-300 hover:text-rose-500 hover:bg-rose-50"><Trash2 className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" onClick={() => handleDeleteClient(client.id!)} className="h-8 w-8 rounded-lg text-rose-300 hover:text-rose-50"><Trash2 className="h-4 w-4" /></Button>
               </div>
             </CardHeader>
             <CardContent className="p-5 space-y-4">
