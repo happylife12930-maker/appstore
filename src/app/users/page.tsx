@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -23,6 +24,7 @@ import { useTranslation } from "@/components/language-provider";
 
 function UsersPermissionsContent() {
   const { t, dir, language } = useTranslation();
+  const { profile, loading: authLoading } = useAuth();
   const [allClients, setAllClients] = useState<any[]>([]);
   const [activeUsers, setActiveUsers] = useState<any[]>([]);
   const [provisionedUsers, setProvisionedUsers] = useState<any[]>([]);
@@ -39,26 +41,41 @@ function UsersPermissionsContent() {
   const [tempPassword, setTempPassword] = useState("");
   const [adminName, setAdminName] = useState("");
   const [adminEmail, setAdminEmail] = useState("");
+  const [adminPermissions, setAdminPermissions] = useState<string[]>(["p_dashboard", "p_projects", "p_support", "p_finances", "p_clients", "p_testers", "p_portal"]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { profile } = useAuth();
-  const { toast } = useToast();
   const router = useRouter();
+  const { toast } = useToast();
+
+  const isAdmin = profile?.role === 'admin';
+  const hasPortalPermission = isAdmin && (profile?.permissions || []).includes('p_portal');
 
   const availablePermissions = [
+    { id: "p_dashboard", label: t('dashboard_perm') },
     { id: "p_projects", label: t('view_projects_perm') },
     { id: "p_support", label: t('support_perm') },
     { id: "p_finances", label: t('finances_perm') },
+    { id: "p_clients", label: t('clients_perm') },
+    { id: "p_testers", label: t('testers_perm') },
+    { id: "p_portal", label: t('portal_perm') },
   ];
 
   useEffect(() => {
-    if (profile?.role !== 'admin' && !loading) { router.push("/"); return; }
+    if (authLoading) return;
+    if (!hasPortalPermission) {
+      setLoading(false);
+      return;
+    }
     if (!db) return;
     const unsubC = onSnapshot(collection(db, "clients"), (snap) => setAllClients(snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))));
     const unsubU = onSnapshot(collection(db, "users"), (snap) => setActiveUsers(snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))));
     const unsubP = onSnapshot(collection(db, "users_provision"), (snap) => { setProvisionedUsers(snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))); setLoading(false); });
     return () => { unsubC(); unsubU(); unsubP(); };
-  }, [profile, router, loading]);
+  }, [hasPortalPermission, authLoading]);
+
+  const toggleAdminPermission = (id: string) => {
+    setAdminPermissions(prev => prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]);
+  };
 
   const handleGrantAccess = async () => {
     if (!db || !selectedClient || !tempPassword) return;
@@ -102,7 +119,7 @@ function UsersPermissionsContent() {
         role: "admin", 
         status: "active", 
         tempPassword: tempPassword, 
-        permissions: ["p_projects", "p_support", "p_finances", "p_clients", "p_testers"], 
+        permissions: adminPermissions, 
         createdAt: new Date().toISOString() 
       });
       toast({ title: "تم تجهيز حساب المسؤول", description: "يمكن للمسؤول الجديد الدخول الآن." }); 
@@ -151,7 +168,20 @@ function UsersPermissionsContent() {
 
   const filteredClients = useMemo(() => allClients.filter(c => c.name?.toLowerCase().includes(searchQuery.toLowerCase()) || c.phone?.includes(searchQuery)), [allClients, searchQuery]);
 
-  if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin text-primary" /></div>;
+  if (authLoading || loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin text-primary" /></div>;
+
+  if (!hasPortalPermission) {
+    return (
+      <div className="max-w-7xl mx-auto py-20 text-center">
+        <div className="bg-white p-20 rounded-[3rem] shadow-sm border border-dashed border-slate-200">
+          <Lock className="h-20 w-20 mx-auto mb-6 text-slate-200" />
+          <h2 className="text-3xl font-black text-slate-800 mb-2">{t('access_restricted')}</h2>
+          <p className="text-slate-500 font-bold">{t('access_restricted_desc')}</p>
+          <Button onClick={() => router.push("/")} className="mt-8 rounded-2xl h-12 px-8 font-black">{t('back')}</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 pb-20" dir={dir}>
@@ -230,7 +260,7 @@ function UsersPermissionsContent() {
             <CardContent className="p-0">
               <div className="divide-y divide-slate-50">
                 {[...activeUsers, ...provisionedUsers].map((user, idx) => {
-                  if (user.uid === profile?.uid) return null; // لا يظهر الأدمن الحالي لنفسه
+                  if (user.uid === profile?.uid) return null; 
                   const isProvision = !user.uid;
                   return (
                     <div key={user.id || idx} className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:bg-slate-50 transition-colors">
@@ -289,22 +319,42 @@ function UsersPermissionsContent() {
 
       {/* مودال إنشاء أدمن جديد */}
       <Dialog open={isAdminCreateModalOpen} onOpenChange={setIsAdminCreateModalOpen}>
-        <DialogContent className="rounded-[2rem] border-none shadow-2xl p-0 overflow-hidden bg-white max-sm:max-w-[90vw] sm:max-w-md" dir={dir}>
+        <DialogContent className="rounded-[2rem] border-none shadow-2xl p-0 overflow-hidden bg-white max-sm:max-w-[95vw] sm:max-w-2xl" dir={dir}>
           <div className="bg-slate-900 p-6 text-white"><DialogHeader><DialogTitle className="font-black text-lg flex items-center gap-2"><ShieldAlert className="h-5 w-5 text-primary" /> {t('add_admin')}</DialogTitle></DialogHeader></div>
-          <div className="p-6 space-y-4">
-            <div className="space-y-1.5">
-              <Label className="font-black text-[10px] text-slate-500 uppercase">{t('admin_name')}</Label>
-              <Input value={adminName} onChange={e => setAdminName(e.target.value)} placeholder="الاسم الكامل للمسؤول" className="rounded-xl h-11 font-bold" />
+          <ScrollArea className="max-h-[70vh]">
+            <div className="p-6 space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="font-black text-[10px] text-slate-500 uppercase">{t('admin_name')}</Label>
+                  <Input value={adminName} onChange={e => setAdminName(e.target.value)} placeholder="الاسم الكامل للمسؤول" className="rounded-xl h-11 font-bold" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="font-black text-[10px] text-slate-500 uppercase">{t('email_label')}</Label>
+                  <Input value={adminEmail} onChange={e => setAdminEmail(e.target.value)} placeholder="admin@appstore.com" className="rounded-xl h-11 font-bold" dir="ltr" />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="font-black text-[10px] text-slate-500 uppercase">{t('temp_password')}</Label>
+                <Input value={tempPassword} onChange={e => setTempPassword(e.target.value)} placeholder="123456" className="rounded-xl h-11 text-center font-black tracking-widest text-lg" />
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="font-black text-slate-800 text-sm border-r-4 border-primary pr-3">صلاحيات الوصول الممنوحة للمدير</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {availablePermissions.map((perm) => (
+                    <div 
+                      key={perm.id} 
+                      onClick={() => toggleAdminPermission(perm.id)}
+                      className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${adminPermissions.includes(perm.id) ? 'bg-primary/5 border-primary shadow-sm' : 'bg-white border-slate-100'}`}
+                    >
+                      <Checkbox checked={adminPermissions.includes(perm.id)} />
+                      <span className="font-black text-xs">{perm.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <Label className="font-black text-[10px] text-slate-500 uppercase">{t('email_label')}</Label>
-              <Input value={adminEmail} onChange={e => setAdminEmail(e.target.value)} placeholder="admin@appstore.com" className="rounded-xl h-11 font-bold" dir="ltr" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="font-black text-[10px] text-slate-500 uppercase">{t('temp_password')}</Label>
-              <Input value={tempPassword} onChange={e => setTempPassword(e.target.value)} placeholder="123456" className="rounded-xl h-11 text-center font-black tracking-widest text-lg" />
-            </div>
-          </div>
+          </ScrollArea>
           <DialogFooter className="p-6 bg-slate-50 border-t">
             <Button onClick={handleCreateAdmin} className="w-full h-12 rounded-xl font-black gap-2 shadow-lg bg-slate-900 hover:bg-black" disabled={isSubmitting || !adminName || !adminEmail || !tempPassword}>
               {isSubmitting ? <Loader2 className="animate-spin" /> : <CheckCircle2 className="h-4 w-4" />} إنشاء حساب المسؤول
@@ -345,26 +395,25 @@ function UsersPermissionsContent() {
                 <div><p className="font-black text-slate-800">{t('account_status')}</p></div>
                 <Switch checked={editingUser?.status === 'active'} onCheckedChange={(checked) => setEditingUser({...editingUser, status: checked ? 'active' : 'inactive'})} />
               </div>
-              {editingUser?.role === 'client' && (
-                <div className="space-y-4">
-                  <h3 className="font-black text-slate-800 text-sm uppercase">{t('available_permissions')}</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {availablePermissions.map((perm) => (
-                      <div 
-                        key={perm.id} 
-                        onClick={() => { 
-                          const c = editingUser?.permissions || []; 
-                          setEditingUser({...editingUser, permissions: c.includes(perm.id) ? c.filter((p:any)=>p!==perm.id) : [...c, perm.id]}); 
-                        }} 
-                        className={`flex items-center gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all ${editingUser?.permissions?.includes(perm.id) ? 'bg-primary/5 border-primary shadow-sm' : 'bg-white border-slate-100'}`}
-                      >
-                        <Checkbox checked={editingUser?.permissions?.includes(perm.id)} />
-                        <span className="font-black text-sm">{perm.label}</span>
-                      </div>
-                    ))}
-                  </div>
+              
+              <div className="space-y-4">
+                <h3 className="font-black text-slate-800 text-sm uppercase border-r-4 border-primary pr-3">{t('available_permissions')}</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {availablePermissions.map((perm) => (
+                    <div 
+                      key={perm.id} 
+                      onClick={() => { 
+                        const c = editingUser?.permissions || []; 
+                        setEditingUser({...editingUser, permissions: c.includes(perm.id) ? c.filter((p:any)=>p!==perm.id) : [...c, perm.id]}); 
+                      }} 
+                      className={`flex items-center gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all ${editingUser?.permissions?.includes(perm.id) ? 'bg-primary/5 border-primary shadow-sm' : 'bg-white border-slate-100'}`}
+                    >
+                      <Checkbox checked={editingUser?.permissions?.includes(perm.id)} />
+                      <span className="font-black text-xs">{perm.label}</span>
+                    </div>
+                  ))}
                 </div>
-              )}
+              </div>
             </div>
           </ScrollArea>
           <DialogFooter className="p-8 bg-slate-50 border-t">
