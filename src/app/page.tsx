@@ -1,3 +1,4 @@
+
 'use client';
 import * as React from "react";
 import { useState, useEffect, useRef } from "react";
@@ -18,7 +19,8 @@ import {
   Upload,
   Info,
   CheckCircle2,
-  Facebook
+  Facebook,
+  CreditCard
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
@@ -59,6 +61,7 @@ export default function DashboardPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isAdmin = profile?.role === 'admin';
+  const perms = profile?.permissions || [];
 
   useEffect(() => {
     if (!db) return;
@@ -217,7 +220,7 @@ export default function DashboardPage() {
               )}
             </>
           )}
-          {isAdmin && (
+          {isAdmin && perms.includes('p_testers') && (
             <Button onClick={() => setIsScheduleModalOpen(true)} className="rounded-xl h-11 px-6 font-black text-sm gap-2 shadow-md hover:scale-105 transition-all">
               <CalendarDays className="h-5 w-5" /> {language === 'ar' ? 'جدول الاختبارات الأسبوعي' : 'Weekly Test Schedule'}
             </Button>
@@ -225,20 +228,20 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
         {isAdmin ? (
           <>
-            <StatCard title={t('total_clients')} icon={<Users className="text-primary h-5 w-5" />} value={stats.clients} onClick={() => router.push('/clients')} />
-            <StatCard title={t('active_projects')} icon={<Briefcase className="text-orange-500 h-5 w-5" />} value={stats.projects} onClick={() => router.push('/projects?status=active')} />
-            <StatCard title={t('support_inbox')} icon={<MessageSquare className={(stats.unreadSupport > 0 ? "text-rose-500 animate-pulse" : "text-indigo-500") + " h-5 w-5"} />} value={stats.unreadSupport > 0 ? `${stats.unreadSupport} ${t('unread_messages')}` : t('none')} onClick={() => router.push('/support')} />
-            <StatCard title={t('finished_projects')} icon={<CheckCircle className="text-green-500 h-5 w-5" />} value={stats.finished} onClick={() => router.push('/projects?status=finished')} />
-            <StatCard title={t('users')} icon={<ShieldAlert className="text-rose-500 h-5 w-5" />} value={t('manage')} onClick={() => router.push('/users')} />
+            {perms.includes('p_clients') && <StatCard title={t('total_clients')} icon={<Users className="text-primary h-5 w-5" />} value={stats.clients} onClick={() => router.push('/clients')} />}
+            {perms.includes('p_projects') && <StatCard title={t('active_projects')} icon={<Briefcase className="text-orange-500 h-5 w-5" />} value={stats.projects} onClick={() => router.push('/projects?status=active')} />}
+            {perms.includes('p_support') && <StatCard title={t('support_inbox')} icon={<MessageSquare className={(stats.unreadSupport > 0 ? "text-rose-500 animate-pulse" : "text-indigo-500") + " h-5 w-5"} />} value={stats.unreadSupport > 0 ? `${stats.unreadSupport} ${t('unread_messages')}` : t('none')} onClick={() => router.push('/support')} />}
+            {perms.includes('p_finances') && <StatCard title={t('payments')} icon={<CreditCard className="text-emerald-500 h-5 w-5" />} value={t('manage')} onClick={() => router.push('/payments')} />}
+            {perms.includes('p_portal') && <StatCard title={t('users')} icon={<ShieldAlert className="text-rose-500 h-5 w-5" />} value={t('manage')} onClick={() => router.push('/users')} />}
           </>
         ) : (
           <>
-            <StatCard title={t('active_projects')} icon={<Briefcase className="text-orange-500 h-5 w-5" />} value={stats.projects} onClick={() => router.push('/projects?status=active')} />
-            <StatCard title={t('finished_projects')} icon={<CheckCircle className="text-green-500 h-5 w-5" />} value={stats.finished} onClick={() => router.push('/projects?status=finished')} />
-            <StatCard title={t('support')} icon={<LifeBuoy className={(stats.unreadSupport > 0 ? "text-rose-500 animate-pulse" : "text-indigo-500") + " h-5 w-5"} />} value={stats.unreadSupport > 0 ? `${stats.unreadSupport} ${t('unread_messages')}` : t('request_support')} onClick={() => router.push('/support')} />
+            {perms.includes('p_projects') && <StatCard title={t('active_projects')} icon={<Briefcase className="text-orange-500 h-5 w-5" />} value={stats.projects} onClick={() => router.push('/projects?status=active')} />}
+            {perms.includes('p_projects') && <StatCard title={t('finished_projects')} icon={<CheckCircle className="text-green-500 h-5 w-5" />} value={stats.finished} onClick={() => router.push('/projects?status=finished')} />}
+            {perms.includes('p_support') && <StatCard title={t('support')} icon={<LifeBuoy className={(stats.unreadSupport > 0 ? "text-rose-500 animate-pulse" : "text-indigo-500") + " h-5 w-5"} />} value={stats.unreadSupport > 0 ? `${stats.unreadSupport} ${t('unread_messages')}` : t('request_support')} onClick={() => router.push('/support')} />}
             <StatCard title={language === 'ar' ? 'حالة الحساب' : 'Account Status'} icon={<ShieldCheck className={(isLinked ? "text-green-500" : "text-rose-500") + " h-5 w-5"} />} value={isLinked ? t('status_active') : t('status_pending')} onClick={() => router.push('/profile')} />
           </>
         )}
@@ -254,7 +257,7 @@ export default function DashboardPage() {
             {isAdmin ? t('admin_desc') : t('client_desc')}
           </p>
           <div className="flex justify-center gap-4">
-             <Button onClick={() => router.push(isAdmin ? '/projects' : '/support')} size="lg" className="rounded-2xl bg-white text-primary font-black shadow-2xl gap-3 h-14 px-10 hover:bg-slate-50 text-base">
+             <Button onClick={() => router.push(isAdmin ? (perms.includes('p_projects') ? '/projects' : '/profile') : '/support')} size="lg" className="rounded-2xl bg-white text-primary font-black shadow-2xl gap-3 h-14 px-10 hover:bg-slate-50 text-base">
                {isAdmin ? t('start_work') : t('request_support')} 
                {dir === 'rtl' ? <ArrowLeft className="h-5 w-5" /> : <ArrowRight className="h-5 w-5" />}
              </Button>
